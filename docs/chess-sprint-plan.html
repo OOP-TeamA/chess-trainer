@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>체스 학습 프로그램 주간 계획 (10~16주차)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+KR:wght@600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#1d1813; --surface:#251f19; --raised:#2e271f; --line:#3e342a;
+  --text:#ede4d3; --muted:#ab9d87; --faint:#7d705f;
+  --light-sq:#e6d2a8; --dark-sq:#a0704a;
+  --brass:#d9ae57; --sage:#97b78d; --slate:#93a8bf; --rose:#de8b7e;
+  --code-bg:#17130f; --hl-move:rgba(217,174,87,.55); --hl-mate:rgba(222,139,126,.75);
+  --serif:"Noto Serif KR","Nanum Myeongjo",Georgia,serif;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"JetBrains Mono",Consolas,"D2Coding",monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+:root[data-theme="dark"]{ color-scheme: dark; }
+:root[data-theme="light"]{
+  color-scheme: light;
+  --bg:#f5efe4; --surface:#ebe3d4; --raised:#e2d8c6; --line:#cdbfa8;
+  --text:#2a221a; --muted:#6b5c49; --faint:#8c7d68;
+  --brass:#9a6f14; --sage:#4e7445; --slate:#41607f; --rose:#a84837;
+  --code-bg:#ece4d5;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 16px);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.75;word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--brass);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+code,pre{font-family:var(--mono);font-size:.86em}
+code{background:var(--code-bg);padding:.1em .35em;border-radius:3px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:16px 18px;overflow-x:auto;line-height:1.6;margin:14px 0}
+pre code{background:none;padding:0;font-size:.83rem}
+.cmt{color:var(--faint)} .kw{color:var(--slate)} .own{color:var(--brass)}
+.fn{font-size:.82rem;color:var(--faint);margin:16px 0 -8px}
+
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:52px;max-width:1180px;margin:0 auto;padding:0 28px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;padding:28px 0;font-size:.86rem;max-height:calc(100vh - 40px);overflow-y:auto}
+nav.toc p.lbl{margin:0 0 8px;color:var(--faint);font-size:.8rem}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 6px}
+.roles button{font:inherit;font-size:.78rem;text-align:left;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--muted);cursor:pointer;line-height:1.35}
+.roles button[aria-pressed="true"]{border-color:var(--brass);color:var(--text);background:var(--raised)}
+.roles button.all{grid-column:1/-1}
+.rolestat{font-size:.78rem;color:var(--faint);margin:0 0 22px;min-height:1.4em}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc a{display:block;padding:3px 0 3px 12px;color:var(--muted);text-decoration:none;border-left:1px solid var(--line)}
+nav.toc a:hover{color:var(--text);border-left-color:var(--brass)}
+nav.toc .sub a{padding-left:24px;font-size:.82rem}
+main{min-width:0;max-width:800px;padding:28px 0 96px}
+
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:40px;align-items:end;padding:20px 0 40px;border-bottom:1px solid var(--line)}
+.hero h1{font-family:var(--serif);font-weight:900;font-size:clamp(2rem,4.6vw,3rem);line-height:1.2;margin:0 0 16px;letter-spacing:-.01em}
+.hero .lede{color:var(--muted);margin:0 0 20px;max-width:34em}
+.meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:.84rem;color:var(--faint);margin:0}
+.meta b{color:var(--muted);font-weight:500}
+figure.board{margin:0}
+.bd{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;border:6px solid #3a2a1c;border-radius:3px;box-shadow:0 14px 30px -12px rgba(0,0,0,.6)}
+.sq{position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(18px,3.1vw,26px);line-height:1;user-select:none}
+.sq.l{background:var(--light-sq)} .sq.d{background:var(--dark-sq)}
+.sq.mv::after,.sq.mt::after{content:"";position:absolute;inset:0}
+.sq.mv::after{background:var(--hl-move)} .sq.mt::after{background:var(--hl-mate)}
+.pc{position:relative;z-index:1}
+.pc.w{color:#fbf6ec;text-shadow:0 0 1px #2a1c10,0 0 1px #2a1c10,0 1px 2px rgba(0,0,0,.6)}
+.pc.b{color:#21170f;text-shadow:0 0 1px rgba(255,240,220,.35)}
+.co{position:absolute;font-family:var(--sans);font-size:9px;font-weight:600;opacity:.75}
+.co.f{right:2px;bottom:1px} .co.r{left:2px;top:1px}
+.sq.l .co{color:var(--dark-sq)} .sq.d .co{color:var(--light-sq)}
+figcaption{font-size:.8rem;color:var(--faint);margin-top:10px;line-height:1.55}
+figcaption strong{color:var(--muted);font-weight:500}
+
+section{padding-top:56px}
+h2{font-family:var(--serif);font-weight:700;font-size:1.6rem;line-height:1.35;margin:0 0 18px}
+h2 .n{color:var(--brass);margin-right:.4em}
+h3{font-family:var(--serif);font-weight:700;font-size:1.2rem;margin:40px 0 10px}
+h3 .id{font-family:var(--mono);font-size:.76rem;font-weight:500;color:var(--faint);margin-left:10px;vertical-align:2px}
+h4{font-size:1rem;font-weight:600;margin:26px 0 6px}
+p{margin:0 0 14px}
+.purpose{color:var(--muted);border-left:2px solid var(--brass);padding-left:14px;margin:0 0 18px}
+ul.plain,ol.plain{padding-left:1.3em;margin:0 0 14px} ul.plain li,ol.plain li{margin:4px 0}
+
+.tw{overflow-x:auto;margin:14px 0 18px;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:.89rem;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+th{font-weight:600;color:var(--muted);background:var(--surface);font-size:.81rem;white-space:nowrap}
+td.id{font-family:var(--mono);font-size:.77rem;color:var(--faint);white-space:nowrap}
+td.ow{font-family:var(--mono);font-size:.8rem;color:var(--brass);white-space:nowrap}
+td.ac{color:var(--muted);font-size:.85rem}
+table.req{min-width:700px}
+table.req td:nth-child(2){width:42%}
+.p{display:inline-block;font-size:.73rem;font-weight:600;padding:1px 8px;border-radius:10px;white-space:nowrap;border:1px solid}
+.p-m{color:var(--brass);border-color:var(--brass)}
+.p-s{color:var(--sage);border-color:var(--sage)}
+.p-c{color:var(--slate);border-color:var(--slate)}
+.p-w{color:var(--faint);border-color:var(--faint);text-decoration:line-through}
+.new{font-size:.7rem;font-weight:600;color:var(--rose);margin-left:6px;white-space:nowrap}
+
+tr[data-role],.pkg{transition:opacity .15s}
+body[data-role="A"] tr[data-role]:not([data-role~="A"]),
+body[data-role="B"] tr[data-role]:not([data-role~="B"]),
+body[data-role="C"] tr[data-role]:not([data-role~="C"]),
+body[data-role="D"] tr[data-role]:not([data-role~="D"]),
+body[data-role="E"] tr[data-role]:not([data-role~="E"]),
+body[data-role="F"] tr[data-role]:not([data-role~="F"]){opacity:.28}
+body[data-role="A"] .pkg:not([data-role~="A"]),
+body[data-role="B"] .pkg:not([data-role~="B"]),
+body[data-role="C"] .pkg:not([data-role~="C"]),
+body[data-role="D"] .pkg:not([data-role~="D"]),
+body[data-role="E"] .pkg:not([data-role~="E"]),
+body[data-role="F"] .pkg:not([data-role~="F"]){opacity:.35}
+
+.principles{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:14px 0 18px}
+.principles div{padding:14px 16px;background:var(--surface);border-right:1px solid var(--line)}
+.principles div:last-child{border-right:none}
+.principles b{display:block;font-family:var(--serif);font-size:.98rem;margin-bottom:4px}
+.principles span{font-size:.84rem;color:var(--muted);display:block}
+.principles i{font-style:normal;font-family:var(--mono);font-size:.74rem;color:var(--brass)}
+
+.loop{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:18px 0 8px}
+.loop div{padding:14px 14px 12px;background:var(--surface);border-right:1px solid var(--line)}
+.loop div:last-child{border-right:none}
+.loop b{display:block;font-family:var(--serif);font-size:1rem}
+.loop span{font-size:.82rem;color:var(--muted)}
+.loop i{font-style:normal;font-size:.75rem;color:var(--faint);display:block;margin-bottom:2px}
+.under{font-size:.86rem;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:10px 14px;margin:0 0 18px;text-align:center}
+
+.ladder{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:12px 0 16px;font-size:.86rem}
+.ladder div{flex:1;padding:10px 14px;background:var(--surface);border-right:1px solid var(--line)}
+.ladder div:last-child{border-right:none}
+.ladder b{display:block;font-size:.8rem;color:var(--brass);font-weight:600}
+
+.note{font-size:.88rem;color:var(--muted);background:var(--raised);border-radius:6px;padding:12px 16px;margin:14px 0}
+.note b{color:var(--text)}
+
+.pkgs{display:grid;gap:14px;margin:16px 0}
+.pkg{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:18px 20px}
+.pkg h3{margin:0 0 4px;font-size:1.1rem}
+.pkg .who{font-size:.84rem;color:var(--faint);margin:0 0 12px}
+.pkg dl{display:grid;grid-template-columns:88px minmax(0,1fr);gap:4px 14px;margin:0 0 12px;font-size:.87rem}
+.pkg dt{color:var(--faint)} .pkg dd{margin:0}
+.pkg .chk{list-style:none;padding:0;margin:0;font-size:.88rem}
+.pkg .chk li{margin:3px 0}
+.pkg .chk label{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.pkg .chk input{margin-top:6px;accent-color:var(--brass)}
+.pkg .chk input:checked + span{color:var(--faint);text-decoration:line-through}
+.pkg .done{font-size:.82rem;color:var(--sage);margin:10px 0 0}
+
+.dec td:first-child{font-family:var(--mono);font-size:.77rem;color:var(--rose);white-space:nowrap}
+dl.terms{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 18px;margin:12px 0;font-size:.9rem}
+dl.terms dt{font-weight:600} dl.terms dd{margin:0;color:var(--muted)}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:.82rem;color:var(--faint)}
+
+
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:12px 0 18px}
+.sw{display:grid;grid-template-columns:34px 1fr;column-gap:10px;align-items:center;font-size:.8rem;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--surface)}
+.sw i{grid-row:1/5;width:34px;height:52px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.sw b{font-weight:600;font-size:.84rem} .sw span{color:var(--muted)} .sw code{font-size:.72rem;background:none;padding:0;color:var(--faint)}
+.flowwrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px;margin:14px 0 10px}
+svg.flow{display:block;min-width:640px;width:100%;height:auto}
+svg.skel{display:block;min-width:560px;width:100%;height:auto}
+.fn-n rect{fill:var(--raised);stroke:var(--line)} .fn-n.res rect{fill:var(--bg)} .fn-n.home rect{fill:var(--raised);stroke:var(--brass)}
+.fn-n text,.fn-glob text{fill:var(--text);font:500 13px var(--sans)} .fn-n text.sm,.fn-glob text.sm{fill:var(--faint);font:400 10.5px var(--mono)}
+.fn-n text.big{font:700 22px var(--serif)} .fn-n text.pop{fill:var(--brass);font:600 10.5px var(--mono)}
+.fn-glob rect{fill:none;stroke:var(--line);stroke-dasharray:4 4} .fn-glob text.sm{font-family:var(--sans)}
+.fn-e{fill:none;stroke:var(--muted);stroke-width:1.4} .fn-x{stroke:var(--brass);stroke-dasharray:6 4} .fn-s{stroke:var(--slate);stroke-width:1.6}
+.fn-l{font:500 11.5px var(--sans);fill:var(--brass);paint-order:stroke;stroke:var(--surface);stroke-width:6px;stroke-linejoin:round} .fn-l.sl{fill:var(--slate)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:.82rem;color:var(--muted);margin:0 0 14px}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.lg{display:inline-block;width:26px;border-top:1.6px solid var(--muted)} .lg.b{border-top:1.6px dashed var(--brass)} .lg.s{border-top-color:var(--slate)}
+.popk{font-family:var(--mono);font-size:.78rem;color:var(--brass);font-weight:600}
+.sk-win{fill:var(--bg)} .sk-a{fill:var(--code-bg);stroke:var(--line)} .sk-b{fill:var(--raised);stroke:var(--line)}
+.sk-board{fill:var(--dark-sq);fill-opacity:.35;stroke:var(--brass);stroke-width:2}
+.sk-t{fill:var(--muted);font:500 18px var(--sans)} .sk-t.big{fill:var(--text);font:700 30px var(--serif)} .sk-d{fill:var(--brass);font:600 14px var(--mono)}
+figure.mock{margin:22px 0 28px}
+figure.mock img{display:block;width:100%;height:auto;border-radius:6px;border:1px solid var(--line);cursor:zoom-in}
+figure.mock figcaption{font-size:.86rem;color:var(--muted);margin-top:10px;line-height:1.6}
+figure.mock figcaption b{color:var(--text);font-weight:600}
+.reqs{font-family:var(--mono);font-size:.74rem;color:var(--faint);margin-left:4px;white-space:nowrap}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(10,8,6,.92);display:none;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);cursor:zoom-out}
+.lb.on{display:flex} .lb img{max-width:100%;max-height:100%;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;gap:0;padding:0 18px}
+  nav.toc{position:static;max-height:none;padding:18px 0 4px;border-bottom:1px solid var(--line)}
+  nav.toc ol{columns:2;column-gap:16px;padding-bottom:14px}
+  nav.toc .sub{display:none}
+  .roles{grid-template-columns:repeat(3,1fr)}
+  .hero{grid-template-columns:1fr}
+  figure.board{max-width:290px}
+  .loop{grid-template-columns:1fr 1fr}
+  .loop div:nth-child(2){border-right:none}
+  .loop div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .principles{grid-template-columns:1fr}
+  .principles div{border-right:none;border-bottom:1px solid var(--line)}
+  .principles div:last-child{border-bottom:none}
+  .ladder{flex-direction:column}
+  .ladder div{border-right:none;border-bottom:1px solid var(--line)}
+  .ladder div:last-child{border-bottom:none}
+  dl.terms,.pkg dl{grid-template-columns:1fr;gap:2px 0}
+  dl.terms dd{margin-bottom:8px}
+}
+@media print{
+  :root{--bg:#fff;--surface:#fff;--raised:#f3f3f3;--line:#bbb;--text:#111;--muted:#333;--faint:#666;--brass:#7a5a10;--code-bg:#f5f5f5}
+  nav.toc{display:none}
+  .layout{display:block;padding:0}
+  main{max-width:none;padding:0}
+  section{break-inside:auto}
+  tr,pre,.pkg{break-inside:avoid}
+  body[data-role] tr[data-role],body[data-role] .pkg{opacity:1 !important}
+}
+
+.tl{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:16px 0 8px}
+.tl>div{padding:10px 10px 12px;border-right:1px solid var(--line);background:var(--surface);min-height:132px;position:relative}
+.tl>div:last-child{border-right:none}
+.tl b{display:block;font-family:var(--serif);font-size:1rem}
+.tl .d{display:block;font-family:var(--mono);font-size:.7rem;color:var(--faint);margin-bottom:8px}
+.tl .ev{display:block;font-size:.74rem;line-height:1.35;margin-top:5px;padding:3px 6px;border-radius:4px;background:var(--raised);color:var(--muted)}
+.tl .ev.ms{background:rgba(217,174,87,.16);color:var(--brass);font-weight:600}
+.tl .ev.dl{background:rgba(222,139,126,.14);color:var(--rose);font-weight:600}
+.tl .done{opacity:.5}
+.tl .now{background:var(--raised);box-shadow:inset 0 3px 0 var(--brass)} .tl .now .ev:not(.ms):not(.dl){background:var(--surface)}
+.tl .now b::after{content:" 지금";font-family:var(--sans);font-size:.68rem;color:var(--brass);margin-left:4px;vertical-align:2px}
+.sprint{border:1px solid var(--line);border-radius:8px;background:var(--surface);margin:22px 0;overflow:hidden}
+.sprint>header{padding:16px 20px 12px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:baseline}
+.sprint .no{font-family:var(--serif);font-weight:900;font-size:1.5rem;white-space:nowrap;color:var(--brass);grid-row:1/3;line-height:1}
+.sprint h3{margin:0;font-size:1.2rem}
+.sprint .when{font-size:.84rem;color:var(--faint)}
+.sprint .body{padding:14px 20px 6px}
+.sprint .goal{font-size:.95rem;margin:0 0 12px}
+.sprint .tw{margin:10px 0 14px;background:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.chip{font-size:.78rem;padding:3px 10px;border-radius:12px;border:1px solid var(--line);color:var(--muted);background:var(--bg)}
+.chip.ms{border-color:var(--brass);color:var(--brass)} .chip.dl{border-color:var(--rose);color:var(--rose)}
+.dod{border-left:2px solid var(--sage);padding:2px 0 2px 14px;margin:10px 0 14px;font-size:.9rem}
+.dod b{color:var(--sage)}
+.cut td:nth-child(2),.cut td:nth-child(3),.cut td:nth-child(4){font-size:.86rem}
+.crit td:first-child{font-family:var(--mono);font-size:.77rem;color:var(--rose);white-space:nowrap}
+body[data-role="B1"] tr[data-role]:not([data-role~="B1"]),body[data-role="B2"] tr[data-role]:not([data-role~="B2"]),body[data-role="B3"] tr[data-role]:not([data-role~="B3"]),body[data-role="F1"] tr[data-role]:not([data-role~="F1"]),body[data-role="F2"] tr[data-role]:not([data-role~="F2"]),body[data-role="F3"] tr[data-role]:not([data-role~="F3"]),body[data-role="BF"] tr[data-role]:not([data-role~="BF"]){opacity:.28}
+@media (max-width:900px){.tl{grid-template-columns:repeat(4,minmax(0,1fr))}.tl>div:nth-child(4){border-right:none}.tl>div:nth-child(-n+4){border-bottom:1px solid var(--line)}}
+@media (max-width:520px){.tl{grid-template-columns:repeat(2,minmax(0,1fr))}.tl>div:nth-child(2n){border-right:none}.tl>div{border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="목차와 역할 선택">
+  <p class="lbl">내 역할 강조</p>
+  <div class="roles" id="roles">
+    <button type="button" class="all" data-pick="" aria-pressed="true">전체 보기</button>
+    <button type="button" data-pick="B1" aria-pressed="false">백1 체스 규칙</button>
+    <button type="button" data-pick="F1" aria-pressed="false">프1 화면 틀</button>
+    <button type="button" data-pick="B2" aria-pressed="false">백2 데이터·사용자</button>
+    <button type="button" data-pick="F2" aria-pressed="false">프2 학습 화면</button>
+    <button type="button" data-pick="B3" aria-pressed="false">백3 AI·대국</button>
+    <button type="button" data-pick="F3" aria-pressed="false">프3 기보·용어</button>
+    <button type="button" data-pick="BF" aria-pressed="false" class="all">백프 학습 로직·통합</button>
+  </div>
+  <p class="rolestat" id="rolestat" aria-live="polite"></p>
+  <p class="lbl">목차</p>
+  <ol>
+    <li><a href="#roles-def">1. 역할</a></li>
+    <li><a href="#timeline">2. 전체 일정</a></li>
+    <li class="sub"><a href="#dev-order">개발 순서와 통합 기준</a></li>
+    <li><a href="#rituals">3. 매주 반복할 일</a></li>
+    <li><a href="#sprints">4. 주차별 할 일</a></li>
+    <li class="sub"><a href="#s1">10주 뼈대 만들기</a></li>
+    <li class="sub"><a href="#s2">11주 첫 시연 흐름</a></li>
+    <li class="sub"><a href="#s3">12주 중간점검</a></li>
+    <li class="sub"><a href="#s4">13주 기능 마무리</a></li>
+    <li class="sub"><a href="#s5">14주 발표</a></li>
+    <li class="sub"><a href="#s6">15주 시험 주간</a></li>
+    <li class="sub"><a href="#s7">16주 최종 제출</a></li>
+    <li><a href="#scope">5. 뭘 먼저 하고 뭘 뺄지</a></li>
+    <li><a href="#conflicts">6. 교수님 안내와 다른 점</a></li>
+    <li><a href="#risks">7. 일이 꼬일 때</a></li>
+  </ol>
+</nav>
+<main>
+<header class="hero" style="grid-template-columns:1fr">
+  <div>
+    <h1>주간 계획<br>10주차 ~ 16주차</h1>
+    <p class="lede">교수님의 팀프로젝트 안내(10/26)에 나온 일정과 우리 팀 구성(백엔드 3명, 프론트 3명, 양쪽 다 하는 1명)에 맞춰, 매주 누가 무엇을 하는지 정리했습니다. 9주차(킥오프, 주제 선정, 역할 분담)는 끝났고 지금은 10주차입니다.</p>
+    <p class="meta"><span><b>초안</b> 2026-11-02</span><span><b>개정</b> 2026-11-04</span><span><b>중간점검까지</b> 2주</span><span><b>발표까지</b> 4주</span></p>
+  </div>
+</header>
+
+<section id="roles-def">
+  <h2><span class="n">1</span>역할</h2>
+  <p>팀 구성(백엔드 3명, 프론트 3명, 양쪽 다 하는 1명)에 맞춰 역할을 나눴습니다. 왼쪽(모바일은 위쪽)에서 자기 역할을 누르면 자기 할 일만 진하게 보입니다.</p>
+  <div class="tw"><table>
+    <thead><tr><th>역할</th><th>맡는 일</th><th>짝</th></tr></thead>
+    <tbody>
+    <tr data-role="B1"><td class="ow">백1 체스 규칙</td><td>말 이동, 체크메이트 판정, 국면 저장 형식. 규칙이 끝나는 12주차부터 기보 파일 읽기</td><td>프1, 프3</td></tr>
+    <tr data-role="B2"><td class="ow">백2 데이터·사용자</td><td>텍스트 파일 읽기·쓰기, 사용자·오답 노트·즐겨찾기·내 대국의 추가·삭제·검색과 학습 기록 저장. 순위는 기록에서 계산·검색하며 수업의 Manager 구조를 책임</td><td>프1, 프2, 프3</td></tr>
+    <tr data-role="B3"><td class="ow">백3 AI·대국</td><td>AI, 대국 진행(무르기, 기권, 결과, 저장), 힌트, 실수 알림</td><td>프1</td></tr>
+    <tr data-role="F1"><td class="ow">프1 화면 틀</td><td>메인 창, 메뉴, 색과 글꼴, 체스판 화면, 홈, 설정, AI 대전 화면, 사용자·기록·순위 화면, 말 이미지</td><td>백1, 백3, 백2</td></tr>
+    <tr data-role="F2"><td class="ow">프2 학습 화면</td><td>레슨, 퍼즐, 퀴즈, 오답 노트 화면. 레슨과 퍼즐 내용 작성</td><td>백프</td></tr>
+    <tr data-role="F3"><td class="ow">프3 기보·용어</td><td>기보 보기와 다음 수 맞히기 화면, 용어집 화면, 즐겨찾기. 용어와 기보 내용 작성</td><td>백프, 백1</td></tr>
+    <tr data-role="BF"><td class="ow">백프 학습 로직·통합</td><td>레슨·퍼즐·퀴즈 채점, 틀렸을 때 힌트 단계, 퀴즈 문제 만들기, 기보 한 수씩 넘기기, 용어 검색. 깃허브 저장소 관리와 통과한 변경의 수시 통합, 금요일 전체 시연 점검 책임</td><td>프2, 프3</td></tr>
+    </tbody>
+  </table></div>
+  <h4>왜 이렇게 나눴나</h4>
+  <ul class="plain">
+    <li><b>백프에게 학습 로직을 준 이유.</b> 레슨, 퀴즈, 기보 맞히기는 이 프로그램의 핵심이고 화면과 로직이 가장 많이 맞물리는 곳입니다. 양쪽을 다 아는 사람이 로직을 맡아야 프2, 프3과 말이 잘 통합니다.</li>
+    <li><b>백프에게 합치기를 준 이유.</b> 교수님 안내의 “누군가는 양쪽을 다 이해해야 함”에 해당하는 자리입니다. 프1은 10~11주차에 메인 창과 체스판으로 가장 바쁘기 때문에 합치기까지 맡기기 어렵습니다.</li>
+    <li><b>기보 파일 읽기를 백1에게 옮긴 이유.</b> 기보 파일을 읽으려면 “이 수가 규칙상 가능한지”를 알아야 해서, 체스 규칙을 만든 사람이 맡는 게 가장 빠릅니다. 백2는 대신 추가·삭제 기능(교수님이 강조한 부분)에 집중합니다.</li>
+    <li><b>시기별로 일이 몰리는 쪽이 다릅니다.</b> 백엔드는 10~11주차에 바쁘고, 프론트는 12~13주차에 바쁩니다. 그래서 13주차에는 백엔드가 시연 영상과 내용 채우기를 더 맡도록 짰습니다.</li>
+  </ul>
+  <h4>조장과 짝</h4>
+  <p>교수님 안내대로 조장을 둔다면 백엔드 조장은 백2(모든 데이터 구조를 알게 되는 자리), 프론트 조장은 프1을 추천합니다. 표의 “짝”은 자주 맞춰봐야 하는 상대입니다. 화면 하나마다 백엔드 짝이 정해져 있어야 “서로 상대가 할 줄 알았던 일”이 생기지 않습니다.</p>
+  <p class="note"><b>설계 문서와의 대응.</b> 기능 명세서와 인터페이스 명세서의 A~F는 이렇게 바뀝니다: A → 백1, B → 백2(기보 파일 읽기는 백1로), C → 백3, D → 프1(저장소와 합치기는 백프로), E → 프2(화면)와 백프(로직), F → 프3(화면)와 백프(로직).</p>
+</section>
+
+<section id="timeline">
+  <h2><span class="n">2</span>전체 일정</h2>
+  <div class="tl">
+    <div class="done"><b>9주</b><span class="d">10/26 ~ 11/1</span><span class="ev">킥오프, 주제, 역할 완료</span><span class="ev dl">제안서 10월 말 마감</span></div>
+    <div class="now"><b>10주</b><span class="d">11/2 ~ 11/8</span><span class="ev">뼈대 만들기</span><span class="ev">보충수업</span></div>
+    <div><b>11주</b><span class="d">11/9 ~ 11/15</span><span class="ev">첫 시연 흐름</span><span class="ev ms">금: 최소 흐름 검증</span></div>
+    <div><b>12주</b><span class="d">11/16 ~ 11/22</span><span class="ev ms">중간점검 11/16, 17</span><span class="ev">기능 늘리기</span></div>
+    <div><b>13주</b><span class="d">11/23 ~ 11/29</span><span class="ev dl">수: 새 기능 그만</span><span class="ev">영상, PPT</span></div>
+    <div><b>14주</b><span class="d">11/30 ~ 12/6</span><span class="ev ms">발표 11/30, 12/1</span><span class="ev">피드백 반영</span></div>
+    <div><b>15주</b><span class="d">12/7 ~ 12/13</span><span class="ev">시험</span><span class="ev">정리만</span></div>
+    <div><b>16주</b><span class="d">12/14 ~ 12/15</span><span class="ev dl">화요반 12/14 제출</span><span class="ev dl">월요반 12/14 시연, 12/15 제출</span></div>
+  </div>
+  <p>월요반과 화요반은 중간점검, 발표, 마감 날짜가 하루씩 다릅니다. 이 계획은 더 이른 월요반 날짜에 맞췄습니다.</p>
+</section>
+
+<section id="dev-order">
+  <h2><span class="n">2.1</span>개발 순서와 통합 기준</h2>
+  <p class="purpose">2026-11-04 기준 저장소에는 <code>app/src/main/java/com/oopteama/chess/Main.java</code>의 빈 Swing 창만 있습니다. 아래 순서는 계획이며 완료 현황이 아닙니다. 현재 Gradle의 단일 <code>app</code> 모듈, 기본 패키지 <code>com.oopteama.chess</code>를 출발점으로 삼습니다. Java toolchain은 현재 25이므로 팀 환경과 교수님 요구를 확인해 11/6까지 버전을 확정합니다.</p>
+  <div class="tw"><table class="req">
+    <thead><tr><th>순서·기한</th><th>먼저 필요한 것</th><th>동시에 진행할 일</th><th>통합 통과 기준</th></tr></thead>
+    <tbody>
+      <tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="id">0 · 11/6</td><td>빌드 버전·패키지·공개 인터페이스 확정. <code>Position</code>, <code>Move</code>, <code>RuleSet</code>, 보드 입력, 레슨·용어·퀴즈·기록 저장의 최소 계약을 먼저 맞춘다.</td><td>백프는 Gradle·테스트·계약을 정리하고, 백1은 엔진 골격, 백2는 텍스트 파일 로더, 프1은 메뉴·보드 모형을 만든다. 프2·프3은 가짜 데이터로 학습·용어 화면과 내용을 준비한다. 백3은 엔진 계약을 이용할 AI 골격을 만든다.</td><td class="ac"><code>gradlew.bat test</code>와 <code>gradlew.bat run</code>이 실행되고, 홈·보드·레슨·용어 화면으로 이동한다. 계약 변경은 담당자에게 즉시 알린다.</td></tr>
+      <tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="id">1 · 11/9~11/11</td><td>백1의 합법 수와 수 되돌리기 검증이 대국·퍼즐·기보의 선행 조건. 엔진이 늦어도 용어 퀴즈와 화면은 독립적으로 진행한다.</td><td>백1은 기본 규칙과 시작 국면 perft, 백2는 프로필·기록 저장, 백프는 레슨 채점과 용어 4지선다 채점, 프1은 보드 클릭 입력, 프2·프3은 실제 데이터 연결을 맡는다. 백3은 검증된 엔진에서만 쉬운 AI를 연결한다.</td><td class="ac">시작 국면 perft 깊이 1~3이 20·400·8,902이고, 레슨 1개·용어 검색·퀴즈 10문제를 각각 끝까지 실행한다.</td></tr>
+      <tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="id">2 · 11/13</td><td>엔진·학습·저장 계약의 합의된 버전. 화면이 목업 대신 실제 로직을 호출해야 한다.</td><td>백프가 매일 작은 변경을 합치고 금요일에는 전체 시연을 점검한다. 백1·프1은 대국을, 백2는 재시작 후 기록을, 백프·프2는 레슨과 퀴즈를, 백프·프3은 용어집을 붙인다. 백3은 쉬운 AI를 붙인다.</td><td class="ac">최소 통합 흐름: 홈 → 레슨 1개 → 용어 검색 → 4지선다 10문제 → 종료 → 재실행 후 기록 유지. 검증된 합법 수로 사람 대 사람 대국도 가능하다. 쉬운 AI가 준비되면 같은 흐름에 연결한다.</td></tr>
+      <tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="id">3 · 11/16~11/20</td><td>11/13 흐름과 합법 수 검증. SAN·PGN 파싱은 엔진이 실제 수를 판별할 수 있을 때 착수한다.</td><td>중간점검에서 쉬운 AI까지 시연하는 것을 목표로 한다. 점검 뒤 백1은 SAN·PGN, 백2는 추가·삭제 데이터, 백프는 퍼즐·기보 재생, 프2·프3은 해당 화면과 콘텐츠를 병렬로 만든다.</td><td class="ac">중간점검 피드백과 빠진 기능을 기록한다. 11/20까지 오페라 게임 재생이 안 되면 기보를 UCI 기반의 단순 형식으로 전환할지 결정한다.</td></tr>
+      <tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="id">4 · 11/25</td><td>대국·학습·저장 흐름이 안정된 뒤 여러 사용자, 순위, 오답 노트, 즐겨찾기, 저장 대국을 연결한다.</td><td>콘텐츠 확대와 UI 점검은 각 담당자가 병렬로 한다. 백프는 통합과 회귀 테스트, 백1·백3은 규칙과 AI 오류를 우선 고친다.</td><td class="ac">발표 흐름을 새 컴퓨터에서 처음부터 끝까지 실행하고, 데이터 추가·검색·삭제와 재시작 후 유지까지 확인한다. 통과하지 못한 기능은 발표 화면에서 숨기고 목록에 남긴다.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>의존 관계.</b> 보드 모형과 콘텐츠 작성은 엔진과 병렬로 진행합니다. 실제 대국·퍼즐은 합법 수 검증 뒤, AI는 대국 상태가 연결된 뒤, SAN·PGN은 엔진이 수를 판별할 수 있을 때 합칩니다. 금요일 한 번에 병합하지 말고 통과한 작은 변경부터 통합합니다.</p>
+</section>
+
+<section id="rituals">
+  <h2><span class="n">3</span>매주 반복할 일</h2>
+  <div class="tw"><table>
+    <thead><tr><th>언제</th><th>무엇을</th></tr></thead>
+    <tbody>
+    <tr><td>월요일</td><td>회의: 지난주에 한 것 확인, 이번 주 할 일과 담당 정하기, 막힌 것 공유. OTP에 회의록 쓰기(주 1회 이상 필수)</td></tr>
+    <tr><td>수요일</td><td>15분 정도 짧게 진행 상황 확인(온라인 가능). 금요일에 합칠 수 있는 것과 없는 것 미리 판단</td></tr>
+    <tr><td>금요일</td><td>주중에 통과한 작은 변경을 수시로 합치고 금요일에는 전체 흐름과 재시작 후 저장을 확인. 실패한 변경은 원인을 기록하고 수정</td></tr>
+    <tr><td>일요일</td><td>OTP는 예전 내용을 보관해주지 않으니 회의록을 깃허브에 따로 백업</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>첫 회의에서 정할 팀 규칙.</b> 교수님 안내에 따라 팀원을 제외할 수 있는 조건(예: 7일 이상 연락 안 됨, 연락 없이 회의 2번 불참)을 정해 회의록에 남깁니다.</p>
+</section>
+
+<section id="sprints">
+  <h2><span class="n">4</span>주차별 할 일</h2>
+  <article class="sprint" id="s1"><header><span class="no">10주</span><h3>뼈대 만들기</h3><span class="when">11/2(월) ~ 11/8(일)</span></header>
+<div class="body"><p class="goal">현재는 빈 Swing 창만 켜집니다. 이번 주에는 <b>메뉴·보드 모형·학습 화면·데이터 계약이 함께 돌아가는 골격</b>을 만듭니다. 백엔드와 프론트가 주고받을 클래스 이름과 메서드 이름을 이번 주에 정해 두면, 다음 주부터 각자 따로 만들어도 잘 합쳐집니다. 프론트는 체스 규칙이 아직 없어도 가짜 데이터로 화면을 먼저 만듭니다.</p><div class="chips"><span class="chip ">월: 회의</span><span class="chip ">보충수업: 교수님 예제 코드 설명</span><span class="chip ms">금 11/6: 백-프 약속(클래스·메서드 이름) 확정</span><span class="chip ">OTP 회의록 쓰기</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>월요일 회의에서 6장의 다섯 가지와 이 문서 1장의 역할을 확정하고, 역할마다 사람 이름을 붙임</td><td class="ac">회의록에 결정 내용이 적혀 있음</td></tr><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>보충수업(교수님 예제 코드 설명)을 같이 듣고, 수업의 Manager 구조와 화면 전환 방식을 우리 설계와 비교</td><td class="ac">메모를 회의록에 첨부</td></tr><tr data-role="BF"><td class="ow">백프</td><td>깃허브 저장소와 빌드 설정, 브랜치 규칙 만들기. 백엔드와 프론트가 주고받을 클래스·메서드 이름을 정리해서 금요일에 확정</td><td class="ac">새 컴퓨터에서 받아서 바로 실행됨</td></tr><tr data-role="B1"><td class="ow">백1</td><td>체스판과 말의 기본 클래스 만들기, 말마다 갈 수 있는 칸 계산 시작</td><td class="ac">말을 놓으면 갈 수 있는 칸 목록이 나옴</td></tr><tr data-role="B2"><td class="ow">백2</td><td>텍스트 파일을 읽어서 데이터로 바꾸는 코드, 수업의 Manager 구조에 맞춘 사용자 데이터 클래스</td><td class="ac">레슨, 용어 파일이 읽힘</td></tr><tr data-role="B3"><td class="ow">백3</td><td>AI가 쓸 기본 틀(말의 점수표 등), 대국 진행의 기본 틀</td><td class="ac">틀이 저장소에 올라감</td></tr><tr data-role="F1"><td class="ow">프1</td><td>메인 창, 왼쪽 메뉴, 빈 화면들, 색과 글꼴, 체스판 그리기, 말 이미지 준비</td><td class="ac">실행하면 메뉴로 화면이 바뀌고 체스판이 보임</td></tr><tr data-role="F2"><td class="ow">프2</td><td>레슨 화면과 퀴즈 화면 초안(가짜 데이터), 레슨 3개와 퍼즐 10개를 텍스트 파일로 쓰기</td><td class="ac">가짜 데이터로 화면이 뜸</td></tr><tr data-role="F3"><td class="ow">프3</td><td>용어집 화면 초안(가짜 데이터), 용어 20개와 유명 기보 1개를 텍스트 파일로 쓰기</td><td class="ac">가짜 데이터로 화면이 뜸</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 프로그램을 실행하면 메뉴로 화면이 바뀌고 체스판이 보인다. 백-프 사이의 클래스·메서드 이름이 확정되었다.</div></div></article><article class="sprint" id="s2"><header><span class="no">11주</span><h3>첫 시연 흐름</h3><span class="when">11/9(월) ~ 11/15(일)</span></header>
+<div class="body"><p class="goal">백엔드와 프론트가 주중에 통과한 변경부터 합쳐 첫 시연 흐름을 완성하는 주입니다. 기능을 많이 넣는 것보다 <b>중간점검에서 처음부터 끝까지 막힘없이 보여줄 흐름 하나</b>를 완성하는 게 목표입니다.</p><div class="chips"><span class="chip ">월: 회의</span><span class="chip ">수: 15분 진행 확인</span><span class="chip ms">금 11/13: 최소 흐름 검증(백프 책임)</span><span class="chip ">토·일: 중간점검 연습</span><span class="chip ">OTP 회의록 쓰기</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1"><td class="ow">백1</td><td>합법 수와 수 되돌리기를 먼저 검증하고 캐슬링·앙파상·승진·체크메이트까지 확대</td><td class="ac">시작 국면 perft 깊이 1~3 통과, 특수 규칙 테스트 결과 기록</td></tr><tr data-role="B2"><td class="ow">백2</td><td>사용자 기록 저장, 사용자 등록과 삭제</td><td class="ac">껐다 켜도 기록이 남아 있음</td></tr><tr data-role="B3"><td class="ow">백3</td><td>사람끼리 한 판 두는 흐름을 연결하고, 검증된 엔진 위에서 쉬운 AI를 붙임</td><td class="ac">사람 대 사람 대국을 진행. 쉬운 AI는 11/16 시연 목표</td></tr><tr data-role="BF"><td class="ow">백프</td><td>레슨 채점과 틀렸을 때 힌트 단계, 용어 퀴즈 문제 만들기(4지선다), 용어 검색. 작은 변경부터 수시 통합</td><td class="ac">레슨, 퀴즈 로직이 화면 없이도 테스트로 확인됨</td></tr><tr data-role="F1"><td class="ow">프1</td><td>체스판에서 말을 클릭해서 움직이기, 홈 화면, 사람 대 사람 대국 화면. AI 대전 화면을 같은 보드로 준비</td><td class="ac">합법 수로 사람 대 사람 대국을 진행</td></tr><tr data-role="F2"><td class="ow">프2</td><td>레슨 화면을 실제 로직에 연결해 최소 1개를 끝까지 진행하고, 용어 퀴즈 화면을 연결. 레슨 5개는 중간점검 확장 목표</td><td class="ac">나이트 레슨과 퀴즈 10문제를 끝까지 할 수 있음</td></tr><tr data-role="F3"><td class="ow">프3</td><td>용어집 화면을 실제 데이터에 연결(검색, 상세). 용어 30개는 중간점검 확장 목표</td><td class="ac">용어를 검색하고 뜻을 볼 수 있음</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 11/13 최소 통합 흐름은 홈 → 레슨 1개 → 용어 검색 → 용어 4지선다 10문제 → 재실행 후 기록 유지이다. 사람 대 사람 대국은 검증된 합법 수로 진행한다. 쉬운 AI는 준비되면 연결하고 11/16 중간점검 시연을 목표로 한다.</div><p class="note"><b>합칠 때 원칙.</b> 금요일까지 동작하지 않는 기능은 화면에서 숨깁니다. 중간점검에서는 11/13 최소 통합 흐름을 먼저 보입니다. AI 연결 여부와 미완료 기능은 시연 전에 목록으로 알립니다.</p></div></article><article class="sprint" id="s3"><header><span class="no">12주</span><h3>중간점검</h3><span class="when">11/16(월) ~ 11/22(일)</span></header>
+<div class="body"><p class="goal">월요반은 11/16, 화요반은 11/17에 중간점검을 합니다. 교수님 피드백으로 남은 계획을 고치고, 기능을 늘립니다.</p><div class="chips"><span class="chip ms">11/16(월) 또는 11/17(화): 중간점검 시연</span><span class="chip ">점검 직후: 계획 고치는 회의</span><span class="chip dl">금 11/20: 기보 파일 읽기 완성 여부 판단</span><span class="chip ">OTP 회의록 쓰기</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>중간점검 시연(지난주에 만든 흐름). 지금까지 한 것과 남은 계획을 설명하는 슬라이드 1~2장</td><td class="ac">피드백을 회의록에 적고 이 문서의 남은 계획을 고침</td></tr><tr data-role="B1"><td class="ow">백1</td><td>체스 규칙 마무리(무승부 규칙 등), 기보 파일 읽기(규칙을 아는 사람이 맡는 게 빠름)</td><td class="ac">오페라 게임 기보가 끝까지 읽힘</td></tr><tr data-role="B2"><td class="ow">백2</td><td>오답 노트·즐겨찾기·내 대국의 추가·삭제·검색, 학습 기록에서 순위 재계산·검색</td><td class="ac">추가한 항목이 저장되고 지우면 사라진다. 기록 변경 후 순위가 다시 계산됨</td></tr><tr data-role="B3"><td class="ow">백3</td><td>AI 난이도 3단계, 무르기, 기권, 결과, 대국 저장</td><td class="ac">저장한 대국을 다시 불러올 수 있음</td></tr><tr data-role="BF"><td class="ow">백프</td><td>퍼즐 채점(2수짜리 퍼즐 포함), 기보를 한 수씩 넘기는 로직</td><td class="ac">퍼즐과 기보 넘기기가 테스트로 확인됨</td></tr><tr data-role="F1"><td class="ow">프1</td><td>AI 대전 화면 완성(무르기, 기권, 결과), 설정 화면, 모든 화면의 색과 글꼴 통일</td><td class="ac">AI 대전을 처음부터 결과 화면까지 진행</td></tr><tr data-role="F2"><td class="ow">프2</td><td>퍼즐 풀이 화면. 레슨 10개, 퍼즐 20개로 늘리기(백프와 함께)</td><td class="ac">2수짜리 퍼즐을 끝까지 풀 수 있음</td></tr><tr data-role="F3"><td class="ow">프3</td><td>기보를 한 수씩 넘겨보는 화면. 기보 3개, 용어 40개로 늘리기</td><td class="ac">오페라 게임을 처음부터 끝까지 넘겨볼 수 있음</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 중간점검을 마쳤고 피드백이 계획에 반영되었다. 금요일까지 기보 파일 읽기가 안 되면, 더 쉬운 저장 방식으로 바꿀지 결정했다.</div></div></article><article class="sprint" id="s4"><header><span class="no">13주</span><h3>기능 마무리와 발표 준비</h3><span class="when">11/23(월) ~ 11/29(일)</span></header>
+<div class="body"><p class="goal">발표 전 마지막 개발 주간입니다. 수요일까지 꼭 필요한 기능을 다 넣고, 그 뒤로는 새 기능을 넣지 않습니다. 이 주에는 프론트가 바쁘고 백엔드는 여유가 생기므로, 백엔드가 내용 채우기와 영상을 더 맡습니다.</p><div class="chips"><span class="chip dl">수 11/25: 새 기능 그만 넣기</span><span class="chip ">목·금: 버그만 고치기</span><span class="chip ms">토 11/28: 시연 영상 찍기</span><span class="chip ms">일 11/29: PPT로 발표 연습</span><span class="chip ">OTP 회의록 쓰기</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1"><td class="ow">백1</td><td>체스 규칙 버그 고치기, 기보 6개 파일이 전부 읽히는지 검사, 시연 영상 찍고 편집</td><td class="ac">3~5분짜리 시연 영상 완성</td></tr><tr data-role="B2"><td class="ow">백2</td><td>여러 사용자 지원, 모든 데이터 파일이 문제없이 읽히는지 검사</td><td class="ac">모든 파일이 오류 없이 읽힘</td></tr><tr data-role="B3"><td class="ow">백3</td><td>힌트 기능, (가능하면) 실수 알림, AI 속도 확인. 퍼즐 내용 채우기 돕기</td><td class="ac">가장 어려운 AI도 한 수에 5초 이내</td></tr><tr data-role="BF"><td class="ow">백프</td><td>기보 다음 수 맞히기 채점, 주제별 정답률, 홈 화면 추천 로직</td><td class="ac">추천을 누르면 해당 화면으로 감</td></tr><tr data-role="F1"><td class="ow">프1</td><td>사용자 등록·선택 화면, 기록·순위 화면, 홈 추천 표시, 전체 화면 점검</td><td class="ac">순위 화면에 점수가 나옴</td></tr><tr data-role="F2"><td class="ow">프2</td><td>오답 노트 화면, 레슨 15개, 퍼즐 30개 채우기</td><td class="ac">목표 개수 달성</td></tr><tr data-role="F3"><td class="ow">프3</td><td>기보 다음 수 맞히기 화면, 용어 즐겨찾기, 기보 6개, 용어 50개 채우기</td><td class="ac">목표 개수 달성</td></tr><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>발표 PPT 만들기: 주제와 차별점, 화면 흐름, 설계 그림, 시연, 역할 분담. 각자 맡은 부분 1~2장</td><td class="ac">연습에서 발표 시간 안에 끝남</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 꼭 필요한 기능이 모두 동작하고, 시연 영상 링크를 공유했고, 발표 연습을 한 번 했다.</div></div></article><article class="sprint" id="s5"><header><span class="no">14주</span><h3>발표</h3><span class="when">11/30(월) ~ 12/6(일)</span></header>
+<div class="body"><p class="goal">월요반은 11/30, 화요반은 12/1에 발표와 시연을 합니다(수업 시간을 90분씩 늘려서 진행). 발표 후에는 피드백을 반영하고, 시간이 남으면 추가 기능을 넣습니다.</p><div class="chips"><span class="chip ms">11/30(월) 또는 12/1(화): 발표와 시연</span><span class="chip ">발표 직후: 피드백 회의</span><span class="chip ">OTP 회의록 쓰기</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>발표하고 시연하기. 받은 질문과 피드백을 회의록에 적기</td><td class="ac">피드백 목록이 회의록에 있음</td></tr><tr data-role="B1"><td class="ow">백1</td><td>피드백 중 체스 규칙 관련 수정</td><td class="ac">수정 완료</td></tr><tr data-role="B2"><td class="ow">백2</td><td>파일 형식 설명을 README에 정리</td><td class="ac">README에 정리됨</td></tr><tr data-role="B3"><td class="ow">백3</td><td>AI 관련 피드백 반영</td><td class="ac">수정 완료</td></tr><tr data-role="BF"><td class="ow">백프</td><td>전체 기능을 처음부터 끝까지 다시 확인하고 문제 목록 만들기</td><td class="ac">확인 목록 전부 통과</td></tr><tr data-role="F1"><td class="ow">프1</td><td>화면 다듬기, 피드백 반영</td><td class="ac">수정 완료</td></tr><tr data-role="F2"><td class="ow">프2</td><td>OX 퀴즈 같은 다른 형식의 퀴즈 추가</td><td class="ac">퀴즈 형식 2가지 이상</td></tr><tr data-role="F3"><td class="ow">프3</td><td>용어 직접 해보기, 기보 자동 넘기기</td><td class="ac">추가 기능 동작</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 발표를 마쳤고, 피드백 항목을 하나씩 처리하고 있다.</div></div></article><article class="sprint" id="s6"><header><span class="no">15주</span><h3>시험 주간: 정리만</h3><span class="when">12/7(월) ~ 12/13(일)</span></header>
+<div class="body"><p class="goal">시험이 먼저입니다. 새 기능은 넣지 않고, 제출할 것들을 정리합니다.</p><div class="chips"><span class="chip dl">금 12/11: 코드 더 이상 안 바꾸기</span><span class="chip ">최종보고서 초안</span><span class="chip ">OTP 회의록 쓰기(온라인 회의 가능)</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>각자 맡은 코드에 주석 정리</td><td class="ac">저장소에 올라감</td></tr><tr data-role="BF"><td class="ow">백프</td><td>README에 실행 방법과 기능 설명 쓰기, 실행 파일(JAR) 만들기</td><td class="ac">다른 컴퓨터에서도 실행됨</td></tr><tr data-role="B2"><td class="ow">백2</td><td>설계 문서를 실제 코드에 맞게 최종 정리</td><td class="ac">문서와 코드가 일치</td></tr><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>최종보고서 같이 쓰기. OTP 회의록과 자료를 따로 백업</td><td class="ac">보고서 초안 완성</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 코드가 고정되었고, 최종보고서 초안과 README가 있다.</div></div></article><article class="sprint" id="s7"><header><span class="no">16주</span><h3>최종 제출</h3><span class="when">12/14(월) ~ 12/15(화)</span></header>
+<div class="body"><p class="goal">반마다 마감이 다릅니다. 화요반은 12/14까지 제출, 월요반은 12/14에 시연하고 12/15까지 제출합니다.</p><div class="chips"><span class="chip dl">화요반: 12/14 제출</span><span class="chip dl">월요반: 12/14 시연, 12/15 제출</span><span class="chip ">개인 보고서, 팀원 상호평가(OTP)</span></div><div class="tw"><table class="req"><thead><tr><th>담당</th><th>할 일</th><th>완료 신호</th></tr></thead><tbody><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>LMS에 결과물 전체와 최종보고서 올리기. 올리기 전에 압축 파일을 새 폴더에 풀어서 실제로 실행되는지 꼭 확인</td><td class="ac">제출 완료 화면 캡처</td></tr><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>OTP에 개인 보고서와 팀원 상호평가 내기</td><td class="ac">각자 제출</td></tr><tr data-role="B1 B2 B3 F1 F2 F3 BF"><td class="ow">전원</td><td>(월요반만) 12/14 팀별 시연</td><td class="ac">시연 완료</td></tr></tbody></table></div><div class="dod"><b>이번 주 완료 기준.</b> 제출 완료.</div></div></article>
+</section>
+
+<section id="scope">
+  <h2><span class="n">5</span>뭘 먼저 하고 뭘 뺄지</h2>
+  <p>발표까지 4주라 설계 문서에 있는 기능을 전부 넣기는 어렵습니다. 그래서 언제까지 무엇을 보여줄지 미리 나눴습니다. 일정이 밀리면 위쪽부터 지킵니다.</p>
+  <div class="tw"><table class="cut">
+    <thead><tr><th>언제까지</th><th>기능</th><th>내용 개수</th></tr></thead>
+    <tbody>
+    <tr><td><span class="p p-m">중간점검</span></td><td>사람 대 사람 대국, 레슨(틀리면 힌트), 용어집·4지선다 퀴즈, 기록 저장. 쉬운 AI는 중간점검 시연 목표</td><td>중간점검 확장 목표: 레슨 5, 용어 30, 퍼즐 10, 기보 1. 11/13 최소 통합 기준은 2.1장 참조</td></tr>
+    <tr><td><span class="p p-m">발표</span></td><td>꼭 필요한 기능 전부, 퍼즐, 여러 사용자, 오답 노트와 즐겨찾기(추가·삭제), 순위 화면</td><td>레슨 15, 용어 50, 퍼즐 30, 기보 6, 이미지</td></tr>
+    <tr><td><span class="p p-s">발표 후</span></td><td>실수 알림, 힌트, 용어 직접 해보기, 기보 자동 넘기기, OX 퀴즈</td><td>내용 보강</td></tr>
+    <tr><td><span class="p p-w">빼도 됨</span></td><td>초성 검색, 레슨 잠금, 기보 중간부터 AI와 두기, 가장 어려운 AI</td><td></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="conflicts">
+  <h2><span class="n">6</span>교수님 안내와 다른 점</h2>
+  <p>교수님 안내문과 초기 설계를 비교해 조정한 다섯 항목입니다. 실제 과제 요건과 범위는 회의에서 확정하고 기능·인터페이스 명세에도 같은 결정을 반영합니다.</p>
+  <div class="tw"><table class="crit">
+    <thead><tr><th>번호</th><th>교수님 안내</th><th>우리 설계의 지금 상태</th><th>제안</th></tr></thead>
+    <tbody>
+    <tr><td>1</td><td>주제가 “공부하고 퀴즈로 확인하는 프로그램”. 4지선다, OX, 짝맞추기 같은 퀴즈를 예로 듦</td><td>퀴즈가 “시간 나면 하는 기능”으로 되어 있음</td><td>용어 퀴즈(“포크의 뜻은?” 4지선다)를 꼭 하는 기능으로. 체스 규칙 계산 없이 만들 수 있어서 중간점검 때 보여줄 수 있음</td></tr>
+    <tr><td>2</td><td>텍스트 파일 데이터를 목록에 담고 검색, 추가, 삭제. 수업에서 배운 Manager 방식 사용 권장</td><td>레슨, 용어를 읽기만 함. 사용자가 추가, 삭제하는 것이 거의 없음</td><td>오답 노트, 용어 즐겨찾기, 내 대국 저장과 삭제, 사용자 등록과 삭제 추가. 수업의 Manager 방식에 맞춤</td></tr>
+    <tr><td>3</td><td>사용자 정보, 공부 기록, 점수, 순위 화면을 예로 듦</td><td>사용자 한 명만 있어도 된다고 제안했었음</td><td>그 제안 취소. 여러 사용자와 순위 화면 추가</td></tr>
+    <tr><td>4</td><td>“화면 팀”과 “데이터·로직 팀”으로 나눠 만들다가 11주차쯤 합치기</td><td>팀은 이미 백엔드와 프론트로 나눴지만, 기능 오너제 설명과 실제 백엔드·프론트 역할이 어긋났음</td><td>이 문서 1장의 백1~백프를 작업 담당 기준으로 삼고, 기능·인터페이스 명세의 요구사항 담당과 계약 소유자를 함께 갱신</td></tr>
+    <tr><td>5</td><td>글자뿐 아니라 이미지가 화면 수준에 중요</td><td>말 이미지만 계획됨</td><td>레슨, 퍼즐 썸네일과 대국자 사진 추가. 요즘 인물 사진은 저작권이 있을 수 있으니 확인하고 출처 기록</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>확인할 것.</b> 제안서는 10월 말 마감이었고, 교수님 확인(컨펌)을 받아야 주제가 확정됩니다. OTP에서 제출과 확인 여부를 보세요. 교수님이 범위를 조정하라고 했다면 그쪽이 이 계획보다 우선입니다.</p>
+</section>
+
+<section id="risks">
+  <h2><span class="n">7</span>일이 꼬일 때</h2>
+  <div class="tw"><table>
+    <thead><tr><th>상황</th><th>알아채는 시점</th><th>어떻게 할지</th></tr></thead>
+    <tbody>
+    <tr><td>체스 규칙(백1)이 늦어서 다른 사람들이 기다림</td><td>11주차 수요일까지 규칙이 안 끝남</td><td>백3이나 백프가 백1을 도움. 킹이 없는 교육용 국면만 샌드박스 규칙으로 진행하고, 실제 대국·퍼즐은 검증된 합법 수가 준비될 때 연결</td></tr>
+    <tr><td>기보 파일 읽기(백1)가 늦음</td><td>12주차 금요일</td><td>기보를 더 쉬운 형식(e2e4처럼 출발 칸과 도착 칸)으로 저장하는 방식으로 바꿈</td></tr>
+    <tr><td>레슨, 용어, 퍼즐 내용이 모자람</td><td>매주 월요일 개수 확인에서 목표의 70% 미만</td><td>여유 있는 사람을 내용 채우기로 돌림. 개수보다 시연에 나오는 것의 품질 먼저</td></tr>
+    <tr><td>합쳤더니 실행이 안 됨</td><td>금요일 합치기</td><td>백프가 합치는 순서를 정하고, 깨지면 마지막에 합친 것을 되돌림</td></tr>
+    <tr><td>시험 주간에 작업이 멈춤</td><td>15주차</td><td>새 기능 금지, 정리와 문서만. 12/11에 코드 고정</td></tr>
+    <tr><td>팀원이 연락이 안 됨</td><td>연락 두절, 회의 불참</td><td>팀장이 바로 공유하고 팀 규칙 적용. 그 사람의 일은 회의에서 다시 나눔</td></tr>
+    </tbody>
+  </table></div>
+  <footer>주간 계획 v1.3 (2026-11-04). 현재 저장소를 출발점으로 개발 순서와 주차별 통합 기준을 명확히 함. 중간점검과 발표 후 피드백에 따라 남은 주차를 고칩니다.</footer>
+</section>
+</main>
+</div>
+<script>
+(function(){
+  var KEY="chess-spec-v03",state={};
+  try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){state={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+  var names={B1:"백1 체스 규칙",B2:"백2 데이터·사용자",B3:"백3 AI·대국",F1:"프1 화면 틀",F2:"프2 학습 화면",F3:"프3 기보·용어",BF:"백프 학습 로직·통합"};
+  var btns=document.querySelectorAll("#roles button"),stat=document.getElementById("rolestat");
+  function setRole(r){
+    if(r)document.body.setAttribute("data-role",r);else document.body.removeAttribute("data-role");
+    for(var i=0;i<btns.length;i++)btns[i].setAttribute("aria-pressed",btns[i].getAttribute("data-pick")===(r||"")?"true":"false");
+    stat.textContent=r?names[r]+" 할 일 "+document.querySelectorAll('.sprint tr[data-role~="'+r+'"]').length+"건":"";
+    state.role=r||"";save();
+  }
+  for(var i=0;i<btns.length;i++)btns[i].addEventListener("click",function(){setRole(this.getAttribute("data-pick"));});
+  setRole(state.role||"");
+})();
+</script>
+</body>
+</html>
