@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>체스 학습 프로그램 기능 명세서 v0.7</title>
+<title>체스 학습 프로그램 기능 명세서 v0.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+KR:wght@600;700;900&display=swap" rel="stylesheet">
@@ -273,7 +273,7 @@ figure.mock figcaption b{color:var(--text);font-weight:600}
   <div>
     <h1>체스 학습 프로그램<br>기능 명세서</h1>
     <p class="lede">읽는 대신 직접 두면서 배우는 체험형 체스 학습 프로그램입니다. Java Swing 객체지향 프로그래밍 팀 과제이며, 이 문서는 팀원이 각자 무엇을, 어떤 순서로, 어떤 규칙으로 만들지 정하는 기준 문서입니다.</p>
-    <p class="meta"><span><b>버전</b> v0.7 구현 기준판</span><span><b>관련 문서</b> <a href="chess-interface-spec.html">인터페이스 명세서 v0.5</a>, <a href="chess-sprint-plan.html">주간 계획</a>, <a href="chess-development-flow.html">파일 흐름도</a></span><span><b>수정일</b> 2026-11-06</span><span><b>상태</b> 팀 구현 기준</span></p>
+    <p class="meta"><span><b>버전</b> v0.8 구현 기준판</span><span><b>관련 문서</b> <a href="chess-interface-spec.html">인터페이스 명세서 v0.6</a>, <a href="chess-sprint-plan.html">주간 계획</a>, <a href="chess-development-flow.html">파일 흐름도</a></span><span><b>수정일</b> 2026-11-07</span><span><b>상태</b> 팀 구현 기준</span></p>
   </div>
   <figure class="board">
     <div class="bd" id="bd" role="img" aria-label="오페라 게임 최종 국면. 백 룩이 d8로 이동해 흑 킹 e8을 체크메이트한 상태"></div>
@@ -626,15 +626,15 @@ figure.mock figcaption b{color:var(--text);font-weight:600}
     <tbody>
     <tr><td class="id">L8</td><td><code>app</code></td><td class="ow">백프</td><td>계획: ChessApp, AppContext(<code>ui.Services</code> 구현, 객체 조립). 현재 진입점은 루트 패키지의 <code>Main</code></td></tr>
     <tr><td class="id">L7</td><td><code>ui</code></td><td class="ow">D C E F</td><td>화면, 위젯, Theme, SwingAsync, Services. Swing 화면 코드는 여기에 둠</td></tr>
-    <tr><td class="id">L6</td><td><code>progress</code></td><td class="ow">백2·백프</td><td>Progress, ProgressStore, Prefs, PrefsStore, Recommender, ProfileManager, WrongNoteManager, FavoriteManager, RankingService(계획)</td></tr>
+    <tr><td class="id">L6</td><td><code>progress</code></td><td class="ow">백2·백프</td><td>Progress, ProgressStore, Prefs, PrefsStore, Recommender(백프), ProfileManager, WrongNoteManager, FavoriteManager, RankingService(계획)</td></tr>
     <tr><td class="id">L5</td><td><code>nav</code></td><td class="ow">D</td><td>Route, Navigator</td></tr>
     <tr><td class="id">L4</td><td><code>game</code></td><td class="ow">C</td><td>Game, Player, HumanPlayer, AiPlayer, GameController, Async</td></tr>
-    <tr><td class="id">L3</td><td><code>exercise</code></td><td class="ow">E</td><td>Exercise, GoalExercise, PuzzleExercise, Verdict, FeedbackLadder</td></tr>
-    <tr><td class="id">L3</td><td><code>replay</code></td><td class="ow">F</td><td>ReplayModel, GuessSession</td></tr>
-    <tr><td class="id">L3</td><td><code>io</code></td><td class="ow">B E F</td><td>Block, BlockReader, BlockRepository 2단, DataPaths, TextFiles, 콘텐츠 저장소(E, F)</td></tr>
-    <tr><td class="id">L2</td><td><code>content</code></td><td class="ow">E F</td><td>Lesson, Puzzle, Glossary, TermLinks, FamousGame, TermQuestion(계획), <code>content.goal.StepGoal</code></td></tr>
+    <tr><td class="id">L3</td><td><code>exercise</code></td><td class="ow">백프</td><td>Exercise, GoalExercise, PuzzleExercise, Verdict, FeedbackLadder</td></tr>
+    <tr><td class="id">L3</td><td><code>replay</code></td><td class="ow">백프</td><td>ReplayModel, GuessSession</td></tr>
+    <tr><td class="id">L3</td><td><code>io</code></td><td class="ow">백2·백프</td><td>백2: Block, BlockReader, BlockRepository 2단, DataPaths, TextFiles, GameLibrary, UciGameReader(대안 적용 시). 백프: 콘텐츠별 저장소</td></tr>
+    <tr><td class="id">L2</td><td><code>content</code></td><td class="ow">백프</td><td>Lesson, Puzzle, Glossary, TermLinks, FamousGame, TermQuestion(계획), <code>content.goal.StepGoal</code></td></tr>
     <tr><td class="id">L2</td><td><code>ai</code></td><td class="ow">C</td><td>AlphaBetaSearch, Evaluator, Difficulty, BlunderCheck</td></tr>
-    <tr><td class="id">L1</td><td><code>notation</code></td><td class="ow">B</td><td>San, Pgn, PgnGame</td></tr>
+    <tr><td class="id">L1</td><td><code>notation</code></td><td class="ow">백1</td><td>San, Pgn, PgnGame</td></tr>
     <tr><td class="id">L0</td><td><code>core</code></td><td class="ow">A</td><td>Position, Move, Square, Fen, GameHistory, RuleSet, Piece 계층, DataException 계층</td></tr>
     </tbody>
   </table></div>
@@ -797,7 +797,7 @@ term.favorites=fork
 ai.record.intro=3,1,0
 replay.best.opera-1858=0.82</code></pre>
   <ul class="plain">
-    <li><code>puzzle.attempt.&lt;id&gt;</code>는 <code>시도,정답</code> 순서입니다. 두 수는 0 이상이며 정답은 시도 이하입니다. 시도 0은 미시도, 시도가 있고 정답 0은 실패, 정답이 1 이상이면 해결입니다. 정답 공개 뒤 성공한 풀이는 시도에만 더합니다. 주제별 정답률은 해당 주제의 퍼즐별 횟수를 합산해 계산합니다.</li>
+    <li><code>puzzle.attempt.&lt;id&gt;</code>는 <code>시도,정답</code> 순서입니다. 두 수는 0 이상이며 정답은 시도 이하입니다. 시도 0은 미시도, 시도가 있고 정답 0은 실패, 정답이 1 이상이면 해결입니다. 힌트(HINT)까지만 보고 끝까지 푼 경우는 시도와 정답에 모두 더하고 해결로 인정합니다. 풀이 도중 정답 공개(REVEAL)에 한 번이라도 도달하면 이후 완주해도 시도에만 더합니다. 풀이 종료당 한 번 기록하며, 이미 해결한 퍼즐의 해결 상태는 유지합니다. 점수는 해결한 퍼즐 ID마다 5점으로, 재풀이로 중복 가산하지 않습니다. 주제별 정답률은 해당 주제의 퍼즐별 횟수를 합산해 계산합니다.</li>
     <li><code>quiz.correct.unique</code>는 중복 없는 문항 ID이며 시도·정답 횟수는 반복 응시를 포함합니다. 순위 점수는 완료 레슨 ID 수×10 + 해결 퍼즐 ID 수×5 + 정답 용어 문항 ID 수×1로 계산합니다. 위 예시의 점수는 22입니다.</li>
     <li><code>ai.record.&lt;난이도&gt;</code>의 값은 승·패·무 순서입니다. 키는 <code>intro</code>, <code>beginner</code>, <code>intermediate</code>, <code>advanced</code>입니다. <code>replay.best.&lt;기보 ID&gt;</code>는 0~1의 최고 정답률입니다. <code>wrong.notes</code>는 출처와 ID만 보관하고, 원본이 없어도 삭제할 수 있습니다.</li>
     <li>파일이 없거나 키가 빠지면 집합은 빈 집합, 횟수는 0, 최고 정답률은 미기록으로 시작합니다. 잘못된 줄은 파일명·행 번호를 남기고 유효한 다른 키를 복구합니다. 중복 키는 처음 유효한 값을 사용합니다. 개별 레슨·문항·퍼즐·기보 ID는 콘텐츠에서 빠져도 기존 기록 파일에 보존합니다.</li>
@@ -895,6 +895,7 @@ lesson.unlockAll=true</code></pre>
     <tr data-role="E F"><td>전체 콘텐츠 로드</td><td>모든 레슨, 퍼즐, 기보, 용어, 용어 퀴즈가 오류 없이 로드. 기보 결과 태그와 마지막 결과 토큰이 일치하며 보드에서 종료가 판정된 경우 그 결과도 일치. 링크와 퀴즈 용어 ID 대상 존재. 퍼즐 정답 수열은 합법, 퀴즈 정답 번호는 1~4</td><td class="ow">백프·프2·프3</td></tr>
     <tr data-role="B E F"><td>용어 퀴즈·기록</td><td>10문제 채점 후 재시작해도 시도·정답 수 유지. 같은 문제를 다시 맞혀도 순위 점수에는 한 번만 반영</td><td class="ow">백2·백프</td></tr>
     <tr data-role="B"><td>프로필·관리 기능</td><td>프로필 두 개에서 서로 다른 기록·오답·즐겨찾기·저장 대국을 남기고 재실행 후 분리를 검증합니다. 활성 프로필은 삭제가 거부되고, 전환 후 비활성 프로필을 삭제하면 재실행한 목록·순위에서 사라집니다. 퍼즐별 시도·정답 횟수도 왕복 비교합니다.</td><td class="ow">백2</td></tr>
+    <tr data-role="B E"><td>퍼즐 기록 기준</td><td>빈 기록에서 같은 퍼즐을 HINT까지만 보고 완주 → REVEAL 후 완주 → 공개 없이 재완주합니다. 시도·정답은 차례로 1,1 → 2,1 → 3,2이고 해결 상태·5점은 유지됩니다. 주제별 정답률은 2/3이며 저장·재시작 후에도 같습니다. 중간 정답(Continue)에는 기록하지 않고 풀이 종료에 한 번만 호출합니다.</td><td class="ow">백프·프2·백2</td></tr>
     <tr data-role="C"><td>AI</td><td>p0001에서 <code>d1d8</code> 선택, 메이트인2를 깊이 3에서 해결. 실수 알림을 추가한 경우 퀸을 내주는 수에서 경고 발생</td><td class="ow">C</td></tr>
     </tbody>
   </table></div>
@@ -978,7 +979,7 @@ GAME-05
 
 <section id="packages">
   <h2><span class="n">11</span>역할별 작업 패키지 <span class="new">v0.3</span></h2>
-  <p>아래 A~F는 기술 영역입니다. 실제 7명 역할은 <a href="chess-sprint-plan.html#roles">주간 계획 1장</a>을 따릅니다. <b>A→백1, B→백2(단 SAN·PGN은 백1), C→백3, D→프1(통합·저장소 관리는 백프), E→백프 로직+프2 화면, F→백프 재생·검색 로직+프3 화면</b>입니다. 각 기능의 로직과 화면은 같은 요구사항 ID로 함께 검증합니다.</p>
+  <p>아래 A~F는 기술 영역입니다. 실제 7명 역할은 <a href="chess-sprint-plan.html#roles-def">주간 계획 1장</a>을 따릅니다. <b>A→백1, B→백2(단 SAN·PGN은 백1), C→백3, D→프1(통합·저장소 관리는 백프), E→백프 로직+프2 화면, F→백프 재생·검색 로직+프3 화면</b>입니다. 각 기능의 로직과 화면은 같은 요구사항 ID로 함께 검증합니다.</p>
   <p>체크 표시는 이 브라우저에만 저장되는 개인용 메모입니다. 팀 진행 상황은 GitHub 이슈로 관리합니다.</p>
   <div class="pkgs">
 
@@ -986,8 +987,8 @@ GAME-05
     <h3>A 엔진 · 백1</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd><code>core</code>, <code>core.piece</code>, <code>core.rules</code></dd>
-      <dt>요구사항</dt><dd>CORE-01~07, RULE-05</dd>
+      <dt>소유</dt><dd><code>core</code>, <code>core.piece</code>, <code>core.rules</code>, <code>notation</code>(SAN·PGN)</dd>
+      <dt>요구사항</dt><dd>CORE-01~09, RULE-05</dd>
       <dt>제공</dt><dd>전원이 기다리는 <code>Position</code>, <code>Move</code>, <code>Fen</code>, <code>RuleSet</code></dd>
       <dt>의존</dt><dd>없음. 크리티컬 패스의 시작점</dd>
     </dl>
@@ -996,34 +997,35 @@ GAME-05
       <li><label><input type="checkbox" data-key="a2"><span>Position, Piece, RuleSet 공개 시그니처를 빈 몸체로 커밋</span></label></li>
       <li><label><input type="checkbox" data-key="a3"><span>Fen.parse/write 구현과 왕복 테스트 (D의 목업이 바로 씀)</span></label></li>
       <li><label><input type="checkbox" data-key="a4"><span>perft 테스트 골격(@Disabled)과 divide 도구</span></label></li>
+      <li><label><input type="checkbox" data-key="a5"><span>12주차: SAN·PGN 구현과 오페라 게임 기준값 테스트 (백프·백2·프3에 제공)</span></label></li>
     </ul>
-    <p class="done">1단계 완료 신호: perft 깊이 4 통과, 사람 대 사람 대국 가능</p>
+    <p class="done">첫 통합 완료 신호: perft 깊이 1~3 통과, 사람 대 사람 대국 가능. 깊이 4와 SAN·PGN은 12주차에 확대 검증</p>
   </div>
 
   <div class="pkg" data-role="B">
-    <h3>B 데이터·파일 · 백2, SAN·PGN은 백1</h3>
+    <h3>B 데이터·파일 · 백2</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd>백1: <code>notation</code>의 SAN·PGN. 백2: <code>io</code> 공통부, <code>progress</code> 저장·프로필·오답 노트·즐겨찾기·순위</dd>
-      <dt>요구사항</dt><dd>백1: CORE-08. 백2: PROG-01, 03~06, GAME-07, 09의 파일 관리, SYS-03, NFR-03, 04</dd>
-      <dt>제공</dt><dd>E, F의 저장소가 상속할 <code>BlockRepository</code>, F의 기보 뷰어가 쓸 <code>Pgn</code></dd>
-      <dt>의존</dt><dd>SAN은 A의 합법 수 생성 완료 후 착수</dd>
+      <dt>소유</dt><dd><code>io</code> 공통부·GameLibrary·UciGameReader(번들 대안 적용 시), <code>progress</code> 저장·프로필·오답 노트·즐겨찾기·순위</dd>
+      <dt>요구사항</dt><dd>PROG-01, 03~06, GAME-01, 07, 09의 파일 관리, SYS-03, NFR-03, 04</dd>
+      <dt>제공</dt><dd>백프의 콘텐츠별 로더가 상속할 <code>BlockRepository</code>, 기록·관리 서비스, 프3의 기보 화면이 쓸 <code>GameLibrary</code></dd>
+      <dt>의존</dt><dd>GameLibrary는 백프의 FamousGame·Level과 백1의 Pgn에 의존. UciGameReader는 번들 대안 적용 시 백1의 합법 수·SAN 쓰기를 사용</dd>
     </dl>
     <ul class="chk">
       <li><label><input type="checkbox" data-key="b1"><span>Block, BlockReader, BlockRepository 구현과 테스트</span></label></li>
       <li><label><input type="checkbox" data-key="b2"><span>6장 형식의 샘플 파일 커밋 (E, F가 복사해 쓰도록)</span></label></li>
       <li><label><input type="checkbox" data-key="b3"><span>DataPaths, 원자적 저장 유틸리티</span></label></li>
-      <li><label><input type="checkbox" data-key="b4"><span>SAN 파서 설계 메모 (A 완료 대기 중)</span></label></li>
+      <li><label><input type="checkbox" data-key="b4"><span>기본 프로필의 레슨·퀴즈 기록 저장·복구 (등록·검색·삭제·순위 연동은 13주차)</span></label></li>
       <li><label><input type="checkbox" data-key="b5"><span>의존 층 검사 테스트 (5장 규칙)</span></label></li>
     </ul>
-    <p class="done">1단계 완료 신호: 오페라 게임 기준값 테스트 통과</p>
+    <p class="done">첫 통합 완료 신호: 기본 프로필의 레슨·퀴즈 기록이 재시작 후 유지됨. 12주차에 기보 저장·재로드, 13주차에 프로필 관리·순위 검증</p>
   </div>
 
   <div class="pkg" data-role="C">
     <h3>C AI · 백3</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd><code>ai</code>, <code>game</code>(Async 포함, Swing 없음), <code>AiGameScreen</code></dd>
+      <dt>소유</dt><dd>백3: <code>ai</code>, <code>game</code>(Async 포함, Swing 없음). 프1: <code>AiGameScreen</code></dd>
       <dt>요구사항</dt><dd>AI-01~10, GAME-06(F와 공동), NFR-01, NFR-02</dd>
       <dt>제공</dt><dd><code>Player</code>, <code>GameController</code>, 힌트와 실수 알림 탐색. 퍼즐 유일해 검증에도 쓰임</dd>
       <dt>의존</dt><dd>A의 합법 수 생성, D의 BoardScreen</dd>
@@ -1041,7 +1043,7 @@ GAME-05
     <h3>D 공통 UI · 프1, 통합은 백프</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd>프1: <code>nav</code>, <code>ui</code> 공통부와 홈·AI·사용자·기록·순위 화면. 백프: <code>app</code> 조립과 매주 통합. <code>Recommender</code>는 협의해 연결</dd>
+      <dt>소유</dt><dd>프1: <code>nav</code>, <code>ui</code> 공통부와 홈·AI·사용자·기록·순위 화면. 백프: <code>app</code> 조립과 매주 통합. <code>Recommender</code>는 백프가 구현하고 프1이 홈에 연결</dd>
       <dt>요구사항</dt><dd>RULE-04, PROG-02, 03, 06, SYS-01, 02, 04, 05, NFR-01, 05</dd>
       <dt>제공</dt><dd>모든 화면이 쓰는 <code>BoardPanel</code>과 <code>BoardScreen</code>, 화면 전환</dd>
       <dt>의존</dt><dd>A의 Fen(0단계 초반)</dd>
@@ -1061,7 +1063,7 @@ GAME-05
     <h3>E 룰과 퀴즈 · 백프 로직, 프2 화면·콘텐츠</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd>백프: <code>exercise</code>, 목표·채점·피드백·용어 퀴즈 로직. 프2: LessonScreen, PuzzleScreen, TermQuizScreen, 오답 노트 화면과 레슨·퍼즐 콘텐츠</dd>
+      <dt>소유</dt><dd>백프: <code>content</code> 모델·목표, <code>exercise</code> 채점·피드백·용어 퀴즈, <code>LessonRepository</code>·<code>PuzzleRepository</code>·<code>TermQuestionRepository</code>, 공용 <code>ExerciseController</code>. 프2: LessonScreen, PuzzleScreen, TermQuizScreen, 오답 노트 화면과 레슨·퍼즐·퀴즈 콘텐츠 작성, 채점 결과 표시와 백2의 기록 메서드 호출</dd>
       <dt>요구사항</dt><dd>RULE-01~03, 05~08, QUIZ-01~05, PROG-04의 화면 연결</dd>
       <dt>제공</dt><dd>F의 용어 직접 해보기가 재사용할 <code>StepGoal</code>과 피드백 사다리</dd>
       <dt>의존</dt><dd>A의 RuleSet, B의 BlockRepository, D의 BoardScreen, F의 CommentPane</dd>
@@ -1080,13 +1082,13 @@ GAME-05
     <h3>F 기보와 용어집 · 백프 로직, 프3 화면·콘텐츠</h3>
     <p class="who">실명과 GitHub 아이디는 팀 회의에서 확정 (D-7)</p>
     <dl>
-      <dt>소유</dt><dd>백프: <code>replay</code>와 용어 검색 로직. 프3: ReplayScreen, GlossaryScreen, CommentPane, TermPopup, 즐겨찾기 화면과 기보·용어 콘텐츠. SAN·PGN 파서는 백1</dd>
+      <dt>소유</dt><dd>백프: <code>replay</code>, <code>GlossaryRepository</code>와 용어 검색 로직. 프3: ReplayScreen, GlossaryScreen, CommentPane, TermPopup, 즐겨찾기 화면과 기보·용어 콘텐츠. SAN·PGN 파서는 백1</dd>
       <dt>요구사항</dt><dd>GAME-01~09, GLOS-01~07, PROG-05의 화면 연결</dd>
       <dt>제공</dt><dd>모든 화면의 <code>[[용어]]</code> 링크를 그리는 <code>CommentPane</code></dd>
-      <dt>의존</dt><dd>B의 Pgn(크리티컬 패스 끝), D의 BoardScreen, E의 StepGoal</dd>
+      <dt>의존</dt><dd>백1의 Pgn과 백2의 GameLibrary(크리티컬 패스 끝), D의 BoardScreen, E의 StepGoal</dd>
     </dl>
     <ul class="chk">
-      <li><label><input type="checkbox" data-key="f1"><span>오페라 게임 파일 (B의 기준값 테스트용)</span></label></li>
+      <li><label><input type="checkbox" data-key="f1"><span>오페라 게임 파일 (백1의 기준값 테스트용)</span></label></li>
       <li><label><input type="checkbox" data-key="f2"><span>용어 10개 (try 포함 3개 이상)</span></label></li>
       <li><label><input type="checkbox" data-key="f3"><span>CommentPane 프로토타입: JEditorPane 링크 클릭</span></label></li>
       <li><label><input type="checkbox" data-key="f5"><span>TermLinks 파서와 Glossary.resolve 단위 테스트</span></label></li>
@@ -1105,12 +1107,13 @@ GAME-05
     <thead><tr><th>단계</th><th>내용</th><th>완료 조건</th><th>목표일</th></tr></thead>
     <tbody>
     <tr><td>0. 저장소 기준 확정</td><td><code>app</code> 모듈, <code>com.oopteama.chess</code> 패키지, JDK와 11장 담당·공개 계약 확인. 현재 <code>Main</code> 진입점에서 시작</td><td>같은 빌드와 패키지 경로로 각자 작업 가능</td><td>11/6 계약 확인 목표</td></tr>
-    <tr><td>1. 독립 기반 병렬</td><td>백1: FEN·합법 수. 백2: 텍스트 파서·프로필 저장. 프1: 보드·내비게이션 목업. 백프·프2: 레슨 1개. 백프·프3: 용어 데이터·검색</td><td>각 모듈 단위 테스트 또는 목업 화면 확인</td><td>10주차</td></tr>
+    <tr><td>1. 독립 기반 병렬</td><td>백1: FEN·합법 수. 백2: 텍스트 파서·기본 프로필의 기록 경로·형식. 프1: 보드·내비게이션 목업. 백프·프2: 레슨 1개. 백프·프3: 용어 데이터·검색</td><td>각 모듈 단위 테스트 또는 목업 화면 확인</td><td>10주차</td></tr>
     <tr><td>2. 중간점검 수직 흐름</td><td>보드 수 입력 → 레슨 채점 → 용어집 → 용어 4지선다 → 프로필 기록 저장을 매일 연결. 엔진 준비 시 입문 AI 한 판도 연결</td><td>재시작해도 기록이 남는 흐름 1개. 입문 AI는 엔진 준비 상태를 11/11에 판단</td><td>11/13 통합</td></tr>
-    <tr><td>3. 발표 기능 확장</td><td>특수 규칙 검증 후 AI 난이도와 퍼즐, SAN·PGN 후 기보, 프로필·오답 노트·즐겨찾기·순위·저장 대국을 병렬 개발</td><td>각 기능이 화면과 저장까지 이어지고 콘텐츠 로드 테스트 통과</td><td>11/20 점검, 11/25 기능 동결</td></tr>
+    <tr><td>3. 발표 기능 확장</td><td>12주차: AI 난이도·퍼즐·SAN·PGN 후 기보·오답 노트·즐겨찾기·저장 대국을 병렬 개발. 13주차(11/23~25): ProfileManager.all()과 등록·선택·검색·삭제를 완성한 뒤 RankingService·프로필 전환·순위 화면을 연결</td><td>각 기능이 화면과 저장까지 이어지고 콘텐츠 로드 테스트 통과</td><td>11/20 기보·퍼즐 점검, 11/25 프로필·순위 통합 및 기능 동결</td></tr>
     <tr><td>4. 안정화와 제출</td><td>시연 흐름, 오류 복구, 콘텐츠 개수, 발표 영상, 다른 PC에서 압축 파일 재실행</td><td>필수 수용 기준과 수동 체크리스트 통과</td><td>11/28 시연 영상, 12월 제출</td></tr>
     </tbody>
   </table></div>
+  <p class="note"><b>프로필·순위 일정.</b> 11/13까지는 기본 프로필의 기록 저장을 검증합니다. 12주차에는 다중 프로필·순위의 계약과 샘플을 준비하고, 실제 등록·선택·검색·삭제와 순위 재계산·검색은 13주차 11/23~25에 함께 완성합니다. 이 3일이 기능 동결 전 마지막 통합 기간이므로, 백2의 ProfileManager.all()·ProgressStore → RankingService → 백프의 전환 처리·프1 화면 순서로 작은 PR을 연결합니다.</p>
   <p class="note"><b>개발 의존.</b> 합법 수 생성이 되어야 AI·퍼즐·SAN 파서가 실제 규칙으로 동작하고, SAN 파서가 되어야 기보 뷰어를 완성할 수 있습니다. 레슨의 샌드박스 단계, 용어집, 용어 4지선다는 각각 목업 또는 데이터 로더로 먼저 연결할 수 있습니다. 11/20에 번들 PGN 읽기가 막히면 <a href="#uci-fallback">번들 UCI 대안의 적용 조건</a>을 확인합니다. 날짜와 우선순위의 기준은 <a href="chess-sprint-plan.html">주간 계획</a>입니다.</p>
 </section>
 
@@ -1188,6 +1191,7 @@ GAME-05
   <div class="tw"><table>
     <thead><tr><th>버전</th><th>날짜</th><th>내용</th></tr></thead>
     <tbody>
+    <tr><td>v0.8</td><td>2026-11-07</td><td>PR 리뷰 반영: 퍼즐 힌트·정답 공개의 기록 기준, SAN·PGN 및 학습 로더·채점·컨트롤러 담당, 프로필·순위 통합 일정을 정렬했습니다.</td></tr>
     <tr><td>v0.7</td><td>2026-11-06</td><td>11/13 공용 샘플과 검증 절차, 프로필 저장·전환, 발표 AI 범위, SAN 왕복·번들 UCI 조건을 정리했습니다.</td></tr>
     <tr><td>v0.1</td><td></td><td>초기 기획: 룰 튜토리얼, 체스퀴즈, AI 대전</td></tr>
     <tr><td>v0.2</td><td>2026-10-30</td><td>기능 명세: 기보 학습, 용어집 추가, 요구사항 ID와 수용 기준, 설계, 파일 포맷, 테스트</td></tr>
@@ -1197,7 +1201,7 @@ GAME-05
     <tr><td>v0.3</td><td>2026-10-30</td><td>팀 배포판: 체험형 원칙 P1~P3과 피드백 사다리, 용어 직접 해보기(GLOS-07), AI 실수 알림(AI-10), 요구사항별 담당, 0단계 계약 확장, 콘텐츠 작성 가이드, 협업 규칙, 역할별 작업 패키지, 설계 결정 기록, 결정 대기, 개발 용어. Fen과 GameHistory를 core로 이동</td></tr>
     </tbody>
   </table></div>
-  <footer>체스 학습 프로그램 기능 명세서 v0.7. 요구사항 ID는 이슈, 브랜치, 커밋, PR 제목에서 그대로 참조합니다. 계획과 실제 구현의 차이는 README에 표시하고, 계약 변경은 같은 PR에서 문서를 고칩니다.</footer>
+  <footer>체스 학습 프로그램 기능 명세서 v0.8. 요구사항 ID는 이슈, 브랜치, 커밋, PR 제목에서 그대로 참조합니다. 계획과 실제 구현의 차이는 README에 표시하고, 계약 변경은 같은 PR에서 문서를 고칩니다.</footer>
 </section>
 </main>
 </div>
