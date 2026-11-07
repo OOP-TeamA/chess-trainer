@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Trainer · 개발 흐름도와 파일 분담</title>
+<style>
+  :root{color-scheme:light;--paper:#f6f7f3;--white:#fff;--ink:#182d32;--muted:#4e6467;--line:#cbd7d2;--accent:#176b5f;--accent-soft:#e8f4ee;--back:#234e76;--back-soft:#eaf1fa;--front:#68428d;--front-soft:#f2ebf9;--hybrid:#805416;--hybrid-soft:#f9efd9}
+  *{box-sizing:border-box}
+  html{scroll-padding-top:1rem}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,"Malgun Gothic",sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+  main{max-width:1180px;margin:auto;padding:40px clamp(16px,4vw,52px) 56px}
+  h1,h2,h3,p{margin:0}
+  h1{font-size:clamp(1.95rem,5vw,3.25rem);line-height:1.15;letter-spacing:-.045em;margin:8px 0 14px}
+  h2{font-size:clamp(1.3rem,3vw,1.75rem);letter-spacing:-.025em;line-height:1.35}
+  h3{font-size:1rem;line-height:1.45}
+  a{color:var(--accent);text-underline-offset:.16em}
+  a:hover{text-decoration-thickness:.14em}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  code{color:#254a51;font:.87em/1.55 Consolas,"Malgun Gothic",monospace;word-break:normal}
+  code.java-interface{color:#85306b;font-weight:700}
+  code.java-class{color:#14558c}
+  .eyebrow,.date{font-size:.8rem;font-weight:750;letter-spacing:.05em;color:var(--accent);font-variant-numeric:tabular-nums}
+  .intro{max-width:68ch;color:var(--muted)}
+  .flow-section,.details,.foot{margin-top:38px}
+  .section-note{font-size:.91rem;color:var(--muted);margin:6px 0 14px}
+  .chart{border:1px solid var(--line);border-radius:12px;background:var(--white);overflow:hidden}
+  .flow-tabs,.flow-meta,.flow-selection{padding:10px 14px}
+  .flow-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:6px;border-bottom:1px solid var(--line);background:var(--paper)}
+  .flow-tab,.lane-task{font:inherit;cursor:pointer}
+  .flow-tab{text-align:left;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--ink);font-size:.8rem;line-height:1.45}
+  .flow-tab strong,.flow-tab span{display:block}
+  .flow-tab span{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .flow-tab[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .flow-meta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:.84rem}
+  .flow-meta a{margin-inline-start:auto}
+  .flow-key{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+  .flow-key i{width:23px;border-top:2px solid #435a76}
+  .flow-key.integration i{border-color:var(--accent);border-top-style:dashed}
+  .chart-scroll{overflow-x:auto;border-block:1px solid var(--line);background:#fafbf9}
+  .chart-scroll:focus-visible{outline-offset:-3px}
+  .flow-board{position:relative;display:grid;grid-template-columns:54px repeat(7,minmax(0,1fr));gap:42px 12px;min-width:1008px;padding:10px 12px 24px}
+  .lane-head,.flow-round,.lane-task{position:relative;z-index:1}
+  .lane-head,.flow-round{align-self:center;font-size:.79rem;line-height:1.4}
+  .lane-head{padding:6px 4px;text-align:center;border-radius:5px;background:var(--role-bg);color:var(--role-ink);font-weight:750}
+  .lane-head small{display:block;font-size:.69rem;font-weight:500}
+  .flow-round{padding:4px 1px;color:var(--muted);font-size:.71rem;line-height:1.35}
+  .flow-round b{display:block;color:var(--accent);font-variant-numeric:tabular-nums}
+  .lane-task{min-height:62px;padding:7px 5px;background:var(--white);border:1px solid var(--role-ink);border-radius:5px;color:var(--ink);text-align:center;line-height:1.35}
+  .lane-task strong,.lane-task code{display:block}
+  .lane-task strong{font-size:.76rem;margin-bottom:3px}
+  .lane-task code{font-size:.68rem;line-height:1.4}
+  .lane-task:hover,.lane-task[aria-pressed="true"]{background:var(--role-bg)}
+  .lane-task[aria-pressed="true"]{outline:2px solid var(--role-ink);outline-offset:2px}
+  [data-role="all"]{--role-bg:var(--accent-soft);--role-ink:var(--accent)}
+  .flow-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .flow-rail{stroke:#a5b6b0;stroke-width:1}
+  .flow-wire{fill:none;stroke:#435a76;stroke-width:1.7;marker-end:url(#flow-compile-arrow)}
+  .flow-wire.integration{stroke:var(--accent);stroke-dasharray:5 3;marker-end:url(#flow-integration-arrow)}
+  .flow-board.has-selection .flow-wire:not(.related){opacity:.13}
+  .flow-board.has-selection .flow-wire.related{stroke-width:2.4}
+  .flow-selection{font-size:.84rem;color:var(--muted)}
+  .flow-selection p+p{margin-top:4px}
+  [data-role^="b"]{--role-bg:var(--back-soft);--role-ink:var(--back)}
+  [data-role^="f"]{--role-bg:var(--front-soft);--role-ink:var(--front)}
+  [data-role="bf"]{--role-bg:var(--hybrid-soft);--role-ink:var(--hybrid)}
+  .details-heading{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;justify-content:space-between}
+  .role-filter{font-size:.88rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .role-filter[hidden]{display:none}
+  select{font:inherit;color:var(--ink);background:var(--white);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+  .path-guide{margin:10px 0 18px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--white);font-size:.89rem}
+  .path-guide p+p{margin-top:4px}
+  .stage{margin-top:22px;border:1px solid var(--line);border-radius:10px;background:var(--white);overflow:hidden}
+  .stage-head{padding:16px 18px;background:var(--accent-soft);border-bottom:1px solid var(--line)}
+  .stage-head p:last-child{margin-top:5px;color:var(--muted);font-size:.91rem}
+  .stage-body{padding:12px 18px}
+  .stage-body ol,.stage-body ul{margin:5px 0 0;padding-left:1.35em}
+  .stage-body li+li{margin-top:4px}
+  .assign{list-style:none;margin:0;padding:0}
+  .assign li{display:grid;grid-template-columns:66px minmax(0,1fr) minmax(0,1.18fr);gap:12px;padding:12px 16px;align-items:start;border-top:1px solid var(--line);font-size:.91rem}
+  .assign li:first-child{border-top:0}
+  .assign li[hidden]{display:none}
+  .assign h3{width:max-content;padding:3px 10px;border-radius:5px;color:var(--role-ink);background:var(--role-bg)}
+  .assign p+p{margin-top:4px}
+  .dir{font-weight:750;color:#254a51}
+  .proposed{font-size:.75rem;color:var(--hybrid);white-space:nowrap}
+  .dependency-check{padding:12px 18px;border-top:1px solid var(--line);font-size:.91rem}
+  .dependency-check ul{padding-left:1.3em;margin:5px 0 8px}
+  .dependency-check li+li{margin-top:5px}
+  .dependency-kind{display:inline-block;margin-right:.35em;color:var(--hybrid);font-size:.82rem}
+  .dependency-check p>b{color:var(--accent)}
+  .done{padding:11px 18px;background:var(--paper);border-top:1px solid var(--line);font-size:.91rem}
+  .done b{color:var(--accent)}
+  .foot{font-size:.89rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+  .foot ul{padding-left:1.2em;margin:6px 0 0}
+  @media screen and (max-width:760px){
+    main{padding-top:24px}
+    .flow-meta a{margin-inline-start:0}
+    .assign li{grid-template-columns:60px minmax(0,1fr);gap:5px 10px;padding:12px 14px}
+    .assign .work{grid-column:2}
+  }
+  @media print{
+    body{background:#fff;font-size:11pt}
+    main{padding:0}
+    .role-filter{display:none}
+    .flow-board{min-width:0;column-gap:6px}
+    .chart-scroll{overflow:visible}
+    .assign li[hidden]{display:grid}
+    .assign li,.dependency-check li,.done,.chart,.stage-head{break-inside:avoid}
+    .stage-head,h2{break-after:avoid}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">CHESS TRAINER · 2026.11.06–12.15</p>
+    <h1>개발 흐름도와 파일 분담</h1>
+    <p class="intro">빈 Swing 창에서 출발합니다. 7명이 어느 단계에 어떤 파일을 만들거나 수정하는지, 각자의 코드가 어느 시점에 연결되는지 정리했습니다.</p>
+  </header>
+
+  <section class="flow-section" aria-labelledby="flow-title">
+    <h2 id="flow-title">담당자별 파일 흐름</h2>
+    <p class="section-note">위에서 아래로 병합·연결 순서가 이어집니다. 같은 행의 상자는 병렬로 진행할 수 있습니다. 화살표는 파일을 넘기는 쪽에서 받는 쪽으로 향합니다. 화면이 좁으면 도표를 좌우로 밀어 보세요.</p>
+    <div class="chart" id="lane-chart" hidden>
+      <nav class="flow-tabs" id="flow-tabs" aria-label="단계 선택"></nav>
+      <div class="flow-meta">
+        <span class="flow-key"><i aria-hidden="true"></i>컴파일에 필요한 파일</span>
+        <span class="flow-key integration"><i aria-hidden="true"></i>실제 기능 연결·검증에 필요한 결과물</span>
+        <a id="flow-details-link" href="#s01">전체 파일 분담과 대기 조건 보기 ↓</a>
+      </div>
+      <div class="chart-scroll" id="flow-scroll" role="region" aria-label="7개 담당자 레인의 파일 흐름도" tabindex="0">
+        <div class="flow-board" id="flow-board"></div>
+      </div>
+      <div class="flow-selection" id="flow-selection" aria-live="polite"></div>
+    </div>
+    <noscript><p class="section-note"><a href="#detail-title">단계별 파일 분담과 대기 조건</a></p></noscript>
+  </section>
+
+  <section class="details" aria-labelledby="detail-title">
+    <div class="details-heading">
+      <h2 id="detail-title">단계별 구현 파일</h2>
+      <label class="role-filter" for="role-filter" hidden>내 역할
+        <select id="role-filter">
+          <option value="">전체 역할</option>
+          <option value="b1">백1 · 체스 규칙</option><option value="b2">백2 · 데이터·사용자</option><option value="b3">백3 · AI·대국</option>
+          <option value="f1">프1 · 공통 화면</option><option value="f2">프2 · 학습 화면</option><option value="f3">프3 · 기보·용어</option>
+          <option value="bf">백프 · 학습 로직·통합</option>
+        </select>
+      </label>
+    </div>
+    <div class="path-guide">
+      <p><b>Java 경로</b> · 아래의 <code>core/Move.java</code>는 <code>app/src/main/java/com/oopteama/chess/core/Move.java</code>를 뜻합니다. 폴더 뒤에 파일명을 여럿 적은 곳은 모두 그 폴더에 둡니다.</p>
+      <p><b>타입 색상</b> · 인터페이스 <code class="java-interface">RuleSet.java</code> · 클래스 <code class="java-class">StandardRules.java</code> · 레코드·열거형은 기본색</p>
+      <p><b>콘텐츠·테스트</b> · <code>data/</code>는 <code>app/src/main/resources/data/</code>입니다. JUnit 테스트는 <code>app/src/test/java/com/oopteama/chess/</code> 아래의 대응 패키지에 둡니다.</p>
+      <p><b>제안 표시</b> · 세부 화면 이름이나 파일 담당이 명세에 정해져 있지 않은 곳에는 <span class="proposed">제안</span>을 붙였습니다. 같은 파일이 여러 단계에 나오면 처음 만든 담당자가 그 단계의 기능을 이어서 구현합니다.</p>
+      <p><b>대기 조건 읽는 법</b> · <b>컴파일</b>은 다른 사람이 만든 타입이 현재 브랜치에 있어야 실제 코드를 빌드할 수 있다는 뜻입니다. <b>연결</b>은 샘플로 개발하고 실제 기능·데이터가 준비된 뒤 통합할 수 있다는 뜻입니다. 현재 Java 소스는 <code class="java-class">Main.java</code>뿐이므로 아래 의존은 계획과 인터페이스 명세의 참조 관계를 기준으로 확인했습니다.</p>
+    </div>
+
+    <article class="stage" id="s01" aria-labelledby="title-01">
+      <header class="stage-head"><p class="date">01 / 11.06–08</p><h2 id="title-01">프로젝트를 실행하고 첫 작업 나누기</h2><p>11/6에 Java 25로 실행을 확인하고 공개 메서드와 공용 샘플을 맞춥니다.</p></header>
+      <div class="stage-body">
+        <ol>
+          <li>전원 최신 <code>main</code>을 받고 루트에서 <code>.\gradlew.bat :app:run</code>을 실행합니다. macOS·Linux는 <code>./gradlew :app:run</code>입니다. 빈 창이 뜨면 개발 환경 준비 완료입니다.</li>
+          <li>짝과 입력·출력 예시를 한 개 합의하고 담당 파일을 이슈에 적습니다. 예를 들어 백1·프1은 <code>e2e4</code>가 어떤 <code>Move</code>로 전달되는지, 백2·프2·프3은 샘플 파일이 어떤 블록으로 읽히는지 맞춥니다.</li>
+          <li>이슈 하나에서 작업 브랜치를 만들고, 실행·테스트 결과와 함께 PR을 올립니다. Windows 테스트는 <code>.\gradlew.bat :app:test</code>, macOS·Linux는 <code>./gradlew :app:test</code>입니다. 짝이 리뷰하고 백프가 합칩니다. <a href="chess-learning-spec.html#rules">브랜치·PR 규칙</a></li>
+        </ol>
+      </div>
+      <ul class="assign">
+        <li data-role="b1"><h3>백1</h3><div><span class="dir">core/</span> <code>Side.java</code>, <code>PieceType.java</code>, <code>Square.java</code>, <code>Move.java</code>, <code>MoveKind.java</code>, <code class="java-class">Position.java</code>, <code class="java-class">Fen.java</code>, <code class="java-class">DataException.java</code>, <code class="java-class">MalformedDataException.java</code>, <code class="java-class">FenFormatException.java</code><p><code class="java-interface">core/rules/RuleSet.java</code>, <code class="java-class">core/piece/Piece.java</code>, <code class="java-class">core/GameHistory.java</code>, <code>core/GameResult.java</code></p></div><p class="work">좌표·수의 값 타입과 국면/규칙의 공개 메서드를 올립니다. <code class="java-interface">RuleSet</code>이 참조하는 대국 이력·결과 타입도 먼저 올리고 규칙 동작은 02에서 검증합니다. 초기 배치 FEN 예시를 프1에, 파일 오류에 쓸 예외 타입을 백2에 전달합니다.</p></li>
+        <li data-role="b2"><h3>백2</h3><div><span class="dir">io/</span> <code>Block.java</code>, <code class="java-class">BlockReader.java</code>, <code class="java-class">BlockRepository.java</code>, <code class="java-class">PerBlockRepository.java</code>, <code class="java-class">DataPaths.java</code><p>테스트 루트의 <code class="java-class">ArchitectureTest.java</code> <span class="proposed">의존성 검사 파일명 제안</span></p></div><p class="work">텍스트 파일 한 개를 블록 목록으로 읽습니다. 백프에 로더의 입력·결과를, 프2·프3에 복사해 쓸 샘플 형식을 전달합니다. 패키지 참조 방향과 도메인 코드의 Swing import를 검사합니다.</p></li>
+        <li data-role="b3"><h3>백3</h3><div><span class="dir">game/</span> <code class="java-interface">Player.java</code>, <code class="java-interface">GameListener.java</code>, <code class="java-interface">Async.java</code>, <code>AiSetup.java</code><p><span class="dir">ai/</span> <code>Difficulty.java</code>, <code class="java-interface">Evaluator.java</code></p></div><p class="work">대국 참가자와 비동기 작업의 공개 메서드부터 정합니다. 프1에 사람 수 입력과 대국 상태 콜백 예시를, 백2에 난이도 키 계약을 전달합니다.</p></li>
+        <li data-role="f1"><h3>프1</h3><div><span class="dir">ui/</span> <code class="java-class">MainFrame.java</code>, <code class="java-class">NavRail.java</code>, <code class="java-class">Theme.java</code>, <code class="java-interface">Screen.java</code>, <code class="java-class">BoardPanel.java</code>, <code class="java-class">BoardScreen.java</code>, <code class="java-interface">Services.java</code><p><span class="dir">nav/</span> <code class="java-interface">Route.java</code>, <code class="java-interface">Navigator.java</code></p></div><p class="work">창·메뉴·빈 화면 전환을 만들고 가짜 국면으로 보드를 그립니다. <code class="java-interface">Services</code>의 전체 계약은 백프와 먼저 확인하고, PR에는 필요한 참조 타입과 메서드를 단계별로 올립니다.</p></li>
+        <li data-role="f2"><h3>프2</h3><div><span class="dir">ui/</span> <code class="java-class">LessonScreen.java</code>, <code class="java-class">TermQuizScreen.java</code><p><code>data/lessons/index.txt</code>, <code>data/lessons/07_knight.txt</code></p></div><p class="work">임시 문제로 레슨과 퀴즈 화면을 엽니다. <a href="chess-learning-spec.html#first-demo">공용 샘플</a>의 나이트 레슨을 백2·백프와 로드해 보고 콘텐츠를 늘립니다.</p></li>
+        <li data-role="f3"><h3>프3</h3><div><code class="java-class">ui/GlossaryScreen.java</code><p><code>data/glossary.txt</code>, <code>data/games/opera-1858.txt</code></p></div><p class="work">임시 목록을 띄운 뒤 공용 샘플의 ‘포크’ ID를 백프·프2와 확인합니다. 오페라 게임 원본을 준비해 백1이 나중에 파서를 검증할 수 있게 합니다.</p></li>
+        <li data-role="bf"><h3>백프</h3><div><code>gradle.properties</code>, <code>app/build.gradle.kts</code><p><code>content/goal/InputMode.java</code>, <code class="java-interface">content/goal/StepGoal.java</code></p></div><p class="work">Java 25에서 전원 실행을 확인하고 <code>InputMode</code>를 프1에게 먼저 전달합니다. 백1의 공용 타입을 받아 <code class="java-interface">StepGoal</code>의 입력·판정 계약을 올립니다. 백프가 레슨·퀴즈 모델·로더·채점과 공용 ExerciseController를 구현하고 프2는 화면·콘텐츠·기록 호출을 맡습니다. 최소 계약을 프2와 맞추고 모델·채점 구현은 02에서 붙입니다. 기존 <code class="java-class">Main.java</code>는 03에서 연결합니다.</p></li>
+      </ul>
+      <section class="dependency-check" id="wait-01" aria-labelledby="wait-title-01">
+        <h3 id="wait-title-01">01 · 누가 먼저 파일을 넘겨야 하나</h3>
+        <ul>
+          <li><b class="dependency-kind">컴파일</b> <strong>백1 → 백2.</strong> <code class="java-class">DataException.java</code>와 <code class="java-class">MalformedDataException.java</code>가 있어야 <code>Block.java</code>·<code class="java-class">BlockReader.java</code>가 명세대로 빌드됩니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>백1 → 백3·백프·프1.</strong> <code>Move.java</code>·<code class="java-class">Position.java</code> 등 국면 타입은 <code class="java-interface">Player.java</code>, <code class="java-interface">StepGoal.java</code>, <code class="java-class">BoardPanel.java</code>의 선행 파일입니다. <code class="java-interface">GameListener.java</code>와 <code class="java-interface">RuleSet.java</code>의 결과 판정은 <code>GameResult.java</code>도 참조합니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>백프·백3 → 프1.</strong> <code>InputMode.java</code>가 있어야 보드 입력 API를 붙일 수 있습니다. <code class="java-interface">Route.java</code>에는 홈·용어집 경로부터 두고, AI 대국 경로는 백3의 <code>AiSetup.java</code> 이후에 추가합니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>프1 → 프2·프3.</strong> 레슨의 <code class="java-class">BoardScreen.java</code> 상속과 화면 전환용 <code class="java-interface">Screen.java</code>·<code class="java-interface">Navigator.java</code> 연결은 프1의 공용 코드가 필요합니다. 각 화면의 배치부터 작은 Swing 패널로 만들어 둘 수 있습니다.</li>
+        </ul>
+        <p><b>첫 병합 순서</b> · 백1의 공용 타입·예외, 백프의 <code>InputMode.java</code>, 백3의 <code class="java-interface">Async.java</code>를 먼저 올립니다. 기다리는 동안 백2는 파싱 테스트 입력을, 백3은 비동기 계약을, 프1·프2·프3은 Swing 배치와 샘플 콘텐츠를 준비할 수 있습니다.</p>
+      </section>
+      <p class="done"><b>완료 확인</b> · 전원이 빈 창을 실행합니다. 프1·프2·프3의 화면 초안은 임시 데이터로 열리고, 다음 담당이 쓸 메서드와 샘플이 공유됩니다.</p>
+    </article>
+
+    <article class="stage" id="s02" aria-labelledby="title-02">
+      <header class="stage-head"><p class="date">02 / 11.09–11</p><h2 id="title-02">각자 맡은 기능을 따로 구현하기</h2><p>화면은 샘플 데이터로 작업합니다. 실제 대국과 규칙 기반 채점에는 백1의 테스트를 통과한 엔진을 연결합니다.</p></header>
+      <ul class="assign">
+        <li data-role="b1"><h3>백1</h3><div><span class="dir">core/</span> <code class="java-class">Position.java</code>, <code class="java-class">Fen.java</code>, <code class="java-class">GameHistory.java</code>, <code>GameResult.java</code><p><span class="dir">core/rules/</span> <code class="java-class">StandardRules.java</code>, <code class="java-class">SandboxRules.java</code></p><p><span class="dir">core/piece/</span> <code class="java-class">SlidingPiece.java</code>, <code class="java-class">PieceFactory.java</code>, <code class="java-class">King.java</code>, <code class="java-class">Queen.java</code>, <code class="java-class">Rook.java</code>, <code class="java-class">Bishop.java</code>, <code class="java-class">Knight.java</code>, <code class="java-class">Pawn.java</code></p><p><span class="dir">notation/</span> <code>PgnGame.java</code>, <code>PgnMove.java</code> <span class="proposed">앞당김 제안</span></p></div><p class="work">FEN 읽기·쓰기, 합법 수, 수 적용·취소를 구현합니다. 시작 국면 깊이 1·2·3에서 수순 개수 20·400·8,902를 확인해 백3·프1·백프에 공유합니다. <code class="java-class">Game.toPgn()</code> 의 시그니처는 04에서 붙입니다. 기보 데이터 타입은 백프가 샘플 재생을 준비할 수 있도록 먼저 올리고, 파일 입출력도 04에서 구현합니다.</p></li>
+        <li data-role="b2"><h3>백2</h3><div><code class="java-class">io/TextFiles.java</code><p><span class="dir">progress/</span> <code class="java-class">Progress.java</code>, <code class="java-class">ProgressStore.java</code>, <code>AttemptStats.java</code>, <code>Profile.java</code>, <code class="java-class">ProfileManager.java</code></p></div><p class="work">기본 프로필에서 레슨·퀴즈 기록을 남기고 다시 읽습니다. ProfileManager는 기본 프로필의 active·선택 상태만 먼저 제공하고 등록·검색·삭제·all()과 순위는 05에서 완성합니다. <code>markLessonDone()</code>과 <code>recordTermQuiz()</code>를 프2·백프에 전달하고 임시 사용자 폴더에서 저장을 검증합니다. 오답·즐겨찾기 접근은 04에서 붙입니다. 활성 ID·기록 파일은 <a href="chess-learning-spec.html#profile-format">프로필 계약</a>을 따릅니다.</p></li>
+        <li data-role="b3"><h3>백3</h3><div><span class="dir">game/</span> <code class="java-class">Game.java</code>, <code class="java-class">HumanPlayer.java</code>, <code class="java-class">GameController.java</code><p><span class="dir">ai/</span> <code class="java-class">MaterialEvaluator.java</code>, <code class="java-class">AlphaBetaSearch.java</code>, <code>SearchLimits.java</code>, <code>SearchResult.java</code></p></div><p class="work">사람 두 명의 차례·수 입력·종료 흐름을 가짜 규칙으로 테스트한 뒤 백1의 엔진에 연결합니다. 컨트롤러는 기본 대국 메서드부터 구현하고 실수 알림 관련 메서드는 해당 기능을 작업할 때 붙입니다. AI 탐색은 화면 없이 검증합니다.</p></li>
+        <li data-role="f1"><h3>프1</h3><div><span class="dir">ui/</span> <code class="java-class">BoardPanel.java</code>, <code class="java-class">BoardScreen.java</code>, <code class="java-class">PieceRenderer.java</code>, <code class="java-class">HomeScreen.java</code>, <code class="java-class">SwingAsync.java</code>, <code class="java-class">MoveListPanel.java</code></div><p class="work">말·목적지 클릭과 공용 수 목록을 만듭니다. 보드는 <code>setLegalMoves()</code>로 받은 수를 이벤트로 전달합니다. 프2·프3에 보드 화면 예시를 주고, 백3과 비동기 콜백을 맞춥니다.</p></li>
+        <li data-role="f2"><h3>프2</h3><div><span class="dir">ui/</span> <code class="java-class">LessonScreen.java</code>, <code class="java-class">TermQuizScreen.java</code><p><code>data/lessons/</code>, <code>data/puzzles.txt</code>, <code>data/term-quiz.txt</code></p></div><p class="work">레슨 다음 단계와 4지선다 답 선택·해설 표시를 완성합니다. 프3의 용어 ID로 문항을 쓰고 백프와 정답 번호 형식을 검증합니다. 퍼즐 초안은 04에 쓸 데이터로 준비합니다.</p></li>
+        <li data-role="f3"><h3>프3</h3><div><span class="dir">ui/</span> <code class="java-class">GlossaryScreen.java</code>, <code class="java-class">CommentPane.java</code>, <code class="java-class">TermPopup.java</code><p><code>data/glossary.txt</code></p></div><p class="work">용어 검색·상세·팝업을 만들고, 프2에 퀴즈에 쓸 용어 ID를 전달합니다. 해설의 <code>[[용어]]</code> 링크 위젯을 프2와 공유합니다.</p></li>
+        <li data-role="bf"><h3>백프</h3><div><span class="dir">content/</span> <code>Lesson.java</code>, <code>LessonStep.java</code>, <code>RulesKind.java</code>, <code>TermQuestion.java</code>, <code class="java-class">Glossary.java</code>, <code>GlossaryEntry.java</code>, <code>TermCategory.java</code>, <code>TermTry.java</code>, <code class="java-class">TermLinks.java</code><p><span class="dir">content/goal/</span> <code class="java-class">AnyMoveGoal.java</code>, <code class="java-class">MoveGoal.java</code>, <code class="java-class">SquareGoal.java</code>, <code class="java-class">CheckGoal.java</code>, <code class="java-class">MateGoal.java</code></p><p><span class="dir">io/</span> <code class="java-class">LessonRepository.java</code>, <code class="java-class">GlossaryRepository.java</code>, <code class="java-class">TermQuestionRepository.java</code></p><p><span class="dir">exercise/</span> <code class="java-interface">Exercise.java</code>, <code class="java-class">GoalExercise.java</code>, <code class="java-class">LessonStepExercise.java</code>, <code class="java-class">FeedbackLadder.java</code>, <code class="java-interface">Verdict.java</code>, <code class="java-class">TermQuizSession.java</code>, <code>TermAnswer.java</code></p></div><p class="work">백2의 공통 로더로 레슨·용어·문항을 읽습니다. 나이트 레슨에 필요한 이동·칸 선택 목표부터 구현합니다. 객관식은 <code class="java-class">TermQuizSession.submit()</code>, 용어 검색은 <code class="java-class">Glossary.search()</code>로 제공합니다.</p></li>
+      </ul>
+      <section class="dependency-check" id="wait-02" aria-labelledby="wait-title-02">
+        <h3 id="wait-title-02">02 · 누가 먼저 파일을 넘겨야 하나</h3>
+        <ul>
+          <li><b class="dependency-kind">컴파일</b> <strong>백2 → 백프.</strong> <code class="java-class">LessonRepository.java</code>는 <code class="java-class">BlockRepository.java</code>, 문항 로더도 중복 ID 검사를 위해 <code class="java-class">BlockRepository.java</code>를 상속합니다. 용어 로더에는 <code class="java-class">PerBlockRepository.java</code>가 필요합니다. <code class="java-class">TermQuizSession.java</code> 자체는 백프의 문항·응답 타입으로 테스트할 수 있습니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>백3 → 프1.</strong> <code class="java-class">SwingAsync.java</code>가 <code class="java-interface">Async.java</code>를 구현합니다. <code class="java-class">MoveListPanel.java</code>은 수순을 문자열로 받아 샘플만으로 먼저 개발할 수 있습니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>백1 → 백3·프1·백프.</strong> <code class="java-class">Game.java</code>와 레슨 채점에 실제 규칙을 쓰려면 <code class="java-class">Position.java</code>의 수 적용·취소와 <code class="java-class">StandardRules.java</code>·<code class="java-class">SandboxRules.java</code>가 준비돼야 합니다. 사람끼리 대국에 쓰는 <code class="java-class">Game.java</code>는 이 단계에서 수 적용과 종료 판정까지 구현합니다. <code>toPgn()</code>과 기보 파싱은 04에서 추가합니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>백프·프1 → 프3 → 프2.</strong> 프3의 <code class="java-class">CommentPane.java</code>는 백프의 <code class="java-class">Glossary.java</code>·<code class="java-class">TermLinks.java</code>와 프1의 <code class="java-interface">Navigator.java</code>를 사용합니다. 프2는 프3의 위젯을 받으면 레슨 해설을 실제 용어 링크로 바꿉니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>프3 → 프2 → 백프.</strong> <code>glossary.txt</code>의 용어 ID를 받으면 프2가 <code>term-quiz.txt</code>에 적용합니다. 백프는 이 문항과 프2의 나이트 레슨 파일로 실제 콘텐츠 로드를 검증합니다.</li>
+        </ul>
+        <p><b>기다리는 동안</b> · 백3은 가짜 규칙으로 차례·종료를, 백프는 메모리에 넣은 문항으로 퀴즈 채점을, 백2는 임시 폴더로 기록 저장을 테스트합니다. 프2·프3은 샘플 화면과 콘텐츠를 계속 만들 수 있습니다.</p>
+      </section>
+      <p class="done"><b>완료 확인</b> · 엔진 테스트, 레슨 1개 채점, 용어 검색, 퀴즈 10문제, 기록 읽기·쓰기를 각각 검증합니다. 엔진이 늦으면 용어 검색·객관식과 화면 작업을 계속합니다.</p>
+    </article>
+
+    <article class="stage" id="s03" aria-labelledby="title-03">
+      <header class="stage-head"><p class="date">03 / 11.12–13</p><h2 id="title-03">진짜 데이터와 화면을 연결해 시연하기</h2><p>11/12부터 기능 단위로 합치고, 11/13에는 최신 <code>main</code>에서 전체 흐름을 확인합니다.</p></header>
+      <p class="stage-body"><b>합치는 순서</b> · 엔진·공통 로더·기록 → 채점·검색과 실제 화면 연결 → <code class="java-class">AppContext</code>에 첫 시연용 서비스 연결 → <code class="java-class">Main</code>에서 실행. 기능 하나가 통과할 때마다 작은 PR을 합칩니다.</p>
+      <ul class="assign">
+        <li data-role="b1"><h3>백1</h3><p><code class="java-class">core/Position.java</code>, <code class="java-class">core/rules/StandardRules.java</code></p><p class="work">프1·백3과 대국을 진행하며 체크메이트·캐슬링·앙파상·승진을 확인합니다. 문제를 찾으면 같은 국면으로 테스트를 재현합니다.</p></li>
+        <li data-role="b2"><h3>백2</h3><p><code class="java-class">progress/Progress.java</code>, <code class="java-class">progress/ProgressStore.java</code></p><p class="work">퀴즈와 레슨 결과가 실제 사용자 파일에 저장되는지 확인합니다. 재실행 뒤 시도·정답 수가 유지되어야 합니다.</p></li>
+        <li data-role="b3"><h3>백3</h3><p><code class="java-class">game/GameController.java</code>, <code class="java-class">game/AiPlayer.java</code>, <code class="java-class">ai/AlphaBetaSearch.java</code></p><p class="work">검증된 엔진으로 사람끼리 대국부터 끝까지 진행합니다. 그다음 쉬운 AI를 연결하고 중간점검 전에 한 판을 완주합니다.</p></li>
+        <li data-role="f1"><h3>프1</h3><div><code class="java-class">ui/MainFrame.java</code>, <code class="java-class">ui/BoardPanel.java</code>, <code class="java-class">ui/AiGameScreen.java</code><p><code class="java-class">ui/LocalGameScreen.java</code>, <code class="java-interface">nav/Route.java</code></p></div><p class="work">홈의 <code>Route.LocalGame()</code>에서 보드 이벤트를 <code class="java-class">Game.make()</code>로 넘겨 두 사람이 번갈아 둡니다. 입문 AI 화면은 같은 보드를 재사용하고 <code class="java-class">HumanPlayer.submit()</code>에 연결합니다.</p></li>
+        <li data-role="f2"><h3>프2</h3><p><code class="java-class">ui/LessonScreen.java</code>, <code class="java-class">ui/TermQuizScreen.java</code>, <code>data/term-quiz.txt</code></p><p class="work">백프의 채점 결과를 화면에 표시합니다. 레슨 완료나 퀴즈 답안 제출 시 백2의 기록 메서드를 호출합니다.</p></li>
+        <li data-role="f3"><h3>프3</h3><p><code class="java-class">ui/GlossaryScreen.java</code>, <code class="java-class">ui/CommentPane.java</code>, <code>data/glossary.txt</code></p><p class="work">실제 용어집에서 ‘포크’와 <code>fork</code>로 검색해 상세를 열고, 레슨 해설의 링크에서도 같은 용어를 열 수 있는지 확인합니다.</p></li>
+        <li data-role="bf"><h3>백프</h3><div><code class="java-class">app/AppContext.java</code>, <code class="java-class">app/ChessApp.java</code>, <code class="java-class">Main.java</code><p><code class="java-class">ui/ExerciseController.java</code></p></div><p class="work">초기 로더는 작업 스레드에서 실행하고 EDT에서 <code class="java-interface">Services</code>와 화면을 연결합니다. 첫 시연에서 <code class="java-class">Progress</code> 변경에 저장을 연결합니다. 실행이 통과하면 <code class="java-class">Main</code>에서 <code class="java-class">ChessApp</code>을 호출합니다. 이후 기능에 필요한 서비스는 각 단계에서 추가합니다.</p></li>
+      </ul>
+      <section class="dependency-check" id="wait-03" aria-labelledby="wait-title-03">
+        <h3 id="wait-title-03">03 · 첫 시연을 막는 연결</h3>
+        <ul>
+          <li><b class="dependency-kind">컴파일·연결</b> <strong>프1·백프·백2 → 프2.</strong> 프1의 <code class="java-class">BoardPanel.java</code>가 백프의 <code class="java-class">ExerciseController.java</code>에 필요합니다. 프2는 이 컨트롤러와 <code class="java-class">TermQuizSession.java</code>의 채점 결과를 화면에 붙이고, 백2의 <code class="java-class">Progress.java</code>로 완료·정답을 기록합니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>프2·프3·백2 → 백프.</strong> 프2의 레슨·문항, 프3의 용어 데이터와 화면, 백2의 <code class="java-class">DataPaths.java</code>·<code class="java-class">ProgressStore.java</code>가 있어야 <code class="java-class">AppContext.java</code>에서 실제 로드와 재실행 후 기록 유지를 확인할 수 있습니다.</li>
+          <li><b class="dependency-kind">컴파일</b> <strong>프1 ↔ 백프.</strong> 첫 시연에 필요한 <code class="java-interface">Services.java</code> 메서드와 <code class="java-class">AppContext.java</code>의 구현을 같은 PR에서 맞춥니다. 이후에도 필수 메서드를 한쪽 파일에만 추가하면 빌드가 깨집니다. 04·05에서 쓰는 타입은 준비된 단계에 붙입니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>백1 → 백3 → 프1.</strong> 검증된 규칙으로 <code class="java-class">GameController.java</code>·<code class="java-class">HumanPlayer.java</code>를 먼저 연결해야 실제 사람끼리 대국이 됩니다. 쉬운 AI는 여기에 백3의 <code class="java-class">AiPlayer.java</code>와 프1의 <code class="java-class">SwingAsync.java</code>가 더 필요합니다.</li>
+        </ul>
+        <p><b>기다리는 동안</b> · 학습 시연과 대국 시연을 따로 합쳐 확인합니다. 학습·기록은 쉬운 AI가 준비되기 전에도 검증할 수 있습니다. <code class="java-class">Main.java</code> 전환은 첫 시연용 <code class="java-class">ChessApp.java</code>가 실행된 뒤에 합니다.</p>
+      </section>
+      <p class="done"><b>11/13 통과 기준</b> · <a href="chess-learning-spec.html#first-demo">공용 샘플과 검증 절차</a>로 레슨 → 용어 검색 → 퀴즈 7/10 → 재실행 후 17점을 확인합니다. 사람끼리 대국은 홈에서 열어 체크메이트 결과를 확인합니다. 입문 AI는 중간점검 시연 목표입니다.</p>
+    </article>
+
+    <article class="stage" id="s04" aria-labelledby="title-04">
+      <header class="stage-head"><p class="date">04 / 11.16–22</p><h2 id="title-04">중간점검 후 퍼즐·기보·대국을 확장하기</h2><p>11/14–15에 시연을 연습합니다. 월요반 11/16, 화요반 11/17에 첫 시연 흐름을 보여주고 피드백을 기록합니다. 아래 확장 작업은 각 반의 점검 직후 시작합니다.</p></header>
+      <ul class="assign">
+        <li data-role="b1"><h3>백1</h3><div><span class="dir">notation/</span> <code class="java-class">San.java</code>, <code class="java-class">SanException.java</code>, <code class="java-class">Pgn.java</code>, <code class="java-class">PgnFormatException.java</code><p><code class="java-class">core/rules/StandardRules.java</code></p></div><p class="work">무승부 판정을 보완하고 PGN을 실제 합법 수 목록으로 읽습니다. 오페라 게임의 마지막 국면과 결과를 검증해 백프·프3에 전달하고, 백2와 저장·재로드를 맞춥니다.</p></li>
+        <li data-role="b2"><h3>백2</h3><div><span class="dir">progress/</span> <code class="java-class">Progress.java</code>, <code>PuzzleState.java</code>, <code>AiRecord.java</code>, <code>WrongNote.java</code>, <code>WrongNoteView.java</code>, <code class="java-class">WrongNoteManager.java</code>, <code class="java-class">FavoriteManager.java</code>, <code>Prefs.java</code>, <code class="java-class">PrefsStore.java</code><p><span class="dir">io/</span> <code class="java-class">GameLibrary.java</code>, <code>SavedGame.java</code> </p><p><code class="java-class">io/UciGameReader.java</code> <span class="proposed">번들 대안 적용 시</span></p></div><p class="work">퍼즐·대국 기록, 오답·즐겨찾기 관리와 설정 저장을 구현합니다. 백프와 퍼즐·기보 데이터 타입을 맞춘 뒤 백1의 <code class="java-class">Pgn</code>을 연결합니다. 백3이 넘긴 <code>PgnGame</code>을 저장하고, 프3에 번들 기보와 저장 대국 목록을 제공합니다.</p></li>
+        <li data-role="b3"><h3>백3</h3><div><span class="dir">game/</span> <code class="java-class">Game.java</code>, <code class="java-class">GameController.java</code>, <code class="java-class">AiPlayer.java</code><p><span class="dir">ai/</span> <code>Difficulty.java</code>, <code class="java-class">PstEvaluator.java</code></p></div><p class="work">입문·초급·중급의 탐색, 무르기, 기권, 종료 결과를 구현합니다. 대국의 저장용 데이터를 백2에 넘깁니다. 프1과 화면을 나갈 때 계산이 취소되고 오류 시 UI가 풀리는지 확인합니다.</p></li>
+        <li data-role="f1"><h3>프1</h3><div><code class="java-class">ui/AiGameScreen.java</code>, <code class="java-class">ui/MoveListPanel.java</code>, <code class="java-class">ui/PrefsScreen.java</code> <span class="proposed">설정 화면 이름 제안</span></div><p class="work">난이도 선택, 무르기, 기권, 결과, 저장을 대국 화면에 붙입니다. 설정 변경은 <code class="java-interface">Services.updatePrefs()</code>로 연결합니다.</p></li>
+        <li data-role="f2"><h3>프2</h3><p><code class="java-class">ui/PuzzleScreen.java</code>, <code>data/puzzles.txt</code>, <code>data/lessons/</code></p><p class="work">백프의 <code class="java-class">PuzzleExercise</code>를 연결해 두 수짜리 퍼즐을 끝까지 풀고, 틀리면 직전 국면으로 돌아가는지 확인합니다. 주간 콘텐츠 목표는 레슨 10개·퍼즐 20개입니다.</p></li>
+        <li data-role="f3"><h3>프3</h3><p><code class="java-class">ui/ReplayScreen.java</code>, <code>data/games/index.txt</code>, <code>data/games/</code>, <code>data/glossary.txt</code></p><p class="work">재생 모델로 이전/다음 수와 현재 해설을 표시합니다. 오페라 게임을 시작부터 끝까지 넘겨봅니다. 주간 콘텐츠 목표는 기보 3개·용어 40개입니다.</p></li>
+        <li data-role="bf"><h3>백프</h3><div><code>content/Puzzle.java</code>, <code class="java-class">io/PuzzleRepository.java</code>, <code class="java-class">exercise/PuzzleExercise.java</code><p><code>content/FamousGame.java</code>, <code>content/Level.java</code>, <code class="java-class">replay/ReplayModel.java</code></p></div><p class="work">퍼즐 채점과 기보 이동 로직을 구현합니다. <code>FamousGame</code>의 데이터 구조를 백2와 먼저 맞추고, <code class="java-class">ReplayModel.seek()</code>와 국면 사본을 프3에 제공합니다.</p></li>
+      </ul>
+      <section class="dependency-check" id="wait-04" aria-labelledby="wait-title-04">
+        <h3 id="wait-title-04">04 · 기보·퍼즐·대국의 대기 지점</h3>
+        <ul>
+          <li><b class="dependency-kind">컴파일</b> <strong>백프·백1 → 백2.</strong> 백2의 <code class="java-class">GameLibrary.java</code>는 백프의 <code>FamousGame.java</code>·<code>Level.java</code>와 백1의 <code class="java-class">Pgn.java</code>를 참조합니다. <code class="java-class">WrongNoteManager.java</code>에서 퍼즐까지 검색하려면 백프의 <code>Puzzle.java</code>가 필요합니다. 백프는 이 데이터 타입을 채점·재생 코드보다 먼저 넘깁니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>백1·백2·백프·프3 → 실제 기보 재생.</strong> 프3의 <code>opera-1858.txt</code>는 백1의 파서 검증에 쓰입니다. 실제 화면에는 백1의 <code class="java-class">Pgn.java</code>, 백2의 <code class="java-class">GameLibrary.java</code>, 백프의 <code class="java-class">ReplayModel.java</code>가 필요합니다. 백프는 02의 <code>PgnGame.java</code>로 만든 짧은 수순을 넣어 재생 모델을 먼저 테스트할 수 있습니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>백프·프2 → 실제 퍼즐 풀이.</strong> 프2의 <code class="java-class">PuzzleScreen.java</code>는 백프의 <code class="java-class">PuzzleExercise.java</code>가 있어야 채점을 연결합니다. 백프는 샘플 수열로 채점을 확인하고, 실제 로딩·풀이 검증은 프2의 <code>puzzles.txt</code>를 받으면 진행합니다.</li>
+          <li><b class="dependency-kind">컴파일·연결</b> <strong>백3·백2 → 프1·백프.</strong> 프1의 대국 버튼은 백3의 <code class="java-class">GameController.java</code>, 저장은 백2의 <code class="java-class">GameLibrary.java</code>가 필요합니다. 설정은 백2의 <code>Prefs.java</code>·<code class="java-class">PrefsStore.java</code>를 먼저 받은 뒤 프1의 <code class="java-interface">Services.java</code>와 백프의 <code class="java-class">AppContext.java</code>에 같이 연결합니다.</li>
+        </ul>
+        <p><b>기다리는 동안</b> · 백1은 짧은 PGN으로 파서를 검증하고, 백2는 오답·즐겨찾기의 ID 저장을 먼저 구현합니다. 프1은 저장 연결 전에도 무르기·기권 화면을, 프2·프3은 샘플로 퍼즐·재생 화면을 진행할 수 있습니다.</p>
+      </section>
+      <p class="done"><b>11/20 결정</b> · 번들 PGN 읽기가 막히고 합법 수·SAN 쓰기가 통과하면 백2가 <a href="chess-learning-spec.html#uci-fallback">번들 UCI 대안</a>을 붙입니다. 저장 대국은 PGN 계약을 따릅니다.</p>
+    </article>
+
+    <article class="stage" id="s05" aria-labelledby="title-05">
+      <header class="stage-head"><p class="date">05 / 11.23–25</p><h2 id="title-05">사용자별 데이터와 발표 기능 마무리하기</h2><p>백2가 관리 메서드를 제공하면 프1·프2·프3이 화면에 연결하고, 백프가 프로필 전환 시 공유 객체를 갱신합니다.</p></header>
+      <ul class="assign">
+        <li data-role="b1"><h3>백1</h3><p><code class="java-class">core/rules/StandardRules.java</code>, <code class="java-class">notation/San.java</code>, <code class="java-class">notation/Pgn.java</code></p><p class="work">기보 6개가 끝까지 읽히는지 확인하고 규칙·표기 오류를 수정합니다.</p></li>
+        <li data-role="b2"><h3>백2</h3><div><span class="dir">progress/</span> <code class="java-class">ProfileManager.java</code>, <code class="java-class">ProgressStore.java</code>, <code class="java-class">RankingService.java</code>, <code>RankedProfile.java</code><p><code class="java-class">io/GameLibrary.java</code></p></div><p class="work">11/23~25에 프로필 등록·선택·검색·삭제와 all(), 사용자별 기록 분리를 먼저 완성한 뒤 RankingService의 순위 재계산·검색을 연결합니다. 12주차에 계약·샘플을 준비하고 이 3일 동안 백프·프1과 매일 통합합니다. 저장 대국 검색·삭제가 해당 사용자 폴더에만 적용되는지 확인합니다.</p></li>
+        <li data-role="b3"><h3>백3</h3><div><code class="java-class">ai/AlphaBetaSearch.java</code>, <code class="java-class">game/GameController.java</code></div><p class="work">AI 응답 속도와 취소, 대국 저장 흐름을 검증합니다. 상급·힌트·실수 알림은 발표 후 후보로 둡니다.</p></li>
+        <li data-role="f1"><h3>프1</h3><div><span class="dir">ui/</span> <code class="java-class">HomeScreen.java</code>, <code class="java-class">MainFrame.java</code>, <code class="java-class">ProfilesScreen.java</code>, <code class="java-class">LearningRecordScreen.java</code>, <code class="java-class">RankingScreen.java</code> <span class="proposed">사용자·기록·순위 화면 이름 제안</span></div><p class="work">사용자 전환, 기록·순위, 홈 추천을 표시합니다. 사용자가 바뀌면 화면을 새로 고치고 순위 검색 결과와 실제 점수가 일치하는지 확인합니다.</p></li>
+        <li data-role="f2"><h3>프2</h3><p><code class="java-class">ui/WrongNotesScreen.java</code> <span class="proposed">화면 이름 제안</span>, <code>data/lessons/</code>, <code>data/puzzles.txt</code></p><p class="work">오답 노트를 추가·검색·삭제하는 화면을 백2와 연결합니다. 발표 콘텐츠 목표는 레슨 15개·퍼즐 30개입니다.</p></li>
+        <li data-role="f3"><h3>프3</h3><div><code class="java-class">ui/ReplayScreen.java</code>, <code class="java-class">ui/GlossaryScreen.java</code>, <code class="java-class">ui/FavoritesScreen.java</code> <span class="proposed">즐겨찾기 화면 이름 제안</span><p><code>data/games/</code>, <code>data/glossary.txt</code></p></div><p class="work">백프의 다음 수 맞히기와 백2의 즐겨찾기·저장 대국 관리를 해당 화면에 연결합니다. 발표 콘텐츠 목표는 기보 6개·용어 50개입니다.</p></li>
+        <li data-role="bf"><h3>백프</h3><div><span class="dir">replay/</span> <code class="java-class">GuessSession.java</code>, <code>GuessResult.java</code><p><span class="dir">progress/</span> <code class="java-class">Recommender.java</code>, <code>ThemeStat.java</code>, <code>Recommendation.java</code></p><p><code class="java-class">app/AppContext.java</code></p></div><p class="work">다음 수 채점과 주제별 정답률·홈 추천을 구현합니다. 프로필 전환 시 이전 기록을 저장하고 활성 <code class="java-class">Progress</code>와 <code class="java-class">GameLibrary</code>를 바꿉니다. 추천의 <code class="java-interface">Route</code> 참조는 인터페이스 명세 2장의 하향 참조 규칙을 따릅니다.</p></li>
+      </ul>
+      <section class="dependency-check" id="wait-05" aria-labelledby="wait-title-05">
+        <h3 id="wait-title-05">05 · 사용자 화면과 발표 기능의 대기 지점</h3>
+        <ul>
+          <li><b class="dependency-kind">컴파일·연결</b> <strong>백2 → 프1·프2·프3·백프.</strong> 프1의 사용자·순위 화면은 <code class="java-class">ProfileManager.java</code>·<code class="java-class">RankingService.java</code>, 프2의 오답 노트는 <code class="java-class">WrongNoteManager.java</code>, 프3의 즐겨찾기·저장 대국은 <code class="java-class">FavoriteManager.java</code>·<code class="java-class">GameLibrary.java</code>를 받으면 연결합니다. 백프는 백2의 <code class="java-class">ProgressStore.java</code>와 프로필별 <code class="java-class">GameLibrary.java</code>로 사용자 전환을 구현합니다.</li>
+          <li><b class="dependency-kind">연결</b> <strong>백프 → 프1·프3.</strong> 프1의 <code class="java-class">HomeScreen.java</code>에는 <code class="java-class">Recommender.java</code>, 프3의 <code class="java-class">ReplayScreen.java</code>에는 <code class="java-class">GuessSession.java</code>가 필요합니다. 추천이 반환한 <code class="java-interface">Route</code>를 홈 화면에 연결합니다.</li>
+          <li><b class="dependency-kind">검증</b> <strong>프3 → 백1.</strong> 기보 6개 전체 검증은 프3의 <code>data/games/index.txt</code>와 등록된 기보 파일이 필요합니다. 백1은 먼저 확보한 오페라 게임으로 파서를 계속 검증할 수 있습니다.</li>
+        </ul>
+        <p><b>기다리는 동안</b> · 프1·프2·프3은 샘플 목록으로 화면과 입력 동작을 확인하고 콘텐츠를 채웁니다. 최종 확인은 프로필을 바꾼 뒤 각 화면이 새 사용자의 데이터를 보여주는지까지 봅니다.</p>
+      </section>
+      <p class="done"><b>11/25 통과 기준</b> · 새 PC에서 발표 흐름을 실행합니다. 사용자 전환, 추가·검색·삭제, 재실행 후 기록 유지가 통과하면 발표 기능을 고정합니다.</p>
+    </article>
+
+    <article class="stage" id="s06" aria-labelledby="title-06">
+      <header class="stage-head"><p class="date">06 / 11.26–12.15</p><h2 id="title-06">발표하고 제출하기</h2><p>각자 맡은 파일의 문제를 수정하고, 최신 버전에서 시연과 제출을 확인합니다.</p></header>
+      <div class="stage-body">
+        <ol>
+          <li><b>11/26–29 · 발표 준비.</b> 백1은 11/28 시연 영상을 찍고 편집합니다. 전원은 각자 맡은 기능의 PPT를 만들고 11/29에 함께 연습합니다.</li>
+          <li><b>11/30 또는 12/1 · 발표.</b> 월요반은 11/30, 화요반은 12/1에 발표합니다. 받은 피드백을 이슈에 적고 해당 파일 담당자가 수정합니다.</li>
+          <li><b>12/7–13 · 제출물 정리.</b> 백2는 설계 문서를 실제 코드에 맞춥니다. 백프는 <a href="../README.md">README의 실행 JAR 계약</a>에 맞춰 <code>chess-trainer.jar</code>를 준비합니다. 전원은 최종보고서를 정리하고 12/11에 코드를 고정합니다.</li>
+          <li><b>12/14–15 · 제출.</b> Java 25가 있는 PC의 새 폴더에 압축을 풀고 <code>java -jar chess-trainer.jar</code>로 확인한 뒤 LMS에 결과물과 팀 보고서를 냅니다. 개인 보고서와 상호평가는 OTP에 제출합니다. 화요반은 12/14 제출, 월요반은 12/14 시연·12/15 제출입니다.</li>
+        </ol>
+      </div>
+      <section class="dependency-check" id="wait-06" aria-labelledby="wait-title-06">
+        <h3 id="wait-title-06">06 · 시연과 제출에 필요한 결과물</h3>
+        <ul>
+          <li><b class="dependency-kind">시연</b> 백1의 영상 녹화와 전원의 최종 연습에는 05를 통과한 실행 버전과 콘텐츠가 필요합니다. 실행 버전이 준비되는 동안 PPT와 시연 순서를 작성합니다.</li>
+          <li><b class="dependency-kind">제출</b> 최종 압축 검증에는 백프가 준비한 <code>chess-trainer.jar</code>·실행 안내와 전원의 보고서가 필요합니다. 각자 맡은 파일의 설명과 개인 보고서는 먼저 정리할 수 있습니다.</li>
+        </ul>
+      </section>
+    </article>
+  </section>
+
+  <p class="section-note">2026-11-07 개정 · PR 리뷰에 따라 로더·채점·공용 컨트롤러 담당과 프로필·순위의 11/23~25 통합 순서를 명시했습니다.</p>
+  <footer class="foot" aria-labelledby="notes-title">
+    <h2 id="notes-title">함께 지킬 공용 계약</h2>
+    <ul>
+      <li><b>공통 파일 경계.</b> 프1은 <code class="java-interface">ui/Services.java</code>와 화면 등록, 백프는 <code class="java-class">app/AppContext.java</code>와 <code class="java-class">Main.java</code>를 맡습니다. 백2는 <code>io</code> 공통 로더·기록·관리 서비스를, 백프는 콘텐츠별 로더·채점·공용 <code class="java-class">ExerciseController.java</code>를 맡습니다. 프2는 화면·레슨·퍼즐·퀴즈 콘텐츠와 기록 호출을 맡습니다.</li>
+      <li><b>공개 메서드 변경.</b> 합의한 메서드가 바뀌면 쓰는 역할에 먼저 알리고, 동결된 계약 변경은 같은 PR에서 명세를 수정하고 <code>api-change</code>를 붙입니다. <a href="chess-interface-spec.html#freeze">동결과 변경 절차</a></li>
+      <li><b>패키지 층.</b> <code>app</code>(L8) → <code>ui</code>(L7), <code>progress</code>(L6) → <code>nav</code>(L5)는 하향 참조입니다. 백2의 의존성 검사는 <a href="chess-interface-spec.html#packages">인터페이스 명세 2장</a>을 따릅니다.</li>
+      <li><b>대국 컨트롤러의 초기 생성자.</b> 입문 AI는 <code class="java-class">GameController(Game, Player, Player, Async)</code>를 사용합니다. <code class="java-class">BlunderCheck.java</code>를 참조하는 생성자는 발표 후 실수 알림을 넣을 때 추가합니다.</li>
+      <li><b>확인할 이름과 범위.</b> 학습 로더·채점·공용 컨트롤러의 담당은 백프, 학습 화면·콘텐츠·기록 호출은 프2입니다. ‘제안’으로 남은 화면 이름은 작업 이슈에서 확인합니다. 발표 화면에는 입문·초급·중급을 노출합니다.</li>
+    </ul>
+    <p style="margin-top:10px"><a href="chess-sprint-plan.html#roles-def">기존 역할과 주간 일정</a> · <a href="chess-interface-spec.html#packages">패키지와 클래스 계약</a> · <a href="chess-learning-spec.html#files">콘텐츠·저장 파일 형식</a></p>
+  </footer>
+</main>
+<script>
+  const laneRoles = {
+    b1: ['백1', '체스 규칙'], b2: ['백2', '데이터·사용자'], b3: ['백3', 'AI·대국'],
+    f1: ['프1', '공통 화면'], f2: ['프2', '학습 화면'], f3: ['프3', '기보·용어'], bf: ['백프', '학습 로직·통합']
+  };
+
+  // 같은 묶음은 한 행에 놓입니다. 화살표는 먼저 필요한 상자에서 다음 상자로 향합니다.
+  const laneStages = [
+    {
+      label: '공통 약속', date: '11/6–8',
+      rounds: [
+        ['먼저 준비', [
+          ['core', 'b1', '공용 국면·예외', 'Move.java', 'Position.java', 'Piece.java', 'MalformedDataException.java'],
+          ['paths', 'b2', '콘텐츠 경로', 'DataPaths.java'],
+          ['async', 'b3', '비동기 계약', 'Async.java'],
+          ['shell', 'f1', '창과 메뉴 배치', 'Theme.java', 'NavRail.java'],
+          ['lessonData', 'f2', '나이트 레슨 예시', '07_knight.txt'],
+          ['terms', 'f3', '용어 목록 예시', 'glossary.txt'],
+          ['input', 'bf', '보드 입력 타입', 'InputMode.java']
+        ]],
+        ['공용 타입 사용', [
+          ['rules', 'b1', '규칙 계약', 'RuleSet.java', 'GameHistory.java', 'GameResult.java'],
+          ['blocks', 'b2', '텍스트 로더', 'BlockReader.java'],
+          ['player', 'b3', '대국 계약', 'Player.java', 'GameListener.java', 'AiSetup.java'],
+          ['board', 'f1', '체스판 입력', 'BoardPanel.java']
+        ]],
+        ['화면·학습 계약', [
+          ['screen', 'f1', '공용 화면·이동', 'BoardScreen.java', 'Navigator.java', 'Route.java'],
+          ['goal', 'bf', '레슨 판정 계약', 'StepGoal.java']
+        ]],
+        ['목업 연결', [
+          ['lesson', 'f2', '공용 화면에 연결', 'LessonScreen.java', 'TermQuizScreen.java'],
+          ['glossary', 'f3', '공용 이동에 연결', 'GlossaryScreen.java']
+        ]]
+      ],
+      edges: [
+        ['core', 'rules'], ['core', 'blocks'], ['core', 'player'], ['core', 'board'], ['input', 'board'],
+        ['rules', 'goal'], ['board', 'screen'], ['player', 'screen'], ['screen', 'lesson'], ['screen', 'glossary']
+      ]
+    },
+    {
+      label: '첫 기능 개발', date: '11/9–11',
+      rounds: [
+        ['선행 코드·샘플', [
+          ['rules', 'b1', '합법 수·취소 검증', 'StandardRules.java', 'SandboxRules.java'],
+          ['blocks', 'b2', '01의 공통 로더', 'BlockRepository.java', 'PerBlockRepository.java'],
+          ['async', 'b3', '01의 비동기 계약', 'Async.java'],
+          ['nav', 'f1', '01의 화면 이동 계약', 'Navigator.java'],
+          ['quizUI', 'f2', '임시 문항으로 화면 개발', 'TermQuizScreen.java'],
+          ['termIds', 'f3', '용어 ID 공유', 'glossary.txt'],
+          ['glossary', 'bf', '검색·용어 링크', 'Glossary.java', 'TermLinks.java']
+        ]],
+        ['기능별 구현', [
+          ['pgnTypes', 'b1', '기보 데이터 타입', 'PgnGame.java', 'PgnMove.java'],
+          ['progress', 'b2', '임시 폴더에 기록 저장', 'ProgressStore.java'],
+          ['search', 'b3', '가짜 규칙으로 탐색', 'AlphaBetaSearch.java'],
+          ['swing', 'f1', 'Swing 비동기 실행', 'SwingAsync.java'],
+          ['quizData', 'f2', '용어 ID로 문항 작성', 'term-quiz.txt'],
+          ['comments', 'f3', '용어 링크 위젯', 'CommentPane.java'],
+          ['repos', 'bf', '레슨·용어 파일 읽기', 'LessonRepository.java', 'GlossaryRepository.java']
+        ]],
+        ['실제 연결 확인', [
+          ['game', 'b3', '실제 규칙으로 대국 진행', 'Game.java'],
+          ['lesson', 'f2', '레슨 해설에 링크 연결', 'LessonScreen.java'],
+          ['quiz', 'bf', '문항 로드와 채점 확인', 'TermQuestionRepository.java', 'TermQuizSession.java']
+        ]]
+      ],
+      edges: [
+        ['blocks', 'repos'], ['async', 'swing'], ['nav', 'comments'], ['glossary', 'comments'],
+        ['termIds', 'quizData', 'integration'], ['rules', 'game', 'integration'],
+        ['comments', 'lesson'], ['repos', 'quiz', 'integration'], ['quizData', 'quiz', 'integration']
+      ]
+    },
+    {
+      label: '첫 통합 시연', date: '11/12–13',
+      rounds: [
+        ['먼저 준비', [
+          ['rules', 'b1', '검증된 합법 수', 'StandardRules.java'],
+          ['progress', 'b2', '실제 저장·재실행', 'Progress.java', 'ProgressStore.java'],
+          ['game', 'b3', '대국 상태·입문 AI 입력', 'Game.java', 'HumanPlayer.java'],
+          ['board', 'f1', '보드와 UI 스레드', 'BoardPanel.java', 'SwingAsync.java'],
+          ['lessonData', 'f2', '실제 레슨·퀴즈 콘텐츠', '07_knight.txt', 'term-quiz.txt'],
+          ['terms', 'f3', '실제 용어 콘텐츠', 'glossary.txt'],
+          ['learning', 'bf', '02의 채점·검색 로직', 'TermQuizSession.java', 'Glossary.java']
+        ]],
+        ['연결 코드', [
+          ['ai', 'b3', '쉬운 AI · 중간점검 목표', 'AiPlayer.java'],
+          ['services', 'f1', '서비스 계약 · 백프와 공동 PR', 'Services.java'],
+          ['exercise', 'bf', '보드와 채점 연결', 'ExerciseController.java']
+        ]],
+        ['화면 검증', [
+          ['gameScreen', 'f1', '홈에서 사람끼리 대국', 'LocalGameScreen.java', 'Route.java'],
+          ['lessonScreen', 'f2', '실제 채점과 기록 연결', 'LessonScreen.java', 'TermQuizScreen.java'],
+          ['termScreen', 'f3', '실제 용어 검색', 'GlossaryScreen.java']
+        ]],
+        ['앱 실행', [
+          ['aiScreen', 'f1', '쉬운 AI 화면 · 중간점검 목표', 'AiGameScreen.java'],
+          ['app', 'bf', '첫 시연 조립', 'AppContext.java', 'ChessApp.java', 'Main.java']
+        ]]
+      ],
+      edges: [
+        ['rules', 'ai', 'integration'], ['board', 'ai', 'integration'], ['game', 'gameScreen'],
+        ['rules', 'gameScreen', 'integration'], ['ai', 'aiScreen', 'integration'], ['board', 'exercise'], ['learning', 'lessonScreen'],
+        ['exercise', 'lessonScreen'], ['progress', 'lessonScreen'], ['lessonData', 'lessonScreen', 'integration'],
+        ['terms', 'termScreen', 'integration'], ['learning', 'termScreen'], ['services', 'app'], ['progress', 'app'],
+        ['lessonScreen', 'app', 'integration'], ['termScreen', 'app', 'integration']
+      ]
+    },
+    {
+      label: '퍼즐·기보 확장', date: '11/16–22',
+      rounds: [
+        ['타입·샘플 준비', [
+          ['pgnTypes', 'b1', '02의 기보 데이터 타입', 'PgnGame.java'],
+          ['prefs', 'b2', '설정 값과 저장', 'Prefs.java', 'PrefsStore.java'],
+          ['game', 'b3', '무르기·기권', 'GameController.java'],
+          ['puzzleData', 'f2', '두 수짜리 퍼즐 예시', 'puzzles.txt'],
+          ['opera', 'f3', '검증용 오페라 게임', 'opera-1858.txt'],
+          ['models', 'bf', '백2에 데이터 타입 공유', 'FamousGame.java', 'Puzzle.java']
+        ]],
+        ['기능별 구현', [
+          ['pgn', 'b1', '기보 파일 읽기', 'San.java', 'Pgn.java'],
+          ['wrongNotes', 'b2', '퍼즐 포함 오답 검색', 'WrongNoteManager.java'],
+          ['gameScreen', 'f1', '무르기·기권 버튼', 'AiGameScreen.java'],
+          ['puzzle', 'bf', '퍼즐 채점', 'PuzzleExercise.java']
+        ]],
+        ['실제 데이터 연결', [
+          ['library', 'b2', '번들 기보와 저장 대국', 'GameLibrary.java'],
+          ['prefScreen', 'f1', '설정 화면', 'PrefsScreen.java'],
+          ['puzzleScreen', 'f2', '퍼즐 풀이 화면', 'PuzzleScreen.java'],
+          ['replay', 'bf', '샘플 수순 재생 가능', 'ReplayModel.java']
+        ]],
+        ['실제 화면 검증', [
+          ['save', 'f1', '대국 저장 연결', 'AiGameScreen.java'],
+          ['replayScreen', 'f3', '오페라 게임 전체 재생', 'ReplayScreen.java']
+        ]]
+      ],
+      edges: [
+        ['pgnTypes', 'pgn'], ['opera', 'pgn', 'integration'], ['models', 'wrongNotes'], ['game', 'gameScreen'],
+        ['puzzleData', 'puzzle', 'integration'], ['pgn', 'library'], ['models', 'library'],
+        ['prefs', 'prefScreen'], ['puzzle', 'puzzleScreen'], ['pgnTypes', 'replay'],
+        ['library', 'save'], ['library', 'replayScreen'], ['replay', 'replayScreen']
+      ]
+    },
+    {
+      label: '발표 기능 마감', date: '11/23–25',
+      rounds: [
+        ['선행 코드·콘텐츠', [
+          ['profiles', 'b2', '프로필별 기록과 전환', 'ProfileManager.java', 'ProgressStore.java'],
+          ['ai', 'b3', 'AI 속도와 취소 점검', 'GameController.java'],
+          ['games', 'f3', '발표용 기보 파일 공유', 'games/index.txt'],
+          ['guess', 'bf', '다음 수 맞히기', 'GuessSession.java']
+        ]],
+        ['관리 기능 확인', [
+          ['pgn', 'b1', '기보 6개 검증', 'Pgn.java'],
+          ['managers', 'b2', '순위·오답·즐겨찾기', 'RankingService.java', 'WrongNoteManager.java', 'FavoriteManager.java'],
+          ['recommend', 'bf', '홈 추천', 'Recommender.java']
+        ]],
+        ['화면·전환 연결', [
+          ['profileScreens', 'f1', '사용자·순위 화면', 'ProfilesScreen.java', 'RankingScreen.java'],
+          ['wrongScreen', 'f2', '오답 노트 화면', 'WrongNotesScreen.java'],
+          ['replayScreen', 'f3', '즐겨찾기와 다음 수 화면', 'FavoritesScreen.java', 'ReplayScreen.java'],
+          ['context', 'bf', '활성 사용자 데이터 교체', 'AppContext.java']
+        ]],
+        ['최종 화면 검증', [
+          ['home', 'f1', '새 사용자로 홈 추천 갱신', 'HomeScreen.java']
+        ]]
+      ],
+      edges: [
+        ['games', 'pgn', 'integration'], ['profiles', 'managers'], ['profiles', 'context'],
+        ['managers', 'profileScreens'], ['managers', 'wrongScreen'], ['managers', 'replayScreen'],
+        ['guess', 'replayScreen'], ['recommend', 'home'], ['context', 'home', 'integration']
+      ]
+    },
+    {
+      label: '발표·제출', date: '11/26–12/15',
+      rounds: [
+        ['발표 준비', [
+          ['slides', 'all', '전원 · PPT와 시연 대본'],
+          ['build', 'bf', '검증한 발표용 실행본']
+        ]],
+        ['발표·연습', [
+          ['video', 'b1', '11/28 시연 영상'],
+          ['demo', 'all', '전원 · 발표 연습과 시연']
+        ]],
+        ['제출 준비', [
+          ['docs', 'b2', '실제 코드에 맞춰 설계 문서 정리'],
+          ['report', 'all', '전원 · 최종보고서'],
+          ['jar', 'bf', '코드 고정 후 실행 JAR', 'README.md']
+        ]],
+        ['최종 확인', [
+          ['submit', 'all', '전원 · 새 폴더에서 실행 후 LMS 제출']
+        ]]
+      ],
+      edges: [
+        ['slides', 'demo', 'integration'], ['build', 'video', 'integration'], ['build', 'demo', 'integration'],
+        ['report', 'submit', 'integration'], ['jar', 'submit', 'integration']
+      ]
+    }
+  ];
+
+  const chart = document.getElementById('lane-chart');
+  const board = document.getElementById('flow-board');
+  const stagePicker = document.getElementById('flow-tabs');
+  const detailsLink = document.getElementById('flow-details-link');
+  const selection = document.getElementById('flow-selection');
+  const roleIds = Object.keys(laneRoles);
+  const typeStyles = new Map(Array.from(document.querySelectorAll('.details code[class^="java-"]'), code =>
+    [code.textContent.split('/').at(-1), code.className]));
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const lines = document.createElementNS(svgNS, 'svg');
+  lines.setAttribute('class', 'flow-lines');
+  lines.setAttribute('aria-hidden', 'true');
+  lines.innerHTML = '<defs>' +
+    '<marker id="flow-compile-arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#435a76"/></marker>' +
+    '<marker id="flow-integration-arrow" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#176b5f"/></marker>' +
+    '</defs><g></g>';
+  const strokes = lines.querySelector('g');
+  const tasks = new Map();
+  let activeStage = laneStages[0];
+  let selectedTask = '';
+
+  function drawLines() {
+    const area = board.getBoundingClientRect();
+    if (!area.width || !area.height) return;
+    lines.setAttribute('viewBox', `0 0 ${area.width} ${area.height}`);
+    strokes.replaceChildren();
+
+    for (const head of board.querySelectorAll('.lane-head')) {
+      const rect = head.getBoundingClientRect();
+      const x = rect.left - area.left + rect.width / 2;
+      const rail = document.createElementNS(svgNS, 'line');
+      rail.setAttribute('class', 'flow-rail');
+      rail.setAttribute('x1', x);
+      rail.setAttribute('x2', x);
+      rail.setAttribute('y1', rect.bottom - area.top);
+      rail.setAttribute('y2', area.height - 12);
+      strokes.append(rail);
+    }
+
+    const taskRects = new Map(Array.from(tasks, ([id, task]) => [id, task.button.getBoundingClientRect()]));
+    for (const edge of activeStage.edges) {
+      const [from, to, kind] = edge;
+      const start = taskRects.get(from);
+      const end = taskRects.get(to);
+      const outputs = activeStage.edges.filter(([source]) => source === from);
+      const inputs = activeStage.edges.filter(([, target]) => target === to);
+      const startX = start.left - area.left + start.width * ((outputs.indexOf(edge) + 1) / (outputs.length + 1));
+      const endX = end.left - area.left + end.width * ((inputs.indexOf(edge) + 1) / (inputs.length + 1));
+      const startY = start.bottom - area.top;
+      const endY = end.top - area.top - 2;
+      const path = document.createElementNS(svgNS, 'path');
+      path.dataset.from = from;
+      path.dataset.to = to;
+      path.classList.add('flow-wire');
+      if (kind === 'integration') path.classList.add('integration');
+
+      let route;
+      if (tasks.get(to).row - tasks.get(from).row === 1) {
+        const mid = (startY + endY) / 2;
+        route = `M${startX},${startY} C${startX},${mid} ${endX},${mid} ${endX},${endY}`;
+      } else {
+        const gutter = end.left >= start.right ? start.right - area.left + 6 : start.left - area.left - 6;
+        const bend = 8 + outputs.indexOf(edge) * 3;
+        const targetRow = tasks.get(to).row;
+        const approaches = activeStage.edges.filter(([source, target]) =>
+          tasks.get(target).row === targetRow && targetRow - tasks.get(source).row > 1);
+        const approach = endY - 7 - approaches.indexOf(edge) * Math.min(5, 27 / approaches.length);
+        route = `M${startX},${startY} V${startY + bend} H${gutter} V${approach} H${endX} V${endY}`;
+      }
+      path.setAttribute('d', route);
+      strokes.append(path);
+    }
+    highlightLines();
+  }
+
+  function highlightLines() {
+    board.classList.toggle('has-selection', Boolean(selectedTask));
+    for (const path of strokes.querySelectorAll('.flow-wire')) {
+      path.classList.toggle('related', path.dataset.from === selectedTask || path.dataset.to === selectedTask);
+    }
+  }
+
+  function showTask(id) {
+    selectedTask = selectedTask === id ? '' : id;
+    for (const [taskId, task] of tasks) {
+      task.button.setAttribute('aria-pressed', String(taskId === selectedTask));
+    }
+    highlightLines();
+    if (!selectedTask) {
+      selection.textContent = '파일 상자를 누르면 먼저 필요한 작업과 이 파일을 기다리는 작업이 강조됩니다.';
+      return;
+    }
+
+    selection.replaceChildren();
+    for (const [label, near, far] of [['먼저 필요한 작업', 1, 0], ['이 작업을 기다리는 작업', 0, 1]]) {
+      const row = document.createElement('p');
+      const heading = document.createElement('b');
+      heading.textContent = label;
+      const related = activeStage.edges.filter(edge => edge[near] === selectedTask).map(edge => {
+        const { role, title, files } = tasks.get(edge[far]);
+        const name = role === 'all' ? title : `${laneRoles[role][0]} ${title}`;
+        const kind = edge[2] === 'integration' ? '연결·검증' : '컴파일';
+        return `${name}${files.length ? ` (${files.join(', ')})` : ''} [${kind}]`;
+      });
+      row.append(heading, ` · ${related.join(' / ') || '이 도표에서는 없음'}`);
+      selection.append(row);
+    }
+  }
+
+  function showStage(index) {
+    activeStage = laneStages[index];
+    detailsLink.href = `#s0${index + 1}`;
+    for (const [i, button] of Array.from(stagePicker.children).entries()) {
+      button.setAttribute('aria-pressed', String(i === index));
+    }
+    tasks.clear();
+    board.replaceChildren(lines);
+
+    const time = document.createElement('div');
+    time.className = 'flow-round';
+    time.textContent = '순서 ↓';
+    time.style.gridArea = '1 / 1';
+    board.append(time);
+    for (const [i, [role, [label, description]]] of Object.entries(laneRoles).entries()) {
+      const head = document.createElement('div');
+      head.className = 'lane-head';
+      head.dataset.role = role;
+      head.style.gridArea = `1 / ${i + 2}`;
+      const sub = document.createElement('small');
+      sub.textContent = description;
+      head.append(label, sub);
+      board.append(head);
+    }
+    for (const [i, [label, nodes]] of activeStage.rounds.entries()) {
+      const row = i + 2;
+      const step = document.createElement('div');
+      step.className = 'flow-round';
+      step.style.gridArea = `${row} / 1`;
+      const number = document.createElement('b');
+      number.textContent = `0${i + 1}`;
+      step.append(number, label);
+      board.append(step);
+
+      for (const [id, role, title, ...files] of nodes) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'lane-task';
+        button.dataset.role = role;
+        button.dataset.task = id;
+        button.style.gridRow = row;
+        button.style.gridColumn = role === 'all' ? '5 / 8' : roleIds.indexOf(role) + 2;
+        button.setAttribute('aria-label', `${role === 'all' ? '' : laneRoles[role][0] + ' '}${[title, ...files].join(', ')}`);
+        const label = document.createElement('strong');
+        label.textContent = title;
+        button.append(label);
+        for (const file of files) {
+          const code = document.createElement('code');
+          const extension = file.lastIndexOf('.');
+          if (extension > 0) {
+            code.append(file.slice(0, extension), document.createElement('wbr'), file.slice(extension));
+          } else {
+            code.textContent = file;
+          }
+          code.className = typeStyles.get(file.split('/').at(-1)) || '';
+          button.append(code);
+        }
+        button.addEventListener('click', () => showTask(id));
+        tasks.set(id, { row, role, title, files, button });
+        board.append(button);
+      }
+    }
+    showTask('');
+    document.getElementById('flow-scroll').scrollLeft = 0;
+    drawLines();
+  }
+
+  for (const [i, stage] of laneStages.entries()) {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'flow-tab';
+    tab.setAttribute('aria-controls', 'flow-board');
+    const title = document.createElement('strong');
+    title.textContent = `0${i + 1} · ${stage.label}`;
+    const date = document.createElement('span');
+    date.textContent = stage.date;
+    tab.append(title, date);
+    tab.addEventListener('click', () => showStage(i));
+    stagePicker.append(tab);
+  }
+  chart.hidden = false;
+  showStage(0);
+  new ResizeObserver(drawLines).observe(board);
+
+  const filter = document.getElementById('role-filter');
+  const assignments = document.querySelectorAll('.assign [data-role]');
+  filter.parentElement.hidden = false;
+  filter.addEventListener('change', () => {
+    for (const assignment of assignments) {
+      assignment.hidden = filter.value !== '' && assignment.dataset.role !== filter.value;
+    }
+  });
+</script>
+</body>
+</html>

@@ -6,3 +6,14 @@ build
 
 # Ignore Kotlin plugin data
 .kotlin
+
+# VS Code / Java Language Server
+bin/
+.project
+.classpath
+.settings/
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store

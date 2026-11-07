@@ -1,0 +1,99 @@
+@term-question q0001
+term=fork
+question=포크는 어떤 전술인가요?
+option.1=한 기물이 둘 이상을 동시에 공격
+option.2=킹을 움직여 룩을 보호
+option.3=폰이 두 칸 전진
+option.4=기물을 교환
+answer=1
+explanation=포크를 두면 상대는 공격받는 기물 둘 이상에 동시에 대응해야 합니다.
+
+@term-question q0002
+term=pin
+question=룩과 킹 사이의 나이트가 움직이면 킹이 공격받습니다. 이 전술은 무엇인가요?
+option.1=포크
+option.2=핀
+option.3=캐슬링
+option.4=앙파상
+answer=2
+explanation=나이트가 움직이면 뒤의 킹이 노출되므로 핀입니다.
+
+@term-question q0003
+term=check
+question=킹이 상대 기물의 공격을 받는 상태를 무엇이라고 하나요?
+option.1=승진
+option.2=스테일메이트
+option.3=체크
+option.4=포크
+answer=3
+explanation=킹이 공격받는 상태는 체크입니다. 피할 합법 수가 없을 때 체크메이트입니다.
+
+@term-question q0004
+term=checkmate
+question=킹이 체크 상태이며 체크를 해소할 합법 수가 하나도 없습니다. 결과는 무엇인가요?
+option.1=차례인 쪽이 승리합니다.
+option.2=무조건 무승부입니다.
+option.3=같은 차례를 한 번 더 진행합니다.
+option.4=체크메이트로 차례인 쪽이 집니다.
+answer=4
+explanation=체크에서 벗어날 수 없으면 체크메이트입니다.
+
+@term-question q0005
+term=stalemate
+question=킹이 체크 상태는 아니지만 둘 수 있는 합법 수가 없습니다. 결과는 무엇인가요?
+option.1=체크메이트로 패배
+option.2=스테일메이트로 무승부
+option.3=다음 차례로 건너뜀
+option.4=상대가 기권한 것으로 처리
+answer=2
+explanation=체크가 없고 합법 수도 없으면 스테일메이트입니다.
+
+@term-question q0006
+term=promotion
+question=폰이 반대편 끝 행에 도달할 때 승진할 수 있는 기물은 무엇인가요?
+option.1=킹 또는 폰
+option.2=킹 또는 퀸
+option.3=퀸, 룩, 비숍, 나이트 중 하나
+option.4=폰 또는 비숍
+answer=3
+explanation=승진할 수 있는 기물은 퀸, 룩, 비숍, 나이트입니다.
+
+@term-question q0007
+term=castling
+question=캐슬링에서 킹과 함께 움직이는 기물은 무엇인가요?
+option.1=룩
+option.2=비숍
+option.3=나이트
+option.4=폰
+answer=1
+explanation=캐슬링은 킹과 룩을 한 번에 움직이는 특수 수입니다.
+
+@term-question q0008
+term=en-passant
+question=앙파상을 할 수 있는 시점은 언제인가요?
+option.1=상대 폰이 두 칸 이동하기 전
+option.2=다른 말을 먼저 움직인 뒤
+option.3=같은 폰이 남아 있는 동안 언제든지
+option.4=상대 폰이 두 칸 전진해 옆에 선 직후 내 차례
+answer=4
+explanation=앙파상은 상대 폰의 두 칸 전진 직후의 차례에만 가능합니다.
+
+@term-question q0009
+term=san
+question=Nf3처럼 체스의 개별 수를 기록하는 방식은 무엇인가요?
+option.1=FEN
+option.2=SAN
+option.3=순위 점수
+option.4=기물 가치표
+answer=2
+explanation=SAN은 개별 수를 표기합니다. FEN은 한 국면을 표현합니다.
+
+@term-question q0010
+term=fen
+question=기물 배치와 다음 차례를 포함한 한 국면을 한 줄로 적는 표기는 무엇인가요?
+option.1=SAN
+option.2=평가 기호
+option.3=FEN
+option.4=수순 번호
+answer=3
+explanation=FEN 한 줄로 기물 배치, 차례, 캐슬링 권리 등을 전달할 수 있습니다.
