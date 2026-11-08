@@ -23,7 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>{@code app/src/main/java}의 {@code import com.oopteama.chess.X}(정적 import·와일드카드 포함)를 패키지 기준으로 읽어
  * 다른 계열의 동일 층·상위 층 참조를 실패로 처리한다. 같은 계열의 하위 패키지(예: {@code core}↔{@code core.piece})는 허용한다.
- * Swing({@code javax.swing})은 {@code ui}, {@code app}과 루트 진입점에서만 허용한다.
+ * GUI({@code javax.swing}, {@code java.awt})는 {@code ui}와 루트 진입점에서만 모두 허용하고,
+ * {@code app}은 EDT 실행용 {@code javax.swing.SwingUtilities}만 쓸 수 있다(기능 명세 5장, 인터페이스 명세 4.10).
+ * 로직 패키지는 GUI를 import할 수 없다(G1: ai·game 등을 Swing 없이 단위 테스트).
  * 루트 패키지({@code Main})는 진입점으로 취급해 층 검사에서 제외하며, 다른 패키지가 루트를 참조하면 실패다.
  */
 class ArchitectureTest {
@@ -48,9 +50,13 @@ class ArchitectureTest {
     /** 루트 진입점을 나타내는 계열 이름. */
     private static final String ROOT = "";
 
-    /** Swing을 쓸 수 있는 계열. */
-    private static final Set<String> SWING_ALLOWED = Set.of("ui", "app", ROOT);
-    private static final String SWING_PREFIX = "javax.swing";
+    /** GUI 패키지 접두어. */
+    private static final List<String> GUI_PREFIXES = List.of("javax.swing", "java.awt");
+    /** GUI를 제한 없이 쓸 수 있는 계열. */
+    private static final Set<String> GUI_ALLOWED = Set.of("ui", ROOT);
+    /** app 시작 코드가 쓸 수 있는 유일한 GUI 클래스. */
+    private static final String APP = "app";
+    private static final String APP_GUI_CLASS = "javax.swing.SwingUtilities";
 
     private static final Pattern PACKAGE = Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;");
     private static final Pattern IMPORT = Pattern.compile("^\\s*import\\s+(?:static\\s+)?([\\w.]+(?:\\.\\*)?)\\s*;");
@@ -67,16 +73,19 @@ class ArchitectureTest {
     @Test
     void 하향_참조와_같은_계열_하위_패키지는_허용한다() throws IOException {
         source("progress/A.java", "progress", "import com.oopteama.chess.nav.Route;", "import com.oopteama.chess.io.*;");
-        source("app/B.java", "app", "import com.oopteama.chess.ui.Screen;", "import javax.swing.JFrame;");
+        source("app/B.java", "app", "import com.oopteama.chess.ui.Screen;", "import javax.swing.SwingUtilities;",
+                "import static javax.swing.SwingUtilities.invokeLater;");
+        source("ui/H.java", "ui", "import javax.swing.JPanel;", "import java.awt.Color;", "import java.awt.event.*;");
         source("core/piece/C.java", "core.piece", "import com.oopteama.chess.core.Position;");
         source("core/D.java", "core", "import com.oopteama.chess.core.piece.Piece;");
         source("io/E.java", "io", "import static com.oopteama.chess.core.Side.WHITE;", "import com.oopteama.chess.ai.Difficulty;");
-        source("Main.java", "", "import com.oopteama.chess.app.ChessApp;", "import javax.swing.SwingUtilities;");
+        source("Main.java", "", "import com.oopteama.chess.app.ChessApp;", "import javax.swing.JFrame;");
+        source("io/I.java", "io", "import java.awter.NotGui;");
         assertEquals(List.of(), violations(tmp));
     }
 
     @Test
-    void 상향_동일층_루트_참조와_로직의_Swing을_잡는다() throws IOException {
+    void 상향_동일층_루트_참조와_GUI_위반을_잡는다() throws IOException {
         source("core/A.java", "core", "import com.oopteama.chess.notation.San;");
         source("io/B.java", "io", "import com.oopteama.chess.exercise.Exercise;");
         source("content/C.java", "content", "import static com.oopteama.chess.ai.Difficulty.INTRO;");
@@ -84,13 +93,21 @@ class ArchitectureTest {
         source("progress/E.java", "progress", "import javax.swing.JPanel;");
         source("nav/F.java", "nav", "import com.oopteama.chess.Main;");
         source("unknown/G.java", "unknown", "import com.oopteama.chess.core.Move;");
+        source("game/H.java", "game", "import java.awt.EventQueue;");
+        source("app/I.java", "app", "import javax.swing.JOptionPane;");
+        source("app/J.java", "app", "import javax.swing.*;");
+        source("app/K.java", "app", "import java.awt.EventQueue;");
         List<String> v = violations(tmp);
-        assertEquals(7, v.size(), String.join("\n", v));
+        assertEquals(11, v.size(), String.join("\n", v));
         assertTrue(v.stream().anyMatch(s -> s.contains("A.java") && s.contains("notation")));
         assertTrue(v.stream().anyMatch(s -> s.contains("B.java") && s.contains("exercise")));
         assertTrue(v.stream().anyMatch(s -> s.contains("C.java") && s.contains("ai")));
         assertTrue(v.stream().anyMatch(s -> s.contains("D.java") && s.contains("ui")));
         assertTrue(v.stream().anyMatch(s -> s.contains("E.java") && s.contains("Swing")));
+        assertTrue(v.stream().anyMatch(s -> s.contains("H.java") && s.contains("java.awt.EventQueue")));
+        assertTrue(v.stream().anyMatch(s -> s.contains("I.java") && s.contains("SwingUtilities만")));
+        assertTrue(v.stream().anyMatch(s -> s.contains("J.java") && s.contains("SwingUtilities만")));
+        assertTrue(v.stream().anyMatch(s -> s.contains("K.java") && s.contains("SwingUtilities만")));
         assertTrue(v.stream().anyMatch(s -> s.contains("F.java") && s.contains("루트")));
         assertTrue(v.stream().anyMatch(s -> s.contains("G.java") && s.contains("unknown")));
     }
@@ -141,8 +158,12 @@ class ArchitectureTest {
             }
             String from = family == null ? ROOT : family;
             String target = imp.group(1);
-            if (target.startsWith(SWING_PREFIX) && !SWING_ALLOWED.contains(from)) {
-                out.add("%s:%d: Swing은 ui·app에서만 쓸 수 있습니다(%s → %s)".formatted(name, i + 1, from, target));
+            if (isGui(target) && !GUI_ALLOWED.contains(from)) {
+                if (!from.equals(APP)) {
+                    out.add("%s:%d: Swing·AWT는 ui에서만 쓸 수 있습니다(%s → %s)".formatted(name, i + 1, from, target));
+                } else if (!isClassOrMember(target, APP_GUI_CLASS)) {
+                    out.add("%s:%d: app은 Swing 중 SwingUtilities만 쓸 수 있습니다(%s)".formatted(name, i + 1, target));
+                }
             }
             String to = familyOf(target.endsWith(".*") ? target.substring(0, target.length() - 2) : target);
             if (to == null || from.equals(ROOT) || to.equals(from)) {
@@ -157,6 +178,15 @@ class ArchitectureTest {
                         name, i + 1, from, LAYERS.get(from), to, LAYERS.get(to), target));
             }
         }
+    }
+
+    private static boolean isGui(String target) {
+        return GUI_PREFIXES.stream().anyMatch(p -> isClassOrMember(target, p));
+    }
+
+    /** target이 name 자체이거나 그 하위 이름(패키지·클래스 멤버·와일드카드)인지. */
+    private static boolean isClassOrMember(String target, String name) {
+        return target.equals(name) || target.startsWith(name + ".");
     }
 
     /**
