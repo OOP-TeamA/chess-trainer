@@ -41,6 +41,42 @@ class FenTest {
         assertField(6, "8/8/8/8/8/8/8/8 w - - 0 b");
     }
 
+    @Test
+    void countersMustBeInRange() {
+        assertField(5, "4k3/8/8/8/8/8/8/4K3 w - - -1 0");  // 하프무브 음수 (풀무브도 잘못이지만 5번 필드가 먼저)
+        assertField(5, "4k3/8/8/8/8/8/8/4K3 w - - -1 1");
+        assertField(6, "4k3/8/8/8/8/8/8/4K3 w - - 0 0");   // 풀무브는 1부터
+        assertField(6, "4k3/8/8/8/8/8/8/4K3 w - - 0 -3");
+    }
+
+    @Test
+    void extraFieldsAreRejected() {
+        assertField(6, "4k3/8/8/8/8/8/8/4K3 w - - 0 1 extra");
+        assertField(6, "4k3/8/8/8/8/8/8/4K3 w - - 0 1 0 1");
+    }
+
+    @Test
+    void enPassantSquareMustMatchTheSideToMove() throws Exception {
+        assertField(4, "4k3/8/8/8/8/8/8/4K3 w - e4 0 1");   // 4랭크는 어느 쪽 차례든 불가
+        assertField(4, "4k3/8/8/8/8/8/8/4K3 w - e3 0 1");   // 백 차례면 6랭크여야 함
+        assertField(4, "4k3/8/8/8/8/8/8/4K3 b - e6 0 1");   // 흑 차례면 3랭크여야 함
+
+        // 올바른 랭크는 통과하고 그대로 다시 써진다.
+        String white = "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1";
+        String black = "4k3/8/8/8/3Pp3/8/8/4K3 b - d3 0 1";
+        assertEquals(white, Fen.write(Fen.parse(white)));
+        assertEquals(black, Fen.write(Fen.parse(black)));
+    }
+
+    @Test
+    void boundaryCounterValuesAreAccepted() throws Exception {
+        Position pos = Fen.parse("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+        assertEquals(0, pos.halfmoveClock());
+        assertEquals(1, pos.fullmoveNumber());
+        assertEquals("4k3/8/8/8/8/8/8/4K3 b - - 99 500",
+            Fen.write(Fen.parse("4k3/8/8/8/8/8/8/4K3 b - - 99 500")));
+    }
+
     private static void assertField(int expectedField, String fen) {
         FenFormatException e = assertThrows(FenFormatException.class, () -> Fen.parse(fen));
         assertEquals(expectedField, e.field(), "FEN: \"" + fen + "\"");

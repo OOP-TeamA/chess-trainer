@@ -20,6 +20,10 @@ public final class Fen {
         if (fields.length < 4) {
             throw new FenFormatException("필드 수가 부족합니다.", "<input>", 0, 1);
         }
+        if (fields.length > 6) {
+            // field()는 1~6이므로 마지막 필드 번호로 알린다.
+            throw new FenFormatException("필드가 6개를 넘습니다: " + fields.length + "개", "<input>", 0, 6);
+        }
 
         Position p = Position.raw();
 
@@ -84,24 +88,43 @@ public final class Fen {
         if (fields[3].equals("-")) {
             p.setEpTarget(null);
         } else {
+            Square ep;
             try {
-                p.setEpTarget(Square.of(fields[3]));
+                ep = Square.of(fields[3]);
             } catch (IllegalArgumentException e) {
                 throw new FenFormatException("잘못된 앙파상 칸: " + fields[3], "<input>", 0, 4);
             }
+            // 백 차례면 흑이 방금 두 칸 전진했으므로 6랭크(인덱스 5), 흑 차례면 3랭크(인덱스 2)여야 한다.
+            int expectedRank = fields[1].equals("w") ? 5 : 2;
+            if (ep.rank() != expectedRank) {
+                throw new FenFormatException(
+                    "앙파상 칸은 " + (expectedRank + 1) + "랭크여야 합니다(차례 " + fields[1] + "): " + fields[3],
+                    "<input>", 0, 4);
+            }
+            p.setEpTarget(ep);
         }
 
-        // 5. 하프무브 클럭, 6. 풀무브 번호 (없으면 기본값)
+        // 5. 하프무브 클럭(0 이상), 6. 풀무브 번호(1 이상). 없으면 기본값
+        int halfmove;
         try {
-            p.setHalfmoveClock(fields.length > 4 ? Integer.parseInt(fields[4]) : 0);
+            halfmove = fields.length > 4 ? Integer.parseInt(fields[4]) : 0;
         } catch (NumberFormatException e) {
             throw new FenFormatException("하프무브 클럭이 숫자가 아닙니다.", "<input>", 0, 5);
         }
+        if (halfmove < 0) {
+            throw new FenFormatException("하프무브 클럭은 0 이상이어야 합니다: " + halfmove, "<input>", 0, 5);
+        }
+        int fullmove;
         try {
-            p.setFullmoveNumber(fields.length > 5 ? Integer.parseInt(fields[5]) : 1);
+            fullmove = fields.length > 5 ? Integer.parseInt(fields[5]) : 1;
         } catch (NumberFormatException e) {
             throw new FenFormatException("풀무브 번호가 숫자가 아닙니다.", "<input>", 0, 6);
         }
+        if (fullmove < 1) {
+            throw new FenFormatException("풀무브 번호는 1 이상이어야 합니다: " + fullmove, "<input>", 0, 6);
+        }
+        p.setHalfmoveClock(halfmove);
+        p.setFullmoveNumber(fullmove);
 
         return p;
     }

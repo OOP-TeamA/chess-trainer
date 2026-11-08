@@ -63,12 +63,30 @@ public final class Pawn extends Piece {
                 if (occupant.side() != side()) {
                     addForwardOrPromotion(moves, from, to, promotionRank, MoveKind.CAPTURE);
                 }
-            } else if (pos.enPassantTarget().isPresent() && pos.enPassantTarget().get().equals(to)) {
+            } else if (canCaptureEnPassant(pos, from, to)) {
                 moves.add(new Move(from, to, MoveKind.EN_PASSANT));
             }
         }
 
         return moves;
+    }
+
+    /**
+     * 앙파상 조건: 도착 칸이 앙파상 타깃이고, 그 타깃이 이 폰이 갈 수 있는 랭크(백 6, 흑 3)에 있으며,
+     * 잡힐 칸(출발 랭크, 도착 파일)에 상대 폰이 실제로 있어야 한다.
+     * 잘못된 FEN으로 타깃만 있고 폰이 없거나 다른 기물이 있으면 그 기물이 지워지므로 만들지 않는다.
+     */
+    private boolean canCaptureEnPassant(Position pos, Square from, Square to) {
+        Optional<Square> target = pos.enPassantTarget();
+        if (target.isEmpty() || !target.get().equals(to)) {
+            return false;
+        }
+        int expectedRank = side() == Side.WHITE ? 5 : 2;
+        if (to.rank() != expectedRank) {
+            return false;
+        }
+        Piece victim = pos.at(new Square(to.file(), from.rank()));
+        return victim != null && victim.type() == PieceType.PAWN && victim.side() != side();
     }
 
     private void addForwardOrPromotion(List<Move> moves, Square from, Square to, int promotionRank, MoveKind kind) {
