@@ -1,0 +1,217 @@
+package com.oopteama.chess.progress;
+
+import com.oopteama.chess.io.DataPaths;
+import com.oopteama.chess.io.TextFiles;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.logging.Logger;
+
+/**
+ * 프로필별 학습 기록 파일 {@code profiles/<id>.txt}의 읽기·쓰기(기능 명세 6장 프로필 계약).
+ *
+ * <p>파일은 한 줄에 {@code 키=값} 하나다. 읽을 때:
+ * <ul>
+ *   <li>파일이 없거나 키가 빠지면 빈 집합·0으로 시작한다.</li>
+ *   <li>잘못된 줄은 파일명·행 번호를 로그에 남기고 건너뛰며, 나머지 유효한 키는 복구한다.</li>
+ *   <li>같은 키가 다시 나오면 처음 유효한 값을 쓴다.</li>
+ *   <li>이 단계가 해석하지 않는 키(퍼즐·오답 노트·즐겨찾기·AI 전적 등)는 그대로 보존해 다시 저장한다.</li>
+ * </ul>
+ * 쓰기는 {@link TextFiles#writeAtomic}으로 파일 전체를 원자적으로 바꾼다.
+ */
+public final class ProgressStore {
+
+    private static final Logger LOG = Logger.getLogger(ProgressStore.class.getName());
+
+    static final String LESSON_DONE = "lesson.done";
+    static final String QUIZ_CORRECT_UNIQUE = "quiz.correct.unique";
+    static final String QUIZ_ATTEMPTS = "quiz.attempts";
+    static final String QUIZ_CORRECT_COUNT = "quiz.correct.count";
+
+    private static final char KEY_VALUE_SEPARATOR = '=';
+    private static final String LIST_SEPARATOR = ",";
+    private static final String COMMENT_PREFIX = "#";
+
+    private final DataPaths paths;
+
+    /**
+     * 사용자 폴더의 기록 파일을 다루는 저장소를 만든다.
+     *
+     * @param paths 경로 계산기(테스트는 임시 폴더)
+     */
+    public ProgressStore(DataPaths paths) {
+        this.paths = Objects.requireNonNull(paths, "paths");
+    }
+
+    /**
+     * 프로필의 기록을 읽는다. 파일이 없거나 읽지 못하면 빈 기록을, 깨진 줄은 건너뛰고 나머지를 돌려준다.
+     *
+     * @param profileId 프로필 ID
+     * @return 리스너가 없는 새 기록
+     * @throws IllegalArgumentException 프로필 ID가 규칙에 맞지 않을 때
+     */
+    public Progress load(String profileId) {
+        Path file = paths.profileFile(profileId);
+        List<String> lines;
+        try {
+            lines = TextFiles.readLines(file);
+        } catch (IOException e) {
+            LOG.warning("%s: 기록 파일을 읽지 못해 빈 기록으로 시작합니다: %s".formatted(file, e));
+            return new Progress();
+        }
+        return new Parser(file.toString()).parse(lines);
+    }
+
+    /**
+     * 기록을 프로필의 파일에 원자적으로 저장한다. 폴더가 없으면 만든다.
+     *
+     * @param profileId 프로필 ID
+     * @param p         저장할 기록
+     * @throws IOException              쓰기에 실패했을 때(기존 파일은 그대로)
+     * @throws IllegalArgumentException 프로필 ID가 규칙에 맞지 않을 때
+     */
+    public void save(String profileId, Progress p) throws IOException {
+        Objects.requireNonNull(p, "p");
+        Path file = paths.profileFile(profileId);
+        TextFiles.writeAtomic(file, format(p));
+    }
+
+    /** 기록을 파일 내용으로 만든다. 빈 집합은 줄을 생략하고 횟수는 항상 쓴다. */
+    static String format(Progress p) {
+        StringBuilder sb = new StringBuilder();
+        appendList(sb, LESSON_DONE, p.lessonsDone());
+        appendList(sb, QUIZ_CORRECT_UNIQUE, p.termQuizCorrectIds());
+        AttemptStats quiz = p.termQuizAttempts();
+        appendLine(sb, QUIZ_ATTEMPTS, Integer.toString(quiz.attempted()));
+        appendLine(sb, QUIZ_CORRECT_COUNT, Integer.toString(quiz.solved()));
+        p.preserved().forEach((key, value) -> appendLine(sb, key, value));
+        return sb.toString();
+    }
+
+    private static void appendList(StringBuilder sb, String key, Set<String> ids) {
+        if (!ids.isEmpty()) {
+            appendLine(sb, key, String.join(LIST_SEPARATOR, ids));
+        }
+    }
+
+    private static void appendLine(StringBuilder sb, String key, String value) {
+        sb.append(key).append(KEY_VALUE_SEPARATOR).append(value).append('\n');
+    }
+
+    /** 한 파일을 읽는 동안의 상태. */
+    private static final class Parser {
+        /** 잘못된 횟수 표시. */
+        private static final int INVALID = -1;
+
+        private final String source;
+        /** 이미 유효한 값을 받은 키. */
+        private final Set<String> seen = new HashSet<>();
+        private final Set<String> lessons = new LinkedHashSet<>();
+        private final Set<String> correctIds = new LinkedHashSet<>();
+        private final Map<String, String> others = new LinkedHashMap<>();
+        private int attempts;
+        private int correctCount;
+        private int correctCountLine;
+
+        Parser(String source) {
+            this.source = source;
+        }
+
+        Progress parse(List<String> lines) {
+            for (int i = 0; i < lines.size(); i++) {
+                accept(lines.get(i).strip(), i + 1);
+            }
+            if (correctCount > attempts) {
+                warn(correctCountLine, "정답 수 %d가 시도 수 %d보다 많아 0으로 둡니다".formatted(correctCount, attempts));
+                correctCount = 0;
+            }
+            Progress p = new Progress();
+            p.restore(lessons, correctIds, new AttemptStats(attempts, correctCount), others);
+            return p;
+        }
+
+        private void accept(String line, int lineNo) {
+            if (line.isEmpty() || line.startsWith(COMMENT_PREFIX)) {
+                return;
+            }
+            int sep = line.indexOf(KEY_VALUE_SEPARATOR);
+            if (sep <= 0) {
+                warn(lineNo, "'키=값' 형식이 아닙니다: " + line);
+                return;
+            }
+            String key = line.substring(0, sep).strip();
+            String value = line.substring(sep + 1).strip();
+            if (seen.contains(key)) {
+                warn(lineNo, "중복 키 '%s'는 처음 값을 씁니다".formatted(key));
+                return;
+            }
+            boolean valid = switch (key) {
+                case LESSON_DONE -> readIds(value, lessons, lineNo);
+                case QUIZ_CORRECT_UNIQUE -> readIds(value, correctIds, lineNo);
+                case QUIZ_ATTEMPTS -> {
+                    int n = readCount(value, lineNo);
+                    if (n != INVALID) {
+                        attempts = n;
+                    }
+                    yield n != INVALID;
+                }
+                case QUIZ_CORRECT_COUNT -> {
+                    int n = readCount(value, lineNo);
+                    if (n != INVALID) {
+                        correctCount = n;
+                        correctCountLine = lineNo;
+                    }
+                    yield n != INVALID;
+                }
+                default -> {
+                    others.put(key, value);
+                    yield true;
+                }
+            };
+            if (valid) {
+                seen.add(key);
+            }
+        }
+
+        /** 쉼표 목록을 읽는다. 빈 항목은 무시하고 잘못된 ID는 경고 후 건너뛴다. */
+        private boolean readIds(String value, Set<String> into, int lineNo) {
+            for (String item : value.split(LIST_SEPARATOR, -1)) {
+                String id = item.strip();
+                if (id.isEmpty()) {
+                    continue;
+                }
+                try {
+                    into.add(Progress.checkId(id));
+                } catch (IllegalArgumentException e) {
+                    warn(lineNo, e.getMessage());
+                }
+            }
+            return true;
+        }
+
+        /** 0 이상의 정수를 읽는다. 잘못되면 경고하고 {@link #INVALID}. */
+        private int readCount(String value, int lineNo) {
+            try {
+                int n = Integer.parseInt(value);
+                if (n >= 0) {
+                    return n;
+                }
+            } catch (NumberFormatException ignored) {
+                // 아래에서 경고
+            }
+            warn(lineNo, "0 이상의 정수가 아닙니다: " + value);
+            return INVALID;
+        }
+
+        private void warn(int lineNo, String message) {
+            LOG.warning("%s:%d: %s".formatted(source, lineNo, message));
+        }
+    }
+}
