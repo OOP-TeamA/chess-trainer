@@ -35,7 +35,8 @@ class BlockTest {
         assertTrue(missing.getMessage().contains("glossary.txt:12"));
         assertTrue(missing.getMessage().contains("def"));
 
-        assertThrows(MalformedDataException.class, () -> b.require("empty"));
+        MalformedDataException empty = assertThrows(MalformedDataException.class, () -> b.require("empty"));
+        assertTrue(empty.getMessage().contains("없거나 비어 있습니다"), empty.getMessage());
     }
 
     @Test

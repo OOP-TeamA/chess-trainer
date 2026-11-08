@@ -52,7 +52,8 @@ public record Block(String type, String id, Map<String, String> values, String s
         String value = values.get(key);
         if (value == null || value.isEmpty()) {
             throw new MalformedDataException(
-                    "%s:%d: %s 블록에 필수 키 '%s'가 없습니다".formatted(source, line, label(), key), source, line);
+                    "%s:%d: %s 블록에 필수 키 '%s'가 없거나 비어 있습니다".formatted(source, line, label(), key),
+                    source, line);
         }
         return value;
     }
@@ -81,7 +82,10 @@ public record Block(String type, String id, Map<String, String> values, String s
     }
 
     /**
-     * {@code |}로 구분한 대안 값을 돌려준다(예: {@code move:d4f5|d4f3}). 항목의 앞뒤 공백은 제거하고 빈 항목은 버린다.
+     * {@code |}로 구분한 대안 값을 돌려준다. 항목의 앞뒤 공백은 제거하고 빈 항목은 버린다.
+     *
+     * <p>값 전체를 나누기만 하므로 접두어는 떼지 않는다. 예: {@code goal=move:d4f5|d4f3}이면
+     * {@code ["move:d4f5", "d4f3"]}을 돌려준다. 목표 형식의 {@code move:} 접두어는 content 쪽에서 처리한다.
      *
      * @param key 키
      * @return 불변 목록. 키가 없으면 빈 목록
