@@ -1,5 +1,6 @@
 package com.oopteama.chess.progress;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -7,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -32,6 +34,8 @@ public final class Progress {
     /** 이 단계가 아직 해석하지 않는 키(퍼즐·오답 노트 등). 다시 저장할 때 그대로 보존한다. */
     private final Map<String, String> preserved = new LinkedHashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
+    /** 읽지 못한 기록 파일에서 시작했으면 그 경로, 아니면 null. ProgressStore만 다룬다. */
+    private Path unreadableSource;
 
     /** 빈 기록. {@link ProgressStore}만 만든다. */
     Progress() {
@@ -136,6 +140,21 @@ public final class Progress {
     /** 해석하지 않고 보존 중인 키와 값(파일 순서). */
     Map<String, String> preserved() {
         return Collections.unmodifiableMap(preserved);
+    }
+
+    /** 읽지 못한 기록 파일에서 왔음을 표시한다. 저장 전에 원본을 보존해야 한다. */
+    void markUnreadableSource(Path file) {
+        unreadableSource = Objects.requireNonNull(file, "file");
+    }
+
+    /** 읽지 못한 원본 파일. 정상적으로 읽었거나 이미 보존했으면 비어 있다. */
+    Optional<Path> unreadableSource() {
+        return Optional.ofNullable(unreadableSource);
+    }
+
+    /** 원본 보존을 마쳤음을 표시한다. */
+    void clearUnreadableSource() {
+        unreadableSource = null;
     }
 
     /**

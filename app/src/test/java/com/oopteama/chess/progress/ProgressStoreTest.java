@@ -11,7 +11,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -110,6 +112,74 @@ class ProgressStoreTest {
         assertEquals(List.of("knight", "bishop"), List.copyOf(p.lessonsDone()));
         assertEquals(new AttemptStats(5, 2), p.termQuizAttempts());
         assertEquals(Set.of("q0001"), p.termQuizCorrectIds());
+    }
+
+    @Test
+    void ID가_전부_잘못된_목록은_무효라_뒤의_정상_값을_쓴다() throws IOException {
+        writeProfile("default", """
+                lesson.done=ro ok
+                lesson.done=knight
+                quiz.correct.unique=q 1, ,q\t2
+                quiz.correct.unique=q0001
+                """);
+        Progress p = store().load("default");
+        assertEquals(Set.of("knight"), p.lessonsDone());
+        assertEquals(Set.of("q0001"), p.termQuizCorrectIds());
+    }
+
+    @Test
+    void 명시적인_빈_목록은_유효한_값이라_뒤의_줄을_쓰지_않는다() throws IOException {
+        writeProfile("default", "lesson.done=\nlesson.done=knight\nquiz.correct.unique= , \nquiz.correct.unique=q0001\n");
+        Progress p = store().load("default");
+        assertTrue(p.lessonsDone().isEmpty());
+        assertTrue(p.termQuizCorrectIds().isEmpty());
+    }
+
+    @Test
+    void 읽지_못한_원본은_저장_전에_옆으로_옮겨_보존한다() throws IOException {
+        Path file = new DataPaths(tmp).profileFile("default");
+        Files.createDirectories(file.getParent());
+        byte[] original = "lesson.done=knight\nquiz.attempts=10\nquiz.correct.count=7\n# ÿ"
+                .getBytes(StandardCharsets.ISO_8859_1); // 0xFF는 잘못된 UTF-8 바이트
+        Files.write(file, original);
+
+        // 읽기만 하면 아무것도 바뀌지 않는다(순위 계산 등에서 여러 번 읽어도 안전).
+        assertEquals(0, store().load("default").score());
+        assertEquals(0, store().load("default").score());
+        assertEquals(List.of(file), listProfiles());
+
+        // 빈 기록에서 새 레슨을 완료하고 저장하면 원본은 보존 파일로 옮겨진다.
+        Progress p = store().load("default");
+        p.markLessonDone("rook");
+        store().save("default", p);
+        List<Path> files = listProfiles();
+        assertEquals(2, files.size());
+        Path backup = files.stream().filter(f -> !f.equals(file)).findFirst().orElseThrow();
+        assertTrue(backup.getFileName().toString().startsWith("default.txt" + ProgressStore.UNREADABLE_SUFFIX));
+        assertArrayEquals(original, Files.readAllBytes(backup));
+        assertEquals(Set.of("rook"), store().load("default").lessonsDone());
+
+        // 같은 기록을 다시 저장해도 보존 파일이 더 생기지 않는다.
+        p.markLessonDone("bishop");
+        store().save("default", p);
+        assertEquals(2, listProfiles().size());
+    }
+
+    @Test
+    void 읽지_못한_기록을_다른_프로필로_저장하면_원본을_옮기지_않는다() throws IOException {
+        Path file = new DataPaths(tmp).profileFile("default");
+        Files.createDirectories(file.getParent());
+        Files.write(file, new byte[] {(byte) 0xFF});
+        Progress p = store().load("default");
+        store().save("learner-2", p);
+        assertTrue(Files.exists(file));
+        assertEquals(2, listProfiles().size());
+    }
+
+    private List<Path> listProfiles() throws IOException {
+        try (Stream<Path> s = Files.list(new DataPaths(tmp).profileFile("default").getParent())) {
+            return s.sorted().toList();
+        }
     }
 
     @Test

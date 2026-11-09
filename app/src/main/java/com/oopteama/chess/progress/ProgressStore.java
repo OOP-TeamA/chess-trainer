@@ -4,7 +4,12 @@ import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.TextFiles;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -20,6 +25,8 @@ import java.util.logging.Logger;
  * <p>파일은 한 줄에 {@code 키=값} 하나다. 읽을 때:
  * <ul>
  *   <li>파일이 없거나 키가 빠지면 빈 집합·0으로 시작한다.</li>
+ *   <li>파일이 있지만 읽지 못하면(잘못된 UTF-8 등) 빈 기록으로 시작하되, 그 기록을 처음 저장할 때
+ *       원본을 {@code <id>.txt.unreadable-<시각>}으로 옮겨 덮어쓰지 않는다.</li>
  *   <li>잘못된 줄은 파일명·행 번호를 로그에 남기고 건너뛰며, 나머지 유효한 키는 복구한다.</li>
  *   <li>같은 키가 다시 나오면 처음 유효한 값을 쓴다.</li>
  *   <li>이 단계가 해석하지 않는 키(퍼즐·오답 노트·즐겨찾기·AI 전적 등)는 그대로 보존해 다시 저장한다.</li>
@@ -38,6 +45,9 @@ public final class ProgressStore {
     private static final char KEY_VALUE_SEPARATOR = '=';
     private static final String LIST_SEPARATOR = ",";
     private static final String COMMENT_PREFIX = "#";
+    /** 읽지 못한 원본을 보존할 때 파일명 뒤에 붙이는 접미사(뒤에 시각이 붙는다). */
+    static final String UNREADABLE_SUFFIX = ".unreadable-";
+    private static final DateTimeFormatter BACKUP_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
 
     private final DataPaths paths;
 
@@ -63,8 +73,13 @@ public final class ProgressStore {
         try {
             lines = TextFiles.readLines(file);
         } catch (IOException e) {
-            LOG.warning("%s: 기록 파일을 읽지 못해 빈 기록으로 시작합니다: %s".formatted(file, e));
-            return new Progress();
+            // 파일이 있지만 읽지 못함(잘못된 UTF-8 바이트, 권한 등). 빈 기록으로 시작하되
+            // 원본 위치를 기억해 두어, 첫 저장 때 원본을 옆으로 옮긴 뒤 쓴다(원본 보호).
+            LOG.warning("%s: 기록 파일을 읽지 못해 빈 기록으로 시작합니다. 저장 시 원본은 '%s…'로 보존합니다: %s"
+                    .formatted(file, UNREADABLE_SUFFIX, e));
+            Progress empty = new Progress();
+            empty.markUnreadableSource(file);
+            return empty;
         }
         return new Parser(file.toString()).parse(lines);
     }
@@ -72,15 +87,37 @@ public final class ProgressStore {
     /**
      * 기록을 프로필의 파일에 원자적으로 저장한다. 폴더가 없으면 만든다.
      *
+     * <p>{@link #load}가 읽지 못한 파일에서 온 기록을 같은 파일에 처음 저장할 때는, 원본을
+     * {@code <id>.txt.unreadable-<시각>}으로 먼저 옮겨 보존한다. 옮기지 못하면 저장하지 않고 예외를 던진다.
+     *
      * @param profileId 프로필 ID
      * @param p         저장할 기록
-     * @throws IOException              쓰기에 실패했을 때(기존 파일은 그대로)
+     * @throws IOException              원본 보존이나 쓰기에 실패했을 때(기존 파일은 그대로)
      * @throws IllegalArgumentException 프로필 ID가 규칙에 맞지 않을 때
      */
     public void save(String profileId, Progress p) throws IOException {
         Objects.requireNonNull(p, "p");
         Path file = paths.profileFile(profileId);
+        if (p.unreadableSource().filter(file::equals).isPresent()) {
+            preserveUnreadable(file);
+            p.clearUnreadableSource();
+        }
         TextFiles.writeAtomic(file, format(p));
+    }
+
+    /** 읽지 못한 원본을 같은 폴더의 보존 파일로 옮긴다. 원본이 이미 없으면 아무것도 하지 않는다. */
+    private static void preserveUnreadable(Path file) throws IOException {
+        if (Files.notExists(file, LinkOption.NOFOLLOW_LINKS)) {
+            return;
+        }
+        String stamp = LocalDateTime.now().format(BACKUP_STAMP);
+        Path backup = file.resolveSibling(file.getFileName() + UNREADABLE_SUFFIX + stamp);
+        try {
+            Files.move(file, backup);
+        } catch (IOException e) {
+            throw new IOException("%s: 읽지 못한 기록 원본을 보존하지 못해 저장하지 않습니다".formatted(file), e);
+        }
+        LOG.warning("%s: 읽지 못한 기록 원본을 %s로 옮겼습니다".formatted(file, backup.getFileName()));
     }
 
     /** 기록을 파일 내용으로 만든다. 빈 집합은 줄을 생략하고 횟수는 항상 쓴다. */
@@ -180,19 +217,31 @@ public final class ProgressStore {
             }
         }
 
-        /** 쉼표 목록을 읽는다. 빈 항목은 무시하고 잘못된 ID는 경고 후 건너뛴다. */
+        /**
+         * 쉼표 목록을 읽는다. 빈 항목은 무시하고 잘못된 ID는 경고 후 건너뛴다.
+         * 명시적인 빈 목록({@code 키=})은 유효한 값이지만, 항목이 있는데 모두 잘못되었으면
+         * 무효로 보고 같은 키의 다음 줄을 기다린다(중복 키는 처음 유효한 값).
+         */
         private boolean readIds(String value, Set<String> into, int lineNo) {
+            List<String> valid = new ArrayList<>();
+            boolean hadItem = false;
             for (String item : value.split(LIST_SEPARATOR, -1)) {
                 String id = item.strip();
                 if (id.isEmpty()) {
                     continue;
                 }
+                hadItem = true;
                 try {
-                    into.add(Progress.checkId(id));
+                    valid.add(Progress.checkId(id));
                 } catch (IllegalArgumentException e) {
                     warn(lineNo, e.getMessage());
                 }
             }
+            if (hadItem && valid.isEmpty()) {
+                warn(lineNo, "유효한 ID가 하나도 없어 이 줄을 건너뜁니다");
+                return false;
+            }
+            into.addAll(valid);
             return true;
         }
 
