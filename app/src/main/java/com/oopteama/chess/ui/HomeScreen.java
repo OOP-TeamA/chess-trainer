@@ -140,7 +140,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         title.setFont(
-                Theme.title(25)
+                Theme.title(Theme.FONT_28)
         );
 
         title.setForeground(Theme.TEXT);
@@ -151,7 +151,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         subtitle.setFont(
-                Theme.body(12, 0)
+                Theme.body(Theme.FONT_12, 0)
         );
 
         subtitle.setForeground(Theme.MUTED);
@@ -281,7 +281,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JLabel badge = new JLabel("이어서 하기");
 
         badge.setFont(
-                Theme.body(10, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         badge.setForeground(Theme.ACCENT);
@@ -292,7 +292,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         title.setFont(
-                Theme.title(17)
+                Theme.title(Theme.FONT_21)
         );
 
         title.setForeground(Theme.TEXT);
@@ -303,7 +303,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         description.setFont(
-                Theme.body(11, 0)
+                Theme.body(Theme.FONT_12, 0)
         );
 
         description.setForeground(Theme.MUTED);
@@ -378,7 +378,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JLabel title = new JLabel("주요 학습 메뉴");
 
         title.setFont(
-                Theme.title(19)
+                Theme.title(Theme.FONT_21)
         );
 
         title.setForeground(Theme.TEXT);
@@ -388,7 +388,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         subtitle.setFont(
-                Theme.body(11, 0)
+                Theme.body(Theme.FONT_12, 0)
         );
 
         subtitle.setForeground(Theme.MUTED);
@@ -560,7 +560,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JLabel titleLabel = new JLabel(title);
 
         titleLabel.setFont(
-                Theme.title(17)
+                Theme.title(Theme.FONT_21)
         );
 
         titleLabel.setForeground(foreground);
@@ -583,7 +583,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         descriptionLabel.setFont(
-                Theme.body(11, 0)
+                Theme.body(Theme.FONT_12, 0)
         );
 
         descriptionLabel.setForeground(foreground);
@@ -599,7 +599,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         button.setFont(
-                Theme.body(11, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         button.setForeground(foreground);
@@ -671,7 +671,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         button.setForeground(
@@ -703,7 +703,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         button.setForeground(Theme.TEXT);

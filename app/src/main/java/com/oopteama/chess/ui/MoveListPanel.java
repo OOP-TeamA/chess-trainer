@@ -132,7 +132,7 @@ public class MoveListPanel extends JPanel {
         JLabel title = new JLabel("수순 목록");
 
         title.setFont(
-                Theme.title(18)
+                Theme.title(Theme.FONT_21)
         );
 
         title.setForeground(
@@ -427,7 +427,7 @@ public class MoveListPanel extends JPanel {
             );
 
             emptyLabel.setFont(
-                    Theme.body(12, 0)
+                    Theme.body(Theme.FONT_12, 0)
             );
 
             emptyLabel.setForeground(
@@ -601,7 +601,7 @@ public class MoveListPanel extends JPanel {
             );
 
             questionLabel.setFont(
-                    Theme.title(18)
+                    Theme.title(Theme.FONT_21)
             );
 
             questionLabel.setForeground(
@@ -717,7 +717,7 @@ public class MoveListPanel extends JPanel {
         );
 
         label.setFont(
-                Theme.body(11, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         label.setForeground(
@@ -740,7 +740,7 @@ public class MoveListPanel extends JPanel {
         JButton button = new JButton(san);
 
         button.setFont(
-                Theme.body(13, Font.BOLD)
+                Theme.body(Theme.FONT_14, Font.BOLD)
         );
 
         button.setHorizontalAlignment(
@@ -940,7 +940,7 @@ public class MoveListPanel extends JPanel {
             );
 
             numberLabel.setFont(
-                    Theme.body(12, 1)
+                    Theme.body(Theme.FONT_12, 1)
             );
 
             numberLabel.setForeground(

@@ -186,7 +186,7 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
         badge.setFont(
-                Theme.body(11, Font.BOLD)
+                Theme.body(Theme.FONT_12, Font.BOLD)
         );
 
         badge.setForeground(
@@ -246,7 +246,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel heading = new JLabel("대국 정보");
 
         heading.setFont(
-                Theme.title(21)
+                Theme.title(Theme.FONT_21)
         );
 
         heading.setForeground(
@@ -277,7 +277,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel turnHeading = new JLabel("현재 차례");
 
         turnHeading.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         turnHeading.setForeground(
@@ -290,7 +290,7 @@ public final class LocalGameScreen extends BoardScreen {
         turnLabel = new JLabel();
 
         turnLabel.setFont(
-                Theme.title(25)
+                Theme.title(Theme.FONT_28)
         );
 
         turnLabel.setForeground(
@@ -304,7 +304,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel countHeading = new JLabel("대국 진행");
 
         countHeading.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         countHeading.setForeground(
@@ -317,7 +317,7 @@ public final class LocalGameScreen extends BoardScreen {
         moveCountLabel = new JLabel();
 
         moveCountLabel.setFont(
-                Theme.body(16, 1)
+                Theme.body(Theme.FONT_16, 1)
         );
 
         moveCountLabel.setForeground(
@@ -331,7 +331,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel statusHeading = new JLabel("상태");
 
         statusHeading.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         statusHeading.setForeground(
@@ -344,7 +344,7 @@ public final class LocalGameScreen extends BoardScreen {
         statusLabel = new JLabel();
 
         statusLabel.setFont(
-                Theme.body(14, 1)
+                Theme.body(Theme.FONT_14, 1)
         );
 
         statusLabel.setForeground(
@@ -358,7 +358,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel resultHeading = new JLabel("대국 결과");
 
         resultHeading.setFont(
-                Theme.body(12, 1)
+                Theme.body(Theme.FONT_12, 1)
         );
 
         resultHeading.setForeground(
@@ -371,7 +371,7 @@ public final class LocalGameScreen extends BoardScreen {
         resultLabel = new JLabel();
 
         resultLabel.setFont(
-                Theme.body(16, 1)
+                Theme.body(Theme.FONT_16, 1)
         );
 
         resultLabel.setForeground(
@@ -388,7 +388,7 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
         guideLabel.setFont(
-                Theme.body(11, 0)
+                Theme.body(Theme.FONT_12, 0)
         );
 
         guideLabel.setForeground(
@@ -531,7 +531,7 @@ public final class LocalGameScreen extends BoardScreen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(13, Font.BOLD)
+                Theme.body(Theme.FONT_14, Font.BOLD)
         );
 
         button.setForeground(
@@ -565,7 +565,7 @@ public final class LocalGameScreen extends BoardScreen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(12, Font.BOLD)
+                Theme.body(Theme.FONT_12, Font.BOLD)
         );
 
         button.setForeground(
@@ -604,7 +604,7 @@ public final class LocalGameScreen extends BoardScreen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(12, Font.BOLD)
+                Theme.body(Theme.FONT_12, Font.BOLD)
         );
 
         button.setForeground(

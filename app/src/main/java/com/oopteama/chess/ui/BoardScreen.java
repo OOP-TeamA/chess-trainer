@@ -126,7 +126,7 @@ public abstract class BoardScreen extends JPanel implements Screen {
         titleLabel = new JLabel();
 
         titleLabel.setFont(
-                Theme.title(28)
+                Theme.title(Theme.FONT_28)
         );
 
         titleLabel.setForeground(
@@ -137,7 +137,7 @@ public abstract class BoardScreen extends JPanel implements Screen {
         subtitleLabel = new JLabel();
 
         subtitleLabel.setFont(
-                Theme.body(14, Font.PLAIN)
+                Theme.body(Theme.FONT_14, Font.PLAIN)
         );
 
         subtitleLabel.setForeground(

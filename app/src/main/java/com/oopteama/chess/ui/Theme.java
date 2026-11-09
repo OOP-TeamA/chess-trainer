@@ -13,6 +13,7 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.plaf.ColorUIResource;
 import javax.swing.plaf.FontUIResource;
+import javax.swing.plaf.metal.DefaultMetalTheme;
 import javax.swing.plaf.metal.MetalLookAndFeel;
 
 /**
@@ -22,32 +23,39 @@ import javax.swing.plaf.metal.MetalLookAndFeel;
  */
 public final class Theme {
 
+    public static final int FONT_12 = 12;
+    public static final int FONT_14 = 14;
+    public static final int FONT_16 = 16;
+    public static final int FONT_21 = 21;
+    public static final int FONT_28 = 28;
+    public static final int FONT_36 = 36;
+
     private Theme() {
         // 인스턴스 생성 방지
     }
 
     // 기본 화면과 사이드바
-    public static final Color WINDOW = new Color(0x291D14);
-    public static final Color SIDEBAR = new Color(0x1F140E);
+    public static final Color WINDOW = new Color(0x1E1915);
+    public static final Color SIDEBAR = WINDOW;
 
     // 카드와 패널
-    public static final Color PANEL = new Color(0x2E2118);
-    public static final Color RAISED = new Color(0x483424);
-    public static final Color LINE = new Color(0x4A3626);
+    public static final Color PANEL = new Color(0x26201A);
+    public static final Color RAISED = new Color(0x30281F);
+    public static final Color LINE = new Color(0x42372C);
 
     // 글자 색상
-    public static final Color TEXT = new Color(0xF4E9D8);
-    public static final Color MUTED = new Color(0xB8A896);
+    public static final Color TEXT = new Color(0xEFE6D6);
+    public static final Color MUTED = new Color(0xAE9F88);
 
     // 체스판 색상
-    public static final Color SQ_LIGHT = new Color(0xF2DBB9);
-    public static final Color SQ_DARK = new Color(0xAC794C);
+    public static final Color SQ_LIGHT = new Color(0xE8D3A9);
+    public static final Color SQ_DARK = new Color(0xA3714A);
 
     // 강조 및 상태 색상
-    public static final Color ACCENT = new Color(0xF5C353);
+    public static final Color ACCENT = new Color(0xD9AE57);
     public static final Color OK = new Color(0x8FB98A);
-    public static final Color BAD = new Color(0xE68175);
-    public static final Color INFO = new Color(0x93B8D5);
+    public static final Color BAD = new Color(0xE08A7C);
+    public static final Color INFO = new Color(0x93A8BF);
 
     // 글꼴 리소스 경로
     private static final String BODY_FONT_RESOURCE =
@@ -58,15 +66,63 @@ public final class Theme {
 
     private static final Font BODY_FONT = loadFont(
             BODY_FONT_RESOURCE,
-            new Font("Malgun Gothic", Font.PLAIN, 14)
+            new Font("Malgun Gothic", Font.PLAIN, FONT_14)
     );
 
     private static final Font TITLE_FONT = loadFont(
             TITLE_FONT_RESOURCE,
-            new Font("Malgun Gothic", Font.BOLD, 18)
+            new Font("Malgun Gothic", Font.BOLD, FONT_21)
     );
 
     private static boolean installed;
+
+    private static final class ChessMetalTheme extends DefaultMetalTheme {
+
+        @Override
+        public String getName() {
+            return "Chess Trainer";
+        }
+
+        @Override
+        protected ColorUIResource getPrimary1() {
+            return new ColorUIResource(LINE);
+        }
+
+        @Override
+        protected ColorUIResource getPrimary2() {
+            return new ColorUIResource(SQ_DARK);
+        }
+
+        @Override
+        protected ColorUIResource getPrimary3() {
+            return new ColorUIResource(ACCENT);
+        }
+
+        @Override
+        protected ColorUIResource getSecondary1() {
+            return new ColorUIResource(WINDOW);
+        }
+
+        @Override
+        protected ColorUIResource getSecondary2() {
+            return new ColorUIResource(PANEL);
+        }
+
+        @Override
+        protected ColorUIResource getSecondary3() {
+            return new ColorUIResource(RAISED);
+        }
+
+        @Override
+        protected ColorUIResource getWhite() {
+            return new ColorUIResource(TEXT);
+        }
+
+        @Override
+        protected ColorUIResource getBlack() {
+            return new ColorUIResource(WINDOW);
+        }
+    }
 
     /**
      * 본문 글꼴을 반환한다.
@@ -104,6 +160,7 @@ public final class Theme {
         }
 
         try {
+            MetalLookAndFeel.setCurrentTheme(new ChessMetalTheme());
             UIManager.setLookAndFeel(new MetalLookAndFeel());
 
         } catch (UnsupportedLookAndFeelException e) {
@@ -127,10 +184,10 @@ public final class Theme {
         ColorUIResource accent = new ColorUIResource(ACCENT);
 
         FontUIResource normalFont =
-                new FontUIResource(body(14, Font.PLAIN));
+                new FontUIResource(body(FONT_14, Font.PLAIN));
 
         FontUIResource boldFont =
-                new FontUIResource(body(14, Font.BOLD));
+                new FontUIResource(body(FONT_14, Font.BOLD));
 
         // 전체 컴포넌트 기본값
         UIManager.put("control", panel);

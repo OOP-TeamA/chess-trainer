@@ -16,9 +16,10 @@ import java.util.Objects;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
+import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToggleButton;
 import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
@@ -35,6 +36,8 @@ public final class NavRail extends JPanel {
     private final Map<String, NavItemButton> menuButtons =
             new LinkedHashMap<>();
 
+    private final ButtonGroup buttonGroup = new ButtonGroup();
+
     // 현재 선택된 메뉴
     private String activeKey = "home";
 
@@ -48,8 +51,8 @@ public final class NavRail extends JPanel {
         setBackground(Theme.SIDEBAR);
         setOpaque(true);
 
-        setPreferredSize(new Dimension(190, 0));
-        setMinimumSize(new Dimension(175, 0));
+        setPreferredSize(new Dimension(76, 0));
+        setMinimumSize(new Dimension(76, 0));
 
         setBorder(
                 BorderFactory.createCompoundBorder(
@@ -57,7 +60,7 @@ public final class NavRail extends JPanel {
                                 0, 0, 0, 1,
                                 Theme.LINE
                         ),
-                        new EmptyBorder(12, 10, 12, 10)
+                                new EmptyBorder(12, 6, 12, 6)
                 )
         );
 
@@ -82,8 +85,8 @@ public final class NavRail extends JPanel {
 
         JPanel header = new JPanel(
                 new FlowLayout(
-                        FlowLayout.LEFT,
-                        9,
+                        FlowLayout.CENTER,
+                        0,
                         8
                 )
         );
@@ -98,50 +101,7 @@ public final class NavRail extends JPanel {
         // 프로필 아이콘
         AvatarLabel avatar = new AvatarLabel();
 
-        // 사용자 정보
-        JPanel userInfo = new JPanel();
-
-        userInfo.setLayout(
-                new BoxLayout(
-                        userInfo,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        userInfo.setBackground(Theme.SIDEBAR);
-        userInfo.setOpaque(true);
-
-        JLabel nameLabel = new JLabel("체스러너");
-
-        nameLabel.setFont(
-                Theme.body(14, 1)
-        );
-
-        nameLabel.setForeground(Theme.TEXT);
-
-        JLabel levelLabel = new JLabel("Lv.12");
-
-        levelLabel.setFont(
-                Theme.body(10, 1)
-        );
-
-        levelLabel.setForeground(Theme.ACCENT);
-        levelLabel.setOpaque(true);
-        levelLabel.setBackground(Theme.RAISED);
-
-        levelLabel.setBorder(
-                new EmptyBorder(2, 7, 2, 7)
-        );
-
-        nameLabel.setAlignmentX(LEFT_ALIGNMENT);
-        levelLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-        userInfo.add(nameLabel);
-        userInfo.add(Box.createVerticalStrut(5));
-        userInfo.add(levelLabel);
-
         header.add(avatar);
-        header.add(userInfo);
 
         return header;
     }
@@ -290,8 +250,11 @@ public final class NavRail extends JPanel {
 
         button.addActionListener(e -> {
             navigator.go(route);
+            // 이동이 취소된 경우 실제 활성 메뉴로 선택을 되돌린다.
+            setActive(activeKey);
         });
 
+        buttonGroup.add(button);
         menuButtons.put(key, button);
 
         button.setAlignmentX(LEFT_ALIGNMENT);
@@ -392,7 +355,7 @@ public final class NavRail extends JPanel {
     // 메뉴 버튼 디자인
     // =========================================
 
-    private static final class NavItemButton extends JButton {
+    private static final class NavItemButton extends JToggleButton {
 
         private boolean selected;
         private boolean hovered;
@@ -400,17 +363,15 @@ public final class NavRail extends JPanel {
 
         NavItemButton(String icon, String text) {
 
-            super(icon + "     " + text);
+            super(icon);
 
             setFont(
-                    Theme.body(13, 1)
+                    Theme.body(Theme.FONT_21, 1)
             );
 
             setForeground(Theme.MUTED);
 
-            setHorizontalAlignment(
-                    SwingConstants.LEFT
-            );
+            setHorizontalAlignment(SwingConstants.CENTER);
 
             setIconTextGap(8);
 
@@ -419,6 +380,8 @@ public final class NavRail extends JPanel {
 
             setContentAreaFilled(false);
             setOpaque(false);
+            setToolTipText(text);
+            getAccessibleContext().setAccessibleName(text);
 
             setCursor(
                     java.awt.Cursor.getPredefinedCursor(
@@ -428,20 +391,20 @@ public final class NavRail extends JPanel {
 
             setBorder(
                     new EmptyBorder(
-                            10, 13, 10, 8
+                            8, 8, 8, 8
                     )
             );
 
             setPreferredSize(
-                    new Dimension(165, 39)
+                    new Dimension(48, 48)
             );
 
             setMaximumSize(
-                    new Dimension(Integer.MAX_VALUE, 39)
+                    new Dimension(48, 48)
             );
 
             setMinimumSize(
-                    new Dimension(145, 39)
+                    new Dimension(48, 48)
             );
 
             // 마우스 호버 효과
@@ -470,6 +433,7 @@ public final class NavRail extends JPanel {
         void setMenuSelected(boolean selected) {
 
             this.selected = selected;
+            setSelected(selected);
 
             setForeground(
                     selected
@@ -537,7 +501,7 @@ public final class NavRail extends JPanel {
             super("♞", SwingConstants.CENTER);
 
             setFont(
-                    Theme.title(23)
+                    Theme.title(Theme.FONT_21)
             );
 
             setForeground(Theme.ACCENT);
