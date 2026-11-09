@@ -1,6 +1,5 @@
-package com.oopteama.chess.demo;
+package com.oopteama.chess.proto.front2;
 
-import com.oopteama.chess.ui.*;
 import javax.swing.*;
 import java.awt.*;
 

@@ -8,11 +8,11 @@ if errorlevel 1 (
     exit /b 1
 )
 if not exist build mkdir build
-javac -encoding UTF-8 -d build src\com\oopteama\chess\ui\*.java src\com\oopteama\chess\demo\*.java
+javac -encoding UTF-8 -d build src\com\oopteama\chess\proto\front2\*.java
 if errorlevel 1 (
     echo Compilation failed.
     pause
     exit /b 1
 )
-java -cp build com.oopteama.chess.demo.Front2Demo
+java -cp build com.oopteama.chess.proto.front2.Front2Demo
 if errorlevel 1 pause

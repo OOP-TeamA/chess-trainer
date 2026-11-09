@@ -1,4 +1,4 @@
-package com.oopteama.chess.ui;
+package com.oopteama.chess.proto.front2;
 
 import java.util.*;
 
