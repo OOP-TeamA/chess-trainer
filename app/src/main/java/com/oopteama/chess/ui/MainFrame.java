@@ -370,7 +370,7 @@ public final class MainFrame extends JFrame implements Navigator {
                 SwingConstants.CENTER
             );
 
-            label.setFont(Theme.title(Theme.FONT_28));
+            label.setFont(Theme.title(28));
 
             label.setForeground(Theme.TEXT);
 

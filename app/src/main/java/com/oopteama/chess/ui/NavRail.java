@@ -1,202 +1,585 @@
 package com.oopteama.chess.ui;
 
-import java.awt.Component;
-import java.awt.Cursor;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.util.HashMap;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.ButtonGroup;
-import javax.swing.JToggleButton;
+import javax.swing.JSeparator;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 
 import com.oopteama.chess.nav.Navigator;
 import com.oopteama.chess.nav.Route;
-
 
 public final class NavRail extends JPanel {
 
     private final Navigator navigator;
 
     // 메뉴 버튼 관리
-    private final Map<Class<?>, JToggleButton> buttons = new HashMap<>();
+    private final Map<String, NavItemButton> menuButtons =
+            new LinkedHashMap<>();
 
-    private final ButtonGroup buttonGroup = new ButtonGroup();
+    // 현재 선택된 메뉴
+    private String activeKey = "home";
 
-    private Route activeRoute;
 
-
-    // 생성자
     public NavRail(Navigator navigator) {
 
         this.navigator = Objects.requireNonNull(navigator);
 
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setLayout(new BorderLayout());
 
-        setBackground(Theme.WINDOW);
+        setBackground(Theme.SIDEBAR);
+        setOpaque(true);
 
-        setBorder(new EmptyBorder(24, 12, 24, 12));
+        setPreferredSize(new Dimension(190, 0));
+        setMinimumSize(new Dimension(175, 0));
 
-        setPreferredSize(new Dimension(76, 0));
+        setBorder(
+                BorderFactory.createCompoundBorder(
+                        new MatteBorder(
+                                0, 0, 0, 1,
+                                Theme.LINE
+                        ),
+                        new EmptyBorder(12, 10, 12, 10)
+                )
+        );
 
+        // 상단 프로필
+        add(createHeader(), BorderLayout.NORTH);
 
-        // 프로필 영역
-        addProfile();
+        // 중앙 메뉴
+        add(createMainMenu(), BorderLayout.CENTER);
 
-        add(Box.createVerticalStrut(24));
+        // 하단 메뉴
+        add(createFooterMenu(), BorderLayout.SOUTH);
 
-
-        // 주요 메뉴
-        addMenuButton("⌂", "홈", new Route.Home());
-
-        addMenuButton("♘", "룰학습", new Route.Lessons());
-
-        addMenuButton("✦", "체스 퀴즈", new Route.Puzzles());
-
-        addMenuButton("♛", "명국 기보", new Route.Library());
-
-        addMenuButton("♞", "AI 대전", new Route.NewGame());
-
-        addMenuButton("♧", "용어집", new Route.Glossary(""));
-
-
-        // 아래쪽 메뉴를 하단으로 밀어내기
-        add(Box.createVerticalGlue());
-
-        addMenuButton("▥", "학습 기록", new Route.LearningRecord());
-
-        addMenuButton("⚙", "설정", new Route.Prefs());
-
-
-        // 처음 선택된 메뉴는 홈
         setActiveRoute(new Route.Home());
     }
 
 
-    // 프로필 영역
-    private void addProfile() {
+    // =========================================
+    // 상단 프로필 영역
+    // =========================================
 
-        JLabel mark = new JLabel("♞", SwingConstants.CENTER);
-        mark.setFont(Theme.title(Theme.FONT_21));
-        mark.setForeground(Theme.ACCENT);
-        mark.setAlignmentX(Component.CENTER_ALIGNMENT);
-        mark.setToolTipText("Chess Trainer");
-        add(mark);
+    private JPanel createHeader() {
+
+        JPanel header = new JPanel(
+                new FlowLayout(
+                        FlowLayout.LEFT,
+                        9,
+                        8
+                )
+        );
+
+        header.setBackground(Theme.SIDEBAR);
+        header.setOpaque(true);
+
+        header.setBorder(
+                new EmptyBorder(0, 2, 17, 2)
+        );
+
+        // 프로필 아이콘
+        AvatarLabel avatar = new AvatarLabel();
+
+        // 사용자 정보
+        JPanel userInfo = new JPanel();
+
+        userInfo.setLayout(
+                new BoxLayout(
+                        userInfo,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        userInfo.setBackground(Theme.SIDEBAR);
+        userInfo.setOpaque(true);
+
+        JLabel nameLabel = new JLabel("체스러너");
+
+        nameLabel.setFont(
+                Theme.body(14, 1)
+        );
+
+        nameLabel.setForeground(Theme.TEXT);
+
+        JLabel levelLabel = new JLabel("Lv.12");
+
+        levelLabel.setFont(
+                Theme.body(10, 1)
+        );
+
+        levelLabel.setForeground(Theme.ACCENT);
+        levelLabel.setOpaque(true);
+        levelLabel.setBackground(Theme.RAISED);
+
+        levelLabel.setBorder(
+                new EmptyBorder(2, 7, 2, 7)
+        );
+
+        nameLabel.setAlignmentX(LEFT_ALIGNMENT);
+        levelLabel.setAlignmentX(LEFT_ALIGNMENT);
+
+        userInfo.add(nameLabel);
+        userInfo.add(Box.createVerticalStrut(5));
+        userInfo.add(levelLabel);
+
+        header.add(avatar);
+        header.add(userInfo);
+
+        return header;
     }
 
 
+    // =========================================
+    // 중앙 메뉴 영역
+    // =========================================
+
+    private JPanel createMainMenu() {
+
+        JPanel menu = new JPanel();
+
+        menu.setLayout(
+                new BoxLayout(
+                        menu,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        menu.setBackground(Theme.SIDEBAR);
+        menu.setOpaque(true);
+
+        addMenuItem(
+                menu,
+                "home",
+                "⌂",
+                "홈",
+                new Route.Home()
+        );
+
+        addMenuItem(
+                menu,
+                "lessons",
+                "▤",
+                "룰학습",
+                new Route.Lessons()
+        );
+
+        addMenuItem(
+                menu,
+                "quiz",
+                "♟",
+                "체스 퀴즈",
+                new Route.Puzzles()
+        );
+
+        addMenuItem(
+                menu,
+                "library",
+                "♛",
+                "명국 기보",
+                new Route.Library()
+        );
+
+        addMenuItem(
+                menu,
+                "ai",
+                "♞",
+                "AI 대전",
+                new Route.NewGame()
+        );
+
+        addMenuItem(
+                menu,
+                "glossary",
+                "◇",
+                "용어집",
+                new Route.Glossary("")
+        );
+
+        menu.add(Box.createVerticalGlue());
+
+        return menu;
+    }
+
+
+    // =========================================
+    // 하단 메뉴 영역
+    // =========================================
+
+    private JPanel createFooterMenu() {
+
+        JPanel footer = new JPanel();
+
+        footer.setLayout(
+                new BoxLayout(
+                        footer,
+                        BoxLayout.Y_AXIS
+                )
+        );
+
+        footer.setBackground(Theme.SIDEBAR);
+        footer.setOpaque(true);
+
+        JSeparator separator = new JSeparator(
+                SwingConstants.HORIZONTAL
+        );
+
+        separator.setForeground(Theme.LINE);
+        separator.setBackground(Theme.LINE);
+
+        separator.setMaximumSize(
+                new Dimension(Integer.MAX_VALUE, 1)
+        );
+
+        footer.add(separator);
+        footer.add(Box.createVerticalStrut(12));
+
+        addMenuItem(
+                footer,
+                "learningRecord",
+                "▥",
+                "학습 기록",
+                new Route.LearningRecord()
+        );
+
+        addMenuItem(
+                footer,
+                "prefs",
+                "⚙",
+                "설정",
+                new Route.Prefs()
+        );
+
+        return footer;
+    }
+
+
+    // =========================================
     // 메뉴 버튼 생성
-    private void addMenuButton(String icon, String label, Route route) {
+    // =========================================
 
-        JToggleButton button = new JToggleButton(icon);
+    private void addMenuItem(
+            JPanel parent,
+            String key,
+            String icon,
+            String text,
+            Route route
+    ) {
 
-        button.setFont(Theme.body(Theme.FONT_21, Font.PLAIN));
-
-        button.setForeground(Theme.TEXT);
-
-        button.setBackground(Theme.WINDOW);
-
-        button.setFocusPainted(false);
-
-        button.setBorderPainted(false);
-
-        button.setContentAreaFilled(true);
-
-        button.setOpaque(true);
-
-        button.setHorizontalAlignment(SwingConstants.CENTER);
-
-        button.setBorder(new EmptyBorder(10, 8, 10, 8));
-
-        button.setPreferredSize(new Dimension(48, 48));
-        button.setMaximumSize(new Dimension(48, 48));
-
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        button.setCursor(
-            new Cursor(Cursor.HAND_CURSOR)
+        NavItemButton button = new NavItemButton(
+                icon,
+                text
         );
 
-        button.addItemListener(e ->
-            button.setBackground(button.isSelected() ? Theme.RAISED : Theme.WINDOW)
-        );
-
-        button.setToolTipText(label);
-        button.getAccessibleContext().setAccessibleName(label);
-
-
-        // 버튼 클릭 시 화면 이동
         button.addActionListener(e -> {
-
-            // 실제 화면 이동과 선택 상태 변경은 MainFrame에서 처리
             navigator.go(route);
-
-            // 이동이 확인 대화상자에서 취소되면 현재 선택을 복원
-            setActiveRoute(activeRoute);
-
         });
 
+        menuButtons.put(key, button);
 
-        // 메뉴 버튼 등록
-        buttonGroup.add(button);
-        buttons.put(route.getClass(), button);
+        button.setAlignmentX(LEFT_ALIGNMENT);
 
-        add(button);
+        parent.add(button);
+        parent.add(Box.createVerticalStrut(5));
     }
 
 
-    // 선택된 메뉴 표시
-    private void setActive(JToggleButton button) {
-        if (button == null) {
-            buttonGroup.clearSelection();
-            return;
-        }
+    // =========================================
+    // 현재 화면에 해당하는 메뉴 선택
+    // =========================================
 
-        button.setSelected(true);
-    }
-
-
-    // 현재 화면에 맞는 메뉴 선택
     public void setActiveRoute(Route route) {
 
         Objects.requireNonNull(route);
 
-        activeRoute = route;
+        String key = null;
 
-        Class<?> menuType = route.getClass();
+        if (route instanceof Route.Home) {
+
+            key = "home";
+
+        } else if (
+                route instanceof Route.Lessons ||
+                route instanceof Route.Lesson
+        ) {
+
+            key = "lessons";
+
+        } else if (
+                route instanceof Route.Puzzles ||
+                route instanceof Route.Puzzle ||
+                route instanceof Route.TermQuiz ||
+                route instanceof Route.WrongNotes
+        ) {
+
+            key = "quiz";
+
+        } else if (
+                route instanceof Route.Library ||
+                route instanceof Route.Replay
+        ) {
+
+            key = "library";
+
+        } else if (
+                route instanceof Route.NewGame ||
+                route instanceof Route.AiGame
+        ) {
+
+            key = "ai";
+
+        } else if (route instanceof Route.Glossary) {
+
+            key = "glossary";
+
+        } else if (
+                route instanceof Route.LearningRecord ||
+                route instanceof Route.Profiles ||
+                route instanceof Route.Ranking ||
+                route instanceof Route.Favorites
+        ) {
+
+            key = "learningRecord";
+
+        } else if (route instanceof Route.Prefs) {
+
+            key = "prefs";
+        }
+
+        setActive(key);
+    }
 
 
-        // 하위 화면에서도 상위 메뉴가 선택되도록 처리
-        if (route instanceof Route.Lesson) {
+    // =========================================
+    // 메뉴 선택 상태 갱신
+    // =========================================
 
-            menuType = Route.Lessons.class;
+    private void setActive(String key) {
 
-        } else if (route instanceof Route.Puzzle) {
+        activeKey = key;
 
-            menuType = Route.Puzzles.class;
+        for (Map.Entry<String, NavItemButton> entry
+                : menuButtons.entrySet()) {
 
-        } else if (route instanceof Route.AiGame) {
+            boolean selected =
+                    entry.getKey().equals(activeKey);
 
-            menuType = Route.NewGame.class;
+            entry.getValue().setMenuSelected(selected);
+        }
 
-        } else if (route instanceof Route.Replay) {
+        repaint();
+    }
 
-            menuType = Route.Library.class;
 
+    // =========================================
+    // 메뉴 버튼 디자인
+    // =========================================
+
+    private static final class NavItemButton extends JButton {
+
+        private boolean selected;
+        private boolean hovered;
+
+
+        NavItemButton(String icon, String text) {
+
+            super(icon + "     " + text);
+
+            setFont(
+                    Theme.body(13, 1)
+            );
+
+            setForeground(Theme.MUTED);
+
+            setHorizontalAlignment(
+                    SwingConstants.LEFT
+            );
+
+            setIconTextGap(8);
+
+            setFocusPainted(false);
+            setBorderPainted(false);
+
+            setContentAreaFilled(false);
+            setOpaque(false);
+
+            setCursor(
+                    java.awt.Cursor.getPredefinedCursor(
+                            java.awt.Cursor.HAND_CURSOR
+                    )
+            );
+
+            setBorder(
+                    new EmptyBorder(
+                            10, 13, 10, 8
+                    )
+            );
+
+            setPreferredSize(
+                    new Dimension(165, 39)
+            );
+
+            setMaximumSize(
+                    new Dimension(Integer.MAX_VALUE, 39)
+            );
+
+            setMinimumSize(
+                    new Dimension(145, 39)
+            );
+
+            // 마우스 호버 효과
+            addMouseListener(
+                    new MouseAdapter() {
+
+                        @Override
+                        public void mouseEntered(MouseEvent e) {
+
+                            hovered = true;
+                            repaint();
+                        }
+
+                        @Override
+                        public void mouseExited(MouseEvent e) {
+
+                            hovered = false;
+                            repaint();
+                        }
+                    }
+            );
         }
 
 
-        // 해당 메뉴 버튼 찾기
-        JToggleButton button = buttons.get(menuType);
+        // 선택 상태 변경
+        void setMenuSelected(boolean selected) {
 
-        // 해당하는 메뉴가 없으면 선택 해제
-        setActive(button);
+            this.selected = selected;
+
+            setForeground(
+                    selected
+                            ? Theme.TEXT
+                            : Theme.MUTED
+            );
+
+            repaint();
+        }
+
+
+        @Override
+        protected void paintComponent(Graphics g) {
+
+            Graphics2D g2 = (Graphics2D) g.create();
+
+            g2.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON
+            );
+
+            if (selected) {
+
+                g2.setColor(Theme.RAISED);
+
+            } else if (hovered) {
+
+                g2.setColor(
+                        new Color(
+                                Theme.RAISED.getRed(),
+                                Theme.RAISED.getGreen(),
+                                Theme.RAISED.getBlue(),
+                                120
+                        )
+                );
+            }
+
+            if (selected || hovered) {
+
+                g2.fillRoundRect(
+                        0,
+                        0,
+                        getWidth(),
+                        getHeight(),
+                        10,
+                        10
+                );
+            }
+
+            g2.dispose();
+
+            super.paintComponent(g);
+        }
+    }
+
+
+    // =========================================
+    // 프로필 아이콘 디자인
+    // =========================================
+
+    private static final class AvatarLabel extends JLabel {
+
+        AvatarLabel() {
+
+            super("♞", SwingConstants.CENTER);
+
+            setFont(
+                    Theme.title(23)
+            );
+
+            setForeground(Theme.ACCENT);
+
+            setPreferredSize(
+                    new Dimension(42, 42)
+            );
+
+            setMinimumSize(
+                    new Dimension(42, 42)
+            );
+
+            setMaximumSize(
+                    new Dimension(42, 42)
+            );
+
+            setOpaque(false);
+        }
+
+
+        @Override
+        protected void paintComponent(Graphics g) {
+
+            Graphics2D g2 = (Graphics2D) g.create();
+
+            g2.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON
+            );
+
+            g2.setColor(Theme.RAISED);
+
+            g2.fillOval(
+                    1,
+                    1,
+                    getWidth() - 2,
+                    getHeight() - 2
+            );
+
+            g2.dispose();
+
+            super.paintComponent(g);
+        }
     }
 }
