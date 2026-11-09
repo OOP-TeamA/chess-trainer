@@ -1,0 +1,223 @@
+# 용어집 (프3 정혁) — 10주차 목표 20개
+# 형식: 기능 명세서 6장 공통 블록 형식, 작성 규칙: 7장 "용어 [F]"
+# 앞의 10개는 공용 샘플(docs/fixtures/first-demo/data/glossary.txt)과 같고 related만 보강했다.
+# 뒤의 10개는 새로 추가한 용어다.
+
+@term fork
+ko=포크
+en=Fork
+aliases=나이트 포크
+category=전술
+def=한 기물이 상대 기물 둘 이상을 동시에 공격하는 수다.
+fen=r3k3/2N5/8/8/8/8/8/4K3 b - - 0 1
+highlight=c7,a8,e8
+related=pin,skewer,double-attack
+try.fen=r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1
+try.text=나이트 한 번의 이동으로 킹과 룩을 동시에 공격해 보세요.
+try.goal=move:b5c7
+try.success=나이트가 킹과 룩을 동시에 공격합니다.
+
+@term pin
+ko=핀
+en=Pin
+category=전술
+def=한 기물이 움직이면 뒤에 있는 더 중요한 기물이 공격받는 전술이다.
+fen=4k3/4n3/8/8/8/8/8/4R1K1 b - - 0 1
+highlight=e1,e7,e8
+related=fork,skewer
+
+@term check
+ko=체크
+en=Check
+category=규칙
+def=킹이 상대 기물의 공격을 받고 있는 상태다.
+fen=4k3/8/8/8/8/8/4R3/6K1 b - - 0 1
+highlight=e2,e8
+related=checkmate
+
+@term checkmate
+ko=체크메이트
+en=Checkmate
+category=규칙
+def=체크 상태에서 벗어나는 합법 수가 없어서 대국에서 지는 상태다.
+fen=3R2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 1 1
+highlight=d8,g8
+related=check,stalemate,back-rank-mate
+
+@term stalemate
+ko=스테일메이트
+en=Stalemate
+category=규칙
+def=차례인 쪽이 체크 상태가 아니지만 둘 수 있는 합법 수가 없어 무승부가 되는 상태다.
+fen=7k/5Q2/6K1/8/8/8/8/8 b - - 0 1
+highlight=f7,g6,h8
+related=checkmate
+
+@term promotion
+ko=승진
+en=Promotion
+aliases=프로모션
+category=규칙
+def=폰이 반대편 끝 행에 도달했을 때 퀸, 룩, 비숍, 나이트 중 하나로 바뀌는 규칙이다.
+fen=7k/P7/8/8/8/8/8/7K w - - 0 1
+highlight=a7,a8
+related=passed-pawn
+
+@term castling
+ko=캐슬링
+en=Castling
+category=규칙
+def=조건을 만족할 때 킹이 룩 쪽으로 두 칸 가고 룩이 킹을 넘어 옆 칸으로 가는 특수 이동이다.
+fen=r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1
+highlight=e1,g1,h1
+related=development
+
+@term en-passant
+ko=앙파상
+en=En passant
+category=규칙
+def=상대 폰이 두 칸 전진해 옆에 섰을 때 바로 다음 수에 그 폰이 지나온 칸으로 이동하며 잡는 규칙이다.
+fen=7k/8/8/3pP3/8/8/8/7K w - d6 0 2
+highlight=d5,e5,d6
+
+@term san
+ko=표준 대수 표기
+en=Standard Algebraic Notation
+aliases=SAN
+category=기보 표기
+def=Nf3처럼 기물과 목적지 등을 적어 개별 수를 나타내는 표기다.
+related=fen
+
+@term fen
+ko=FEN
+en=Forsyth–Edwards Notation
+category=기보 표기
+def=기물 배치와 차례 등 체스판의 한 국면을 한 줄로 나타내는 표기다.
+related=san
+
+# ---------- 10주차 추가 ----------
+
+@term skewer
+ko=스큐어
+en=Skewer
+aliases=꼬치
+category=전술
+def=가치가 큰 기물을 먼저 공격해 비키게 한 뒤 그 뒤에 있던 기물을 잡는 전술이다. 앞뒤 순서가 핀과 반대다.
+fen=r7/8/2k5/8/4B3/8/8/4K3 b - - 0 1
+highlight=e4,c6,a8
+related=pin,fork
+try.fen=r7/8/2k5/8/8/8/2B5/4K3 w - - 0 1
+try.text=비숍으로 킹에 체크를 걸어, 킹이 비킨 뒤 a8의 룩을 잡을 수 있게 해 보세요.
+try.goal=move:c2e4
+try.success=킹이 체크를 피해 움직이면 같은 대각선 뒤의 룩이 드러납니다.
+
+@term double-attack
+ko=이중 공격
+en=Double attack
+category=전술
+def=한 수로 두 개 이상의 목표를 동시에 위협하는 것이다. 포크는 이중 공격의 한 종류다.
+fen=4k2r/r7/8/8/3Q4/8/8/4K3 b - - 0 1
+highlight=d4,a7,h8
+related=fork,discovered-attack
+
+@term discovered-attack
+ko=디스커버드 어택
+en=Discovered attack
+aliases=디스커버드 체크
+category=전술
+def=앞에 있던 기물이 비키면서 뒤에 숨어 있던 기물의 공격 길이 열리는 전술이다. 비킨 기물까지 다른 목표를 노리면 상대는 둘 다 막기 어렵다.
+fen=4k3/1q6/8/8/4B3/8/8/4R1K1 w - - 0 1
+highlight=e1,e4,b7,e8
+related=double-attack,pin
+try.fen=4k3/1q6/8/8/4B3/8/8/4R1K1 w - - 0 1
+try.text=비숍을 움직여 룩의 체크를 열면서 흑 퀸을 잡아 보세요.
+try.goal=move:e4b7
+try.success=룩이 체크를 걸고 있어서 흑은 퀸을 잃은 것에 대응할 틈이 없습니다.
+
+@term sacrifice
+ko=희생
+en=Sacrifice
+aliases=퀸 희생,기물 희생
+category=전술
+def=더 큰 이득을 얻으려고 일부러 기물을 내주는 수다. 대가는 메이트, 강한 공격, 더 많은 기물 회수 등이다.
+fen=4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 0 16
+highlight=b3,b8,d7,d1
+related=checkmate,material
+try.fen=4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 0 16
+try.text=오페라 게임의 한 장면입니다. 퀸을 내주어 d7의 나이트를 끌어내 보세요.
+try.goal=move:b3b8
+try.success=나이트가 퀸을 잡으면 d7이 비어 룩이 d8에서 메이트를 겁니다.
+
+@term back-rank-mate
+ko=백랭크 메이트
+en=Back-rank mate
+category=전술
+def=자기 폰에 막혀 앞으로 나갈 수 없는 킹을 첫 줄에서 룩이나 퀸으로 메이트하는 것이다.
+fen=6k1/5ppp/8/8/8/8/5PPP/r5K1 w - - 0 1
+highlight=a1,g1,f2,g2,h2
+related=checkmate
+try.fen=6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1
+try.text=흑 킹 앞의 폰들이 탈출로를 막고 있습니다. 룩으로 메이트를 걸어 보세요.
+try.goal=move:d1d8
+try.success=흑 킹은 자기 폰에 갇혀 피할 칸이 없습니다.
+
+@term open-file
+ko=오픈 파일
+en=Open file
+aliases=열린 파일
+category=전략
+def=양쪽 폰이 하나도 없는 세로줄이다. 룩을 오픈 파일에 두면 상대 진영 깊숙이 영향력을 넓힌다.
+fen=r4rk1/ppp2ppp/8/8/8/8/PPP2PPP/3R1RK1 w - - 0 1
+highlight=d1,d4,d8
+related=passed-pawn
+
+@term passed-pawn
+ko=패스트 폰
+en=Passed pawn
+aliases=통과한 폰
+category=전략
+def=앞길과 양옆 세로줄에 막거나 잡을 상대 폰이 없는 폰이다. 승진까지 가기 쉬워 끝내기에서 특히 강하다.
+fen=8/6k1/6p1/1P6/6P1/8/5K2/8 w - - 0 1
+highlight=b5,b6,b7,b8
+related=promotion,opposition
+
+@term development
+ko=전개
+en=Development
+category=오프닝
+def=처음 자리의 나이트와 비숍을 활동적인 칸으로 옮기는 것이다. 오프닝에서는 한 기물을 여러 번 움직이기보다 여러 기물을 고루 전개하는 것이 좋다.
+fen=r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4
+highlight=f3,c4,c6,c5
+related=castling
+try.fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+try.text=나이트 하나를 중앙 쪽 칸으로 전개해 보세요.
+try.goal=move:g1f3|b1c3
+try.success=나이트가 중앙을 바라보는 칸으로 나왔습니다.
+
+@term opposition
+ko=오포지션
+en=Opposition
+aliases=맞섬
+category=엔드게임
+def=두 킹이 한 칸을 사이에 두고 마주 섰을 때 상대가 둘 차례인 상태다. 차례인 쪽 킹이 물러나야 하므로 폰 끝내기의 승패를 가른다.
+fen=8/8/4k3/8/4K3/4P3/8/8 b - - 0 1
+highlight=e4,e5,e6
+related=passed-pawn
+try.fen=8/4k3/8/8/4K3/4P3/8/8 w - - 0 1
+try.text=킹을 움직여 흑 킹과 한 칸 사이로 마주 서서 오포지션을 잡아 보세요.
+try.goal=move:e4e5
+try.success=이제 흑 킹이 비켜야 하므로 백 킹이 앞으로 나아갈 길이 열립니다.
+
+@term material
+ko=기물 가치
+en=Material
+aliases=기물 점수
+category=기본
+def=기물의 힘을 숫자로 나타낸 기준이다. 보통 폰 1, 나이트와 비숍 3, 룩 5, 퀸 9로 센다.
+fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+highlight=e2,b1,c1,a1,d1
+related=sacrifice
+try.fen=4k3/8/8/2r1b3/3P4/8/8/4K3 w - - 0 1
+try.text=폰으로 잡을 수 있는 기물이 둘입니다. 더 가치가 큰 기물을 잡아 보세요.
+try.goal=move:d4c5
+try.success=비숍(3)보다 룩(5)을 잡는 편이 이득입니다.
