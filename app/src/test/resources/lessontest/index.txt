@@ -1,0 +1,4 @@
+# 목록 순서는 파일 이름이나 order가 아니라 이 파일의 줄 순서를 따른다
+rook.txt
+pawn.txt
+broken.txt

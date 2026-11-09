@@ -1,0 +1,10 @@
+@lesson rook
+order=3
+title=룩
+summary=가로와 세로로 끝까지 움직입니다.
+
+@step
+fen=8/8/8/8/3R4/8/8/8 w - - 0 1
+rules=sandbox
+text=룩을 d8로 옮겨 보세요.
+goal=move:d4d8

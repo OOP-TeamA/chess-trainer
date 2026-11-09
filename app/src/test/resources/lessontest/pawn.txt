@@ -1,0 +1,10 @@
+@lesson pawn
+order=2
+title=폰
+summary=앞으로 한 칸씩 전진합니다.
+
+@step
+fen=8/8/8/8/8/8/4P3/8 w - - 0 1
+rules=sandbox
+text=폰을 두 칸 전진해 보세요.
+goal=move:e2e4
