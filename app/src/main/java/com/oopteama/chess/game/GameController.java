@@ -41,6 +41,12 @@ public final class GameController {
     private BlunderListener blunderListener;
     private Consumer<State> stateListener;
 
+    /** 첫 대국용(실수 알림 없음). */
+    public GameController(Game game, Player white, Player black, Async async) {
+        this(game, white, black, Optional.empty(), async);
+    }
+
+    /** AI-10 실수 알림을 넣는 생성자. blunders가 비어 있으면 알림 꺼짐. */
     public GameController(Game game, Player white, Player black,
                           Optional<BlunderCheck> blunders, Async async) {
         this.game = Objects.requireNonNull(game);
@@ -50,9 +56,12 @@ public final class GameController {
         this.async = Objects.requireNonNull(async);
     }
 
-    /** start() 이후에만 호출할 수 있다. 그 전에는 IllegalStateException. */
+    /**
+     * 전제 조건 없는 조회. start() 전에는 시작하면 들어갈 상태(종료 국면이면 ENDED, 아니면 차례인
+     * 플레이어에 따라 WAITING_HUMAN 또는 WAITING_AI)를, dispose() 후에는 ENDED를 돌려준다.
+     */
     public State state() {
-        if (!started) throw new IllegalStateException("start() 전");
+        if (!started && !disposed) return initialState();
         return state;
     }
 
@@ -98,10 +107,14 @@ public final class GameController {
 
         cancelHint();
         int token = turnToken;
-        Async.Task t = ai.suggest(game.snapshot(), move -> {
+        Async.Task t = ai.suggest(game.snapshot(), game.history(), move -> {
             if (disposed || token != turnToken || state != State.WAITING_HUMAN) return;
             hintTask = null;
             onHint.accept(move);
+        }, error -> {
+            // 힌트 실패는 대국 진행과 무관하다. 다음 힌트 요청을 받을 수 있게만 정리한다.
+            if (disposed || token != turnToken) return;
+            hintTask = null;
         });
         if (token == turnToken && state == State.WAITING_HUMAN) hintTask = t;
     }
@@ -117,6 +130,10 @@ public final class GameController {
 
     public void setBlunderListener(BlunderListener l) { this.blunderListener = l; }
 
+    /**
+     * 상태가 바뀔 때마다 EDT에서 알린다. 등록 시점의 현재 상태는 알리지 않으므로,
+     * start() 뒤에 등록했다면 현재 상태는 state()로 읽는다. start() 전에 등록하면 첫 상태부터 받는다.
+     */
     public void setStateListener(Consumer<State> l) { this.stateListener = l; }
 
     /** 화면 이탈: 계산 취소, 리스너 해제. 이후 호출은 모두 무시되거나 IllegalStateException. */
@@ -126,7 +143,7 @@ public final class GameController {
         cancelAll();
         blunderListener = null;
         stateListener = null;
-        if (started) state = State.ENDED;
+        state = State.ENDED;
     }
 
     // ------------------------------------------------------------------ 진행
@@ -143,7 +160,12 @@ public final class GameController {
         int token = ++turnToken;
         setState(player instanceof HumanPlayer ? State.WAITING_HUMAN : State.WAITING_AI);
         // 즉시 실행 Async에서는 아래 호출 안에서 onMove까지 끝날 수 있다. 상태는 미리 정해 둔다.
-        player.requestMove(game.snapshot(), move -> onMove(token, side, move));
+        Consumer<Move> onMove = move -> onMove(token, side, move);
+        if (player instanceof AiPlayer ai) {
+            ai.requestMove(game.snapshot(), game.history(), onMove);   // 반복 무승부를 피하도록 이력 사본도
+        } else {
+            player.requestMove(game.snapshot(), onMove);
+        }
     }
 
     private void onMove(int token, Side side, Move move) {
@@ -173,7 +195,10 @@ public final class GameController {
         }
     }
 
-    /** 사용자 수 직후 작업 스레드에서 실수 여부를 판정. 정상이면 곧바로 AI 차례로. */
+    /**
+     * 사용자 수 직후 작업 스레드에서 실수 여부를 판정. 정상이면 곧바로 AI 차례로.
+     * 판정이 실패하면 실수 없음과 같이 진행한다(알림은 보조 기능이라 대국을 멈추지 않는다).
+     */
     private void checkBlunder(Position before, Move played) {
         int token = ++turnToken;
         setState(State.CHECKING_BLUNDER);
@@ -189,6 +214,11 @@ public final class GameController {
                 } else {
                     startTurn();
                 }
+            },
+            error -> {
+                if (disposed || token != turnToken) return;
+                blunderTask = null;
+                startTurn();
             });
         if (token == turnToken && state == State.CHECKING_BLUNDER) blunderTask = t;
     }
@@ -218,6 +248,11 @@ public final class GameController {
     }
 
     private Player player(Side side) { return side == Side.WHITE ? white : black; }
+
+    private State initialState() {
+        if (game.result().isPresent()) return State.ENDED;
+        return player(game.sideToMove()) instanceof HumanPlayer ? State.WAITING_HUMAN : State.WAITING_AI;
+    }
 
     private void requireActive() {
         if (!started) throw new IllegalStateException("start() 전");

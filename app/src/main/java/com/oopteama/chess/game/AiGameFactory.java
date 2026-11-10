@@ -16,20 +16,20 @@ import java.util.Optional;
 import java.util.Random;
 
 /**
- * AiSetup 하나로 대국에 필요한 객체를 조립한다(편의용, 계약 밖).
- * 화면(AiGameScreen)이 직접 조립해도 되지만, 조립 규칙을 한 곳에 두면 테스트하기 쉽다.
+ * AiSetup 하나로 대국에 필요한 객체를 조립한다(테스트용, 계약 밖이라 패키지 전용).
+ * 화면(AiGameScreen)은 명세 4.8의 생성자로 직접 조립한다. 화면에서도 쓰려면 명세에 추가한 뒤 공개한다.
  */
-public final class AiGameFactory {
+final class AiGameFactory {
 
     /** 실수 판정은 난이도와 무관하게 가장 좋은 평가 함수로. 임계값 200 = 기물 가치 2. */
     private static final int BLUNDER_THRESHOLD_CP = 200;
 
-    public record Session(Game game, GameController controller, HumanPlayer human, AiPlayer ai) { }
+    record Session(Game game, GameController controller, HumanPlayer human, AiPlayer ai) { }
 
     private AiGameFactory() { }
 
     /** 시작 FEN이 잘못되었거나 표준 국면 검증에 실패하면 예외. start()는 호출하지 않는다. */
-    public static Session create(AiSetup setup, Async async, Random random) throws FenFormatException {
+    static Session create(AiSetup setup, Async async, Random random) throws FenFormatException {
         Objects.requireNonNull(setup);
         Objects.requireNonNull(async);
         Objects.requireNonNull(random);

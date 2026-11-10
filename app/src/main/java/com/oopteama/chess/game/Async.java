@@ -12,6 +12,10 @@ public interface Async {
 
     interface Task { void cancel(); }
 
-    /** work는 작업 스레드에서, onDone은 UI 스레드에서 호출. 취소된 작업의 onDone은 호출하지 않는다. */
-    <T> Task run(Function<BooleanSupplier, T> work, Consumer<T> onDone);
+    /**
+     * work는 작업 스레드에서 실행. 성공 onDone 또는 실패 onError 중 하나만 EDT에서 호출한다.
+     * 취소된 작업에는 어느 콜백도 호출하지 않는다. 화면은 실패 콜백에서 계산 중 표시를 해제한다.
+     * (SwingWorker는 취소돼도 done()을 부르므로 SwingAsync가 isCancelled()로 걸러야 한다.)
+     */
+    <T> Task run(Function<BooleanSupplier, T> work, Consumer<T> onDone, Consumer<Throwable> onError);
 }
