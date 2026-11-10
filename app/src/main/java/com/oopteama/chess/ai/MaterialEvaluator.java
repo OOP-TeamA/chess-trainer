@@ -5,7 +5,7 @@ import com.oopteama.chess.core.PieceType;
 import com.oopteama.chess.core.Side;
 import com.oopteama.chess.core.Square;
 
-/** 기물 가치만 합산하는 평가. 입문·초급 난이도용. */
+/** 기물 가치 합산 + 끝내기 마무리 항(MopUp). 입문·초급 난이도용. */
 public final class MaterialEvaluator implements Evaluator {
 
     static int value(PieceType t) {
@@ -24,6 +24,7 @@ public final class MaterialEvaluator implements Evaluator {
         int score = 0;
         for (Square sq : pos.occupied(Side.WHITE)) score += value(pos.at(sq).type());
         for (Square sq : pos.occupied(Side.BLACK)) score -= value(pos.at(sq).type());
+        score += MopUp.whiteBonus(pos);
         return pos.sideToMove() == Side.WHITE ? score : -score;
     }
 }
