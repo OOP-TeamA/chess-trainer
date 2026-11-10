@@ -43,6 +43,43 @@ class ProgressTest {
     }
 
     @Test
+    void 퍼즐은_종료마다_시도가_늘고_해결_상태와_5점은_유지된다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p0001"));
+        assertEquals(new AttemptStats(0, 0), p.puzzleAttempts("p0001"));
+
+        p.recordPuzzle("p0001", true);   // HINT까지만 보고 완주
+        assertEquals(new AttemptStats(1, 1), p.puzzleAttempts("p0001"));
+        p.recordPuzzle("p0001", false);  // REVEAL 후 완주
+        assertEquals(new AttemptStats(2, 1), p.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0001"));
+        p.recordPuzzle("p0001", true);   // 공개 없이 재완주
+        assertEquals(new AttemptStats(3, 2), p.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0001"));
+        assertEquals(5, p.score());
+        assertEquals(3, calls.get());
+
+        p.recordPuzzle("p0002", false);
+        assertEquals(PuzzleState.FAILED, p.puzzleState("p0002"));
+        assertEquals(5, p.score());
+        p.recordPuzzle("p0002", true);
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0002"));
+        assertEquals(10, p.score());
+    }
+
+    @Test
+    void 퍼즐_ID를_검사한다() {
+        Progress p = new Progress();
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("p 1", true));
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("", true));
+        assertThrows(NullPointerException.class, () -> p.recordPuzzle(null, true));
+        assertThrows(NullPointerException.class, () -> p.puzzleState(null));
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p 1"));
+    }
+
+    @Test
     void 첫_시연_흐름의_점수는_17() {
         Progress p = new Progress();
         p.markLessonDone("knight");

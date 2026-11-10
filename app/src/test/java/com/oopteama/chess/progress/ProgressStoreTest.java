@@ -81,7 +81,11 @@ class ProgressStoreTest {
         Progress p = store().load("default");
         assertEquals(Set.of("knight"), p.lessonsDone());
         assertEquals(new AttemptStats(10, 7), p.termQuizAttempts());
-        assertEquals(17, p.score()); // 퍼즐 5점은 04단계에서 반영(명세 예시 22점)
+        assertEquals(new AttemptStats(3, 1), p.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0001"));
+        assertEquals(PuzzleState.FAILED, p.puzzleState("p0002"));
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p0003"));
+        assertEquals(22, p.score()); // 명세 예시: 레슨 10 + 퍼즐 5 + 문항 7
 
         p.markLessonDone("rook");
         store().save("default", p);
@@ -92,6 +96,54 @@ class ProgressStoreTest {
             assertTrue(saved.contains(kept), kept);
         }
         assertTrue(saved.contains("lesson.done=knight,rook"));
+    }
+
+    @Test
+    void 퍼즐_기록_기준_흐름이_재시작_후에도_같다() throws IOException {
+        // 기능 명세 9장: HINT만 보고 완주 → REVEAL 후 완주 → 공개 없이 재완주
+        Progress p = store().load("default");
+        p.recordPuzzle("p0001", true);
+        p.recordPuzzle("p0001", false);
+        p.recordPuzzle("p0001", true);
+        store().save("default", p);
+
+        Progress again = store().load("default");
+        assertEquals(new AttemptStats(3, 2), again.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, again.puzzleState("p0001"));
+        assertEquals(5, again.score());
+        assertEquals(List.of("puzzle.attempt.p0001=3,2", "quiz.attempts=0", "quiz.correct.count=0"),
+                TextFiles.readLines(new DataPaths(tmp).profileFile("default")));
+    }
+
+    @Test
+    void 잘못된_퍼즐_줄은_건너뛰고_같은_키의_첫_유효값을_쓴다() throws IOException {
+        writeProfile("default", """
+                puzzle.attempt.p0001=1,2
+                puzzle.attempt.p0001=2,1
+                puzzle.attempt.p0001=5,5
+                puzzle.attempt.p0002=-1,0
+                puzzle.attempt.p0003=1
+                puzzle.attempt.p0004=1,0,0
+                puzzle.attempt.p0005=a,b
+                puzzle.attempt.=1,1
+                puzzle.attempt.p 6=1,1
+                puzzle.attempt.p0007=0,0
+                puzzle.attempt.p0008= 4 , 0
+                """);
+        Progress p = store().load("default");
+        assertEquals(new AttemptStats(2, 1), p.puzzleAttempts("p0001"));
+        for (String bad : List.of("p0002", "p0003", "p0004", "p0005")) {
+            assertEquals(PuzzleState.UNSEEN, p.puzzleState(bad), bad);
+        }
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p0007"));
+        assertEquals(new AttemptStats(4, 0), p.puzzleAttempts("p0008"));
+        assertEquals(PuzzleState.FAILED, p.puzzleState("p0008"));
+        assertEquals(5, p.score());
+
+        store().save("default", p);
+        List<String> saved = TextFiles.readLines(new DataPaths(tmp).profileFile("default"));
+        assertEquals(List.of("puzzle.attempt.p0001=2,1", "puzzle.attempt.p0007=0,0", "puzzle.attempt.p0008=4,0"),
+                saved.stream().filter(l -> l.startsWith("puzzle.")).toList());
     }
 
     @Test
