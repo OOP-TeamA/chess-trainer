@@ -133,6 +133,70 @@ class GameTest {
     }
 
     @Test
+    void 영_수_되돌리기는_아무것도_바꾸지_않는다() throws Exception {
+        String mated = "7k/5QQ1/8/8/8/8/8/K7 b - - 0 1";
+        Game game = new Game(Fen.parse(mated), RULES);
+        Recorder rec = new Recorder();
+        game.addListener(rec);
+
+        game.undo(0);
+
+        assertEquals(Reason.CHECKMATE, game.result().orElseThrow().reason());
+        assertTrue(game.legalMoves().isEmpty());
+        assertEquals(mated, Fen.write(game.snapshot()));
+        assertEquals(List.of(), rec.events);
+    }
+
+    @Test
+    void 리스너마다_따로_만든_사본을_받는다() {
+        Game game = newGame();
+        List<String> seen = new ArrayList<>();
+        GameListener mutating = new GameListener() {
+            @Override public void gameEnded(GameResult result) { }
+            @Override public void moveMade(Move move, Position after) {
+                after.make(RULES.legalMoves(after).get(0));   // 받은 국면을 바꿔 본다
+            }
+            @Override public void moveUndone(Move move, Position after) {
+                after.make(RULES.legalMoves(after).get(0));
+            }
+        };
+        GameListener observing = new GameListener() {
+            @Override public void gameEnded(GameResult result) { }
+            @Override public void moveMade(Move move, Position after) { seen.add(Fen.write(after)); }
+            @Override public void moveUndone(Move move, Position after) { seen.add(Fen.write(after)); }
+        };
+        game.addListener(mutating);
+        game.addListener(observing);
+
+        play(game, "e2e4");
+        String afterE4 = Fen.write(game.snapshot());
+        game.undo(1);
+
+        assertEquals(List.of(afterE4, Fen.INITIAL), seen);   // 앞 리스너가 바꾼 국면이 아니다
+    }
+
+    @Test
+    void 기록_사본을_바꿔도_국면과_기록이_어긋나지_않는다() {
+        Game game = newGame();
+        play(game, "e2e4", "e7e5");
+
+        game.history().push(RULES.fromUci(game.snapshot(), "g1f3").orElseThrow(), "fake");
+        game.history().pop();
+
+        assertEquals(2, game.history().moves().size());
+        game.undo(2);
+        assertEquals(Fen.INITIAL, Fen.write(game.snapshot()));
+        assertEquals(0, game.history().moves().size());
+    }
+
+    @Test
+    void 기록_사본의_반복_횟수는_원본과_같다() {
+        Game game = newGame();
+        play(game, "g1f3", "g8f6", "f3g1", "f6g8");   // 시작 국면 2회째
+        assertEquals(2, game.history().occurrences(RULES.repetitionKey(Position.initial())));
+    }
+
+    @Test
     void 시작부터_끝난_국면이면_결과가_있다() throws Exception {
         Game game = new Game(Fen.parse("7k/5QQ1/8/8/8/8/8/K7 b - - 0 1"), RULES);
         assertTrue(game.result().isPresent());
