@@ -1,6 +1,7 @@
 package com.oopteama.chess.ui;
 
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.List;
@@ -16,6 +17,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
 import com.oopteama.chess.content.goal.InputMode;
@@ -57,9 +59,9 @@ public final class LocalGameScreen extends BoardScreen {
 
     private JLabel moveCountLabel;
 
-    private JLabel statusLabel;
+    private JTextArea statusLabel;
 
-    private JLabel resultLabel;
+    private JTextArea resultLabel;
 
 
     // =========================================
@@ -263,8 +265,12 @@ public final class LocalGameScreen extends BoardScreen {
                 Theme.LINE
         );
 
+        divider.setPreferredSize(
+                new Dimension(1, 1)
+        );
+
         divider.setMaximumSize(
-                new java.awt.Dimension(
+                new Dimension(
                         Integer.MAX_VALUE,
                         1
                 )
@@ -341,17 +347,14 @@ public final class LocalGameScreen extends BoardScreen {
         statusHeading.setAlignmentX(LEFT_ALIGNMENT);
 
 
-        statusLabel = new JLabel();
-
-        statusLabel.setFont(
-                Theme.body(Theme.FONT_14, 1)
+        // 상태 문구: 여러 줄 표시 가능
+        statusLabel = createInfoTextArea(
+                Theme.FONT_14
         );
 
         statusLabel.setForeground(
                 Theme.TEXT
         );
-
-        statusLabel.setAlignmentX(LEFT_ALIGNMENT);
 
 
         // 대국 결과
@@ -368,17 +371,14 @@ public final class LocalGameScreen extends BoardScreen {
         resultHeading.setAlignmentX(LEFT_ALIGNMENT);
 
 
-        resultLabel = new JLabel();
-
-        resultLabel.setFont(
-                Theme.body(Theme.FONT_16, 1)
+        // 결과 문구: 여러 줄 표시 가능
+        resultLabel = createInfoTextArea(
+                Theme.FONT_16
         );
 
         resultLabel.setForeground(
                 Theme.OK
         );
-
-        resultLabel.setAlignmentX(LEFT_ALIGNMENT);
 
 
         // 안내 문구
@@ -439,14 +439,59 @@ public final class LocalGameScreen extends BoardScreen {
 
         panel.add(Box.createVerticalGlue());
 
-        panel.add(
-                guideLabel
-        );
+        panel.add(guideLabel);
 
 
         refreshSidePanel();
 
         return panel;
+    }
+
+
+    // =========================================
+    // 여러 줄 정보 영역 생성
+    // =========================================
+
+    /**
+     * 상태 및 결과 문구를 표시하는 JTextArea를 생성한다.
+     * 문구가 길어지면 자동으로 줄바꿈한다.
+     */
+    private JTextArea createInfoTextArea(int fontSize) {
+
+        JTextArea area = new JTextArea(2, 18);
+
+        area.setEditable(false);
+
+        area.setFocusable(false);
+
+        // 자동 줄바꿈
+        area.setLineWrap(true);
+
+        area.setWrapStyleWord(true);
+
+        // 패널 배경과 자연스럽게 연결
+        area.setOpaque(false);
+
+        area.setBorder(null);
+
+        area.setFont(
+                Theme.body(fontSize, Font.BOLD)
+        );
+
+        area.setAlignmentX(LEFT_ALIGNMENT);
+
+        // 가로로는 패널 너비에 맞추고,
+        // 세로로는 기본 두 줄 높이를 사용한다.
+        Dimension preferred = area.getPreferredSize();
+
+        area.setMaximumSize(
+                new Dimension(
+                        Integer.MAX_VALUE,
+                        preferred.height
+                )
+        );
+
+        return area;
     }
 
 

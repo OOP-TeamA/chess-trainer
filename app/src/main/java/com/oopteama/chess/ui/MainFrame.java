@@ -3,6 +3,9 @@ package com.oopteama.chess.ui;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -26,6 +29,9 @@ public final class MainFrame extends JFrame implements Navigator {
     // 공통 서비스
     private final Services services;
 
+    // 종료 직전 기록 저장 처리
+    private final CloseHandler closeHandler;
+
     // 화면 전환 관리
     private final CardLayout cardLayout;
     private final JPanel cardPanel;
@@ -45,14 +51,80 @@ public final class MainFrame extends JFrame implements Navigator {
     private Route currentRoute;
 
 
-    // 생성자
+    // 종료 직전 저장 작업을 연결하기 위한 인터페이스
+    @FunctionalInterface
+    public interface CloseHandler {
+
+        void save() throws IOException;
+    }
+
+
+    // 기존 생성자
+    // 저장 작업이 아직 연결되지 않은 경우 사용
     public MainFrame(Services services) {
+
+        this(services, () -> {});
+    }
+
+
+    // 생성자
+    // 기록 저장 작업을 외부에서 전달받을 수 있음
+    public MainFrame(Services services, CloseHandler closeHandler) {
 
         this.services = Objects.requireNonNull(services);
 
+        this.closeHandler = Objects.requireNonNull(closeHandler);
+
         setTitle("Chess Learner");
 
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        // 창 종료 시 직접 종료 절차를 처리
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+
+
+        // 창 종료 이벤트
+        addWindowListener(new WindowAdapter() {
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+
+                // 현재 화면을 나갈 수 있는지 확인
+                if (!confirmLeave()) {
+                    return;
+                }
+
+                // 종료 직전 학습 기록 저장
+                // 저장에 실패하면 창을 종료하지 않음
+                try {
+
+                    MainFrame.this.closeHandler.save();
+
+                } catch (IOException exception) {
+
+                    JOptionPane.showMessageDialog(
+                        MainFrame.this,
+                        "학습 기록을 저장하지 못했습니다.\n"
+                            + exception.getMessage()
+                            + "\n창을 닫지 않고 유지합니다.",
+                        "기록 저장 실패",
+                        JOptionPane.ERROR_MESSAGE
+                    );
+
+                    return;
+                }
+
+
+                // 현재 화면 종료 처리
+                if (currentScreen != null) {
+
+                    currentScreen.onHide();
+                }
+
+
+                // 창 종료
+                dispose();
+            }
+        });
+
 
         setMinimumSize(new Dimension(1024, 700));
 
@@ -192,6 +264,11 @@ public final class MainFrame extends JFrame implements Navigator {
 
         // 왼쪽 메뉴 선택 상태 변경
         navRail.setActiveRoute(route);
+
+        // 프로필 점수는 현재 서비스가 제공하는 학습 기록에서 읽는다.
+        if (services.progress() != null) {
+            navRail.setScore(services.progress().score());
+        }
     }
 
 
@@ -201,7 +278,7 @@ public final class MainFrame extends JFrame implements Navigator {
         // 홈 화면
         if (route instanceof Route.Home) {
 
-            return new HomeScreen(this);
+            return new HomeScreen(this, services);
         }
 
 

@@ -10,8 +10,10 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.Point;
 import java.awt.Polygon;
+import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -138,12 +140,12 @@ public class BoardPanel extends JPanel {
         addMouseListener(new MouseAdapter() {
 
             @Override
-            public void mouseClicked(MouseEvent e) {
+            public void mouseReleased(MouseEvent e) {
 
-                handleClick(
-                        e.getX(),
-                        e.getY()
-                );
+                // 누른 위치가 아니라 마우스를 놓은 위치를 기준으로 입력한다.
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    handleClick(e.getX(), e.getY());
+                }
             }
         });
     }
@@ -153,16 +155,35 @@ public class BoardPanel extends JPanel {
     // 체스판 데이터 설정
     // =========================================
 
+    /**
+     * 보드에 표시할 국면을 사본으로 설정한다.
+     * <p>새 국면을 설정하면 이전 국면의 합법 수, 선택 상태,
+     * 체크·오답 표시, 칸 강조 및 화살표를 초기화한다.
+     * 따라서 이동 입력과 시각적 표시를 계속 사용하려면 호출자가
+     * 이어서 {@link #setLegalMoves(List)}, {@link #setCheckSquare(Optional)},
+     * {@link #mark(Collection, Mark)}, {@link #setArrows(List)} 등을 호출해야 한다.
+     */
     public void setPosition(Position snapshot) {
 
         this.position = Objects.requireNonNull(
                 snapshot
         ).copy();
 
-        // 새로운 국면에서는 이전 합법 수를 제거
+        // 새 국면에 이전 국면의 입력 상태가 남지 않도록 초기화한다.
         legalMoves = List.of();
-
         selectedSquare = null;
+
+        // 이전 국면의 시각적 표시를 초기화한다.
+        checkSquare = Optional.empty();
+        marks.clear();
+        arrows = List.of();
+        wrongSquare = null;
+
+        // 진행 중인 오답 표시 타이머도 정리한다.
+        if (wrongTimer != null) {
+            wrongTimer.stop();
+            wrongTimer = null;
+        }
 
         repaint();
     }
@@ -555,8 +576,7 @@ public class BoardPanel extends JPanel {
                 .orElse(null);
     }
 
-
-    // =========================================
+        // =========================================
     // 체스판 그리기
     // =========================================
 
@@ -601,7 +621,7 @@ public class BoardPanel extends JPanel {
                 size
         );
 
-        // 칸 강조
+        // 칸 강조(마지막 수, 선택, 오답, 체크 등)
         drawMarks(
                 g2,
                 x,
@@ -609,15 +629,7 @@ public class BoardPanel extends JPanel {
                 size
         );
 
-        // 합법 수
-        drawLegalTargets(
-                g2,
-                x,
-                y,
-                size
-        );
-
-        // 힌트 및 정답 화살표
+        // 힌트 및 정답 화살표는 기물 아래에 그린다.
         drawArrows(
                 g2,
                 x,
@@ -627,6 +639,22 @@ public class BoardPanel extends JPanel {
 
         // 체스 기물
         drawPieces(
+                g2,
+                x,
+                y,
+                size
+        );
+
+        // 이동 가능 점과 잡기 가능 링은 기물 위에 표시한다.
+        drawLegalTargets(
+                g2,
+                x,
+                y,
+                size
+        );
+
+        // 힌트 링도 기물 위에 표시한다.
+        drawMarkOutlines(
                 g2,
                 x,
                 y,
@@ -777,82 +805,135 @@ public class BoardPanel extends JPanel {
 
             for (Mark mark : entry.getValue()) {
 
-                fillSquare(
-                        g2,
-                        x,
-                        y,
-                        size,
-                        square,
-                        markColor(mark),
-                        0.45f
-                );
+                switch (mark) {
+                    case LAST_MOVE -> fillSquare(
+                            g2, x, y, size, square, Theme.ACCENT, 0.52f
+                    );
+                    case SELECTED -> fillSquare(
+                            g2, x, y, size, square, Theme.ACCENT, 0.75f
+                    );
+                    case TARGET -> fillSquare(
+                            g2, x, y, size, square, Theme.OK, 0.32f
+                    );
+                    case HINT -> {
+                        // HINT는 LAST_MOVE와 구분되도록 별도의 이중 링으로 그린다.
+                    }
+                    case SOLUTION -> fillSquare(
+                            g2, x, y, size, square, Theme.OK, 0.45f
+                    );
+                    case WRONG -> fillSquare(
+                            g2, x, y, size, square, Theme.BAD, 0.58f
+                    );
+                }
             }
         }
 
-        // 체크 상태
+        // 체크 상태는 단색 덮개 대신 중앙이 진하고 가장자리로
+        // 자연스럽게 사라지는 붉은 방사형 그라데이션으로 표시한다.
         if (checkSquare.isPresent()) {
-
-            fillSquare(
-                    g2,
-                    x,
-                    y,
-                    size,
-                    checkSquare.get(),
-                    Theme.BAD,
-                    0.55f
-            );
+            fillCheckGradient(g2, x, y, size, checkSquare.get());
         }
 
         // 오답 칸
         if (wrongSquare != null) {
-
             fillSquare(
-                    g2,
-                    x,
-                    y,
-                    size,
-                    wrongSquare,
-                    Theme.BAD,
-                    0.65f
+                    g2, x, y, size, wrongSquare, Theme.BAD, 0.65f
             );
         }
 
-        // 선택된 칸
+        // 현재 선택된 칸은 명세의 선택 강조(황동색 75%)로 표시한다.
         if (selectedSquare != null) {
-
             fillSquare(
-                    g2,
-                    x,
-                    y,
-                    size,
-                    selectedSquare,
-                    Theme.ACCENT,
-                    0.55f
+                    g2, x, y, size, selectedSquare, Theme.ACCENT, 0.75f
             );
         }
     }
 
 
-    // =========================================
-    // 강조 색상
-    // =========================================
+    /** 힌트 칸을 황동 링과 밝은 바깥 테두리의 이중 원으로 표시한다. */
+    private void drawMarkOutlines(
+            Graphics2D g2,
+            int x,
+            int y,
+            int size
+    ) {
 
-    private Color markColor(Mark mark) {
+        StrokeState old = new StrokeState(g2);
 
-        return switch (mark) {
+        for (Map.Entry<Square, EnumSet<Mark>> entry : marks.entrySet()) {
+            if (!entry.getValue().contains(Mark.HINT)) {
+                continue;
+            }
 
-            case LAST_MOVE -> Theme.ACCENT;
+            Point point = squarePoint(x, y, size, entry.getKey());
+            int outerInset = Math.max(4, size / 8);
+            int outerDiameter = size - outerInset * 2;
+            int innerInset = Math.max(7, size / 5);
+            int innerDiameter = size - innerInset * 2;
 
-            case SELECTED -> Theme.INFO;
+            g2.setColor(new Color(0xFFF1C8));
+            g2.setStroke(new BasicStroke(Math.max(2.2f, size / 28f)));
+            g2.drawOval(
+                    point.x + outerInset, point.y + outerInset,
+                    outerDiameter, outerDiameter
+            );
 
-            case TARGET -> Theme.OK;
+            g2.setColor(Theme.ACCENT);
+            g2.setStroke(new BasicStroke(Math.max(2.8f, size / 22f)));
+            g2.drawOval(
+                    point.x + innerInset, point.y + innerInset,
+                    innerDiameter, innerDiameter
+            );
+        }
 
-            case HINT -> Theme.ACCENT;
+        old.restore(g2);
+    }
 
-            case SOLUTION -> Theme.OK;
 
-            case WRONG -> Theme.BAD;
-        };
+    private void fillCheckGradient(
+            Graphics2D g2,
+            int x,
+            int y,
+            int size,
+            Square square
+    ) {
+
+        Point point = squarePoint(x, y, size, square);
+        float centerX = point.x + size / 2f;
+        float centerY = point.y + size / 2f;
+        float radius = Math.max(1f, size * 0.78f);
+
+        Paint oldPaint = g2.getPaint();
+        g2.setPaint(new RadialGradientPaint(
+                centerX,
+                centerY,
+                radius,
+                new float[]{0.0f, 0.55f, 1.0f},
+                new Color[]{
+                        new Color(Theme.BAD.getRed(), Theme.BAD.getGreen(), Theme.BAD.getBlue(), 155),
+                        new Color(Theme.BAD.getRed(), Theme.BAD.getGreen(), Theme.BAD.getBlue(), 75),
+                        new Color(Theme.BAD.getRed(), Theme.BAD.getGreen(), Theme.BAD.getBlue(), 0)
+                }
+        ));
+        g2.fillRect(point.x, point.y, size, size);
+        g2.setPaint(oldPaint);
+    }
+
+
+    /** Graphics2D 상태를 그리기 전 상태로 복원하기 위한 보조 타입. */
+    private static final class StrokeState {
+        private final java.awt.Stroke stroke;
+        private final Color color;
+
+        private StrokeState(Graphics2D g2) {
+            stroke = g2.getStroke();
+            color = g2.getColor();
+        }
+
+        private void restore(Graphics2D g2) {
+            g2.setStroke(stroke);
+            g2.setColor(color);
+        }
     }
 
 
@@ -908,41 +989,59 @@ public class BoardPanel extends JPanel {
                 || inputMode.isEmpty()
                 || inputMode.get() != InputMode.MOVE
         ) {
-
             return;
         }
 
+        java.awt.Stroke oldStroke = g2.getStroke();
+        Color oldColor = g2.getColor();
+
         for (Move move : legalMoves) {
-
             if (!move.from().equals(selectedSquare)) {
-
                 continue;
             }
 
-            Point center = squareCenter(
-                    x,
-                    y,
-                    size,
-                    move.to()
-            );
+            Point center = squareCenter(x, y, size, move.to());
 
-            g2.setColor(
-                    new Color(35, 29, 22, 125)
-            );
+            if (move.isCapture()) {
+                // 잡기 가능한 칸은 기물이 있거나(일반 잡기),
+                // 앙파상처럼 목적지가 비어 있어도 링으로 구분한다.
+                int outerDiameter = (int) (size * 0.72f);
+                int innerDiameter = (int) (size * 0.62f);
 
-            int diameter = size / 4;
+                g2.setColor(new Color(255, 245, 225, 225));
+                g2.setStroke(new BasicStroke(Math.max(2.0f, size / 28f)));
+                g2.drawOval(
+                        center.x - outerDiameter / 2,
+                        center.y - outerDiameter / 2,
+                        outerDiameter,
+                        outerDiameter
+                );
 
-            g2.fillOval(
-                    center.x - diameter / 2,
-                    center.y - diameter / 2,
-                    diameter,
-                    diameter
-            );
+                g2.setColor(new Color(35, 29, 22, 230));
+                g2.setStroke(new BasicStroke(Math.max(1.3f, size / 45f)));
+                g2.drawOval(
+                        center.x - innerDiameter / 2,
+                        center.y - innerDiameter / 2,
+                        innerDiameter,
+                        innerDiameter
+                );
+            } else {
+                g2.setColor(new Color(35, 29, 22, 145));
+                int diameter = Math.max(5, size / 4);
+                g2.fillOval(
+                        center.x - diameter / 2,
+                        center.y - diameter / 2,
+                        diameter,
+                        diameter
+                );
+            }
         }
+
+        g2.setStroke(oldStroke);
+        g2.setColor(oldColor);
     }
 
-
-    // =========================================
+        // =========================================
     // 기물 그리기
     // =========================================
 
@@ -953,71 +1052,62 @@ public class BoardPanel extends JPanel {
             int size
     ) {
 
+        // 논리 글꼴을 사용해 특정 운영체제의 글꼴에 의존하지 않도록 한다.
+        Font pieceFont = new Font(
+                Font.DIALOG,
+                Font.PLAIN,
+                Math.max(12, (int) (size * 0.78))
+        );
+        g2.setFont(pieceFont);
+        FontMetrics metrics = g2.getFontMetrics();
+        java.awt.Stroke oldStroke = g2.getStroke();
+        Color oldColor = g2.getColor();
+
         for (int row = 0; row < 8; row++) {
-
             for (int col = 0; col < 8; col++) {
-
                 Square square = squareAt(row, col);
-
                 Piece piece = position.at(square);
 
                 if (piece == null) {
-
                     continue;
                 }
 
                 String symbol = pieceSymbol(piece);
+                Point center = squareCenter(x, y, size, square);
+                int textX = center.x - metrics.stringWidth(symbol) / 2;
+                int textY = center.y
+                        + (metrics.getAscent() - metrics.getDescent()) / 2;
 
-                Point center = squareCenter(
-                        x,
-                        y,
-                        size,
-                        square
-                );
+                // 백 기물은 밝은 채움 + 짙은 외곽선, 흑 기물은 짙은 채움 + 밝은 외곽선.
+                Color fill = piece.side() == Side.WHITE
+                        ? new Color(0xFFF4E5)
+                        : new Color(0x211810);
+                Color outline = piece.side() == Side.WHITE
+                        ? new Color(0x3A281B)
+                        : new Color(0xF4E9D8);
 
-                Font pieceFont = new Font(
-                        "Segoe UI Symbol",
-                        Font.PLAIN,
-                        Math.max(12, (int) (size * 0.78))
-                );
-
-                g2.setFont(pieceFont);
-
-                FontMetrics metrics =
-                        g2.getFontMetrics();
-
-                int textX =
-                        center.x
-                                - metrics.stringWidth(symbol) / 2;
-
-                int textY =
-                        center.y
-                                + (
-                                metrics.getAscent()
-                                        - metrics.getDescent()
-                        ) / 2;
-
-                // 검은색과 흰색 기물 구분
-                if (piece.side() == Side.WHITE) {
-
-                    g2.setColor(
-                            new Color(0xFFF4E5)
-                    );
-
-                } else {
-
-                    g2.setColor(
-                            new Color(0x211810)
-                    );
+                int outlineOffset = Math.max(1, size / 90);
+                g2.setColor(outline);
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        if (dx == 0 && dy == 0) {
+                            continue;
+                        }
+                        g2.drawString(
+                                symbol,
+                                textX + dx * outlineOffset,
+                                textY + dy * outlineOffset
+                        );
+                    }
                 }
 
-                g2.drawString(
-                        symbol,
-                        textX,
-                        textY
-                );
+                g2.setColor(fill);
+                g2.drawString(symbol, textX, textY);
             }
         }
+
+        g2.setStroke(oldStroke);
+        g2.setColor(oldColor);
     }
 
 
@@ -1027,36 +1117,13 @@ public class BoardPanel extends JPanel {
 
     private String pieceSymbol(Piece piece) {
 
-        if (piece.side() == Side.WHITE) {
-
-            return switch (piece.type()) {
-
-                case KING -> "♔";
-
-                case QUEEN -> "♕";
-
-                case ROOK -> "♖";
-
-                case BISHOP -> "♗";
-
-                case KNIGHT -> "♘";
-
-                case PAWN -> "♙";
-            };
-        }
-
+        // 채워진 체스 기호를 사용하고, 진영별 색상과 외곽선으로 백·흑을 구분한다.
         return switch (piece.type()) {
-
             case KING -> "♚";
-
             case QUEEN -> "♛";
-
             case ROOK -> "♜";
-
             case BISHOP -> "♝";
-
             case KNIGHT -> "♞";
-
             case PAWN -> "♟";
         };
     }

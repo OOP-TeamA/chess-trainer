@@ -1,8 +1,10 @@
 package com.oopteama.chess.ui;
 
 import java.awt.BorderLayout;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -11,37 +13,60 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
+import java.awt.Polygon;
+import java.awt.geom.Path2D;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
+import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
 import com.oopteama.chess.nav.Navigator;
 import com.oopteama.chess.nav.Route;
+import com.oopteama.chess.content.Lesson;
+import com.oopteama.chess.progress.AttemptStats;
+import com.oopteama.chess.progress.Progress;
 
 
 public final class HomeScreen extends JPanel implements Screen {
 
     private final Navigator navigator;
+    private final Services services;
+    private final Map<String, JLabel> metricLabels = new HashMap<>();
+    private final Map<String, JProgressBar> metricBars = new HashMap<>();
+    private final Runnable progressChangeListener = this::refreshSummary;
+
+    private JLabel resumeTitle;
+    private JLabel resumeDescription;
+    private JLabel lessonProgressText;
+    private JProgressBar lessonProgressBar;
+    private JButton continueButton;
+    private Route recommendedRoute = new Route.Lessons();
+    private Progress observedProgress;
 
 
-    public HomeScreen(Navigator navigator) {
+    public HomeScreen(Navigator navigator, Services services) {
 
         this.navigator = Objects.requireNonNull(navigator);
+        this.services = Objects.requireNonNull(services);
 
         setLayout(new BorderLayout());
 
         setBackground(Theme.WINDOW);
 
         setBorder(
-                new EmptyBorder(25, 30, 25, 30)
+                new EmptyBorder(24, 24, 24, 24)
         );
 
         // 전체 홈 화면 내용
@@ -66,32 +91,103 @@ public final class HomeScreen extends JPanel implements Screen {
 
         content.add(Box.createVerticalStrut(22));
 
-        // 3. 주요 기능 안내
-        content.add(createSectionTitle());
-
-        content.add(Box.createVerticalStrut(12));
-
-        // 4. 기능별 카드
+        // 3. 기능별 카드
         content.add(createFeatureCards());
+        add(content, BorderLayout.CENTER);
+        refreshSummary();
+    }
 
-        // 화면 크기가 작을 때 스크롤 가능하도록 설정
-        JScrollPane scrollPane = new JScrollPane(content);
 
-        scrollPane.setBorder(null);
+    private void refreshSummary() {
+        Progress progress = services.progress();
+        List<Lesson> lessons = services.lessons() == null
+                ? List.of()
+                : services.lessons();
 
-        scrollPane.setBackground(Theme.WINDOW);
+        if (progress == null) {
+            updateMetric("lessons", "기록 연동 대기", 0);
+            updateMetric("quiz", "기록 연동 대기", 0);
+            updateMetric("library", "기록 API 연동 대기", 0);
+            updateMetric("ai", "기록 API 연동 대기", 0);
+            if (resumeTitle != null) {
+                resumeTitle.setText("학습 기록을 불러올 수 없습니다");
+                resumeDescription.setText("Progress 서비스 연결 후 추천을 표시합니다.");
+                lessonProgressBar.setValue(0);
+                lessonProgressText.setText("기록 대기");
+                recommendedRoute = new Route.Lessons();
+            }
+            return;
+        }
 
-        scrollPane.getViewport().setBackground(Theme.WINDOW);
-
-        scrollPane.setHorizontalScrollBarPolicy(
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        int totalLessons = lessons.size();
+        int completedLessons = progress.lessonsDone().size();
+        int lessonPercent = totalLessons == 0
+                ? 0
+                : Math.min(100, completedLessons * 100 / totalLessons);
+        updateMetric(
+                "lessons",
+                totalLessons == 0
+                        ? "레슨 콘텐츠 없음"
+                        : completedLessons + " / " + totalLessons + " 레슨",
+                lessonPercent
         );
 
-        scrollPane.setVerticalScrollBarPolicy(
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+        AttemptStats quizStats = progress.termQuizAttempts();
+        int attempted = quizStats == null ? 0 : quizStats.attempted();
+        int correct = quizStats == null ? 0 : quizStats.solved();
+        int accuracy = attempted == 0 ? 0 : Math.min(100, correct * 100 / attempted);
+        updateMetric(
+                "quiz",
+                attempted == 0
+                        ? "아직 퀴즈 기록 없음"
+                        : attempted + "문제, 정답률 " + accuracy + "%",
+                accuracy
         );
 
-        add(scrollPane, BorderLayout.CENTER);
+        // GameLibrary 데이터 접근 API가 Services에 추가되면 실제 기보 수치로 연결합니다.
+        updateMetric("library", "기보 기록 API 연동 대기", 0);
+        // AI 대국 기록은 AI 서비스 계약 통합 후 표시합니다.
+        updateMetric("ai", "AI 기록 API 연동 대기", 0);
+
+        if (resumeTitle != null) {
+            Lesson nextLesson = lessons.stream()
+                    .sorted(Comparator.comparingInt(Lesson::order))
+                    .filter(lesson -> !progress.lessonsDone().contains(lesson.id()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (nextLesson != null) {
+                resumeTitle.setText("레슨 " + nextLesson.order() + ". " + nextLesson.title());
+                resumeDescription.setText("다음 추천 · 미완료 첫 레슨");
+                recommendedRoute = new Route.Lesson(nextLesson.id(), 0);
+            } else if (!lessons.isEmpty()) {
+                resumeTitle.setText("모든 레슨을 완료했어요");
+                resumeDescription.setText("다른 학습 메뉴에서 계속 연습해 보세요.");
+                recommendedRoute = new Route.Lessons();
+            } else {
+                resumeTitle.setText("레슨 콘텐츠를 기다리고 있어요");
+                resumeDescription.setText("레슨이 추가되면 다음 학습을 추천합니다.");
+                recommendedRoute = new Route.Lessons();
+            }
+
+            lessonProgressBar.setValue(lessonPercent);
+            lessonProgressText.setText(totalLessons == 0
+                    ? "0 / 0 레슨"
+                    : completedLessons + " / " + totalLessons + " 레슨 · "
+                            + lessonPercent + "%");
+        }
+    }
+
+
+    private void updateMetric(String key, String text, int progress) {
+        JLabel label = metricLabels.get(key);
+        if (label != null) {
+            label.setText(text);
+        }
+        JProgressBar bar = metricBars.get(key);
+        if (bar != null) {
+            bar.setValue(Math.max(0, Math.min(100, progress)));
+        }
     }
 
 
@@ -112,15 +208,15 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         panel.setBorder(
-                new EmptyBorder(23, 25, 23, 25)
+                new EmptyBorder(8, 25, 8, 25)
         );
 
         panel.setPreferredSize(
-                new Dimension(800, 145)
+                new Dimension(800, 210)
         );
 
         panel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 160)
+                new Dimension(Integer.MAX_VALUE, 220)
         );
 
         // 왼쪽 제목 영역
@@ -140,7 +236,7 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         title.setFont(
-                Theme.title(Theme.FONT_28)
+                Theme.title(Theme.FONT_36)
         );
 
         title.setForeground(Theme.TEXT);
@@ -176,11 +272,11 @@ public final class HomeScreen extends JPanel implements Screen {
 
         piecesPanel.setOpaque(false);
 
-        JLabel pawn = createPieceLabel("♟", 38);
-        JLabel bishop = createPieceLabel("♝", 43);
-        JLabel king = createPieceLabel("♚", 65);
-        JLabel knight = createPieceLabel("♞", 53);
-        JLabel pawn2 = createPieceLabel("♟", 38);
+        JLabel pawn = createPieceLabel("♟", 48);
+        JLabel bishop = createPieceLabel("♝", 60);
+        JLabel king = createPieceLabel("♚", 86);
+        JLabel knight = createPieceLabel("♞", 76);
+        JLabel pawn2 = createPieceLabel("♟", 48);
 
         piecesPanel.add(pawn);
         piecesPanel.add(bishop);
@@ -260,9 +356,8 @@ public final class HomeScreen extends JPanel implements Screen {
                 new EmptyBorder(15, 18, 15, 18)
         );
 
-        panel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 125)
-        );
+        panel.setPreferredSize(new Dimension(800, 155));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 165));
 
 
         // 왼쪽 학습 정보
@@ -285,39 +380,57 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         badge.setForeground(Theme.ACCENT);
+        badge.setOpaque(true);
+        badge.setBackground(Theme.RAISED);
+        badge.setBorder(new EmptyBorder(4, 10, 4, 10));
+        badge.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 
-        JLabel title = new JLabel(
-                "레슨 학습을 이어서 진행해 보세요."
+        resumeTitle = new JLabel("학습 기록을 불러오는 중");
+
+        resumeTitle.setFont(
+                Theme.title(Theme.FONT_28)
         );
 
-        title.setFont(
-                Theme.title(Theme.FONT_21)
-        );
-
-        title.setForeground(Theme.TEXT);
+        resumeTitle.setForeground(Theme.TEXT);
+        resumeTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 
-        JLabel description = new JLabel(
-                "최근 학습 진행 정보는 데이터 연결 후 표시됩니다."
-        );
+        resumeDescription = new JLabel("다음 학습을 확인하고 있어요.");
 
-        description.setFont(
+        resumeDescription.setFont(
                 Theme.body(Theme.FONT_12, 0)
         );
 
-        description.setForeground(Theme.MUTED);
+        resumeDescription.setForeground(Theme.MUTED);
+        resumeDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 
         infoPanel.add(badge);
 
         infoPanel.add(Box.createVerticalStrut(7));
 
-        infoPanel.add(title);
+        infoPanel.add(resumeTitle);
 
         infoPanel.add(Box.createVerticalStrut(6));
 
-        infoPanel.add(description);
+        infoPanel.add(resumeDescription);
+        infoPanel.add(Box.createVerticalStrut(9));
+
+        JPanel progressRow = new JPanel(new BorderLayout(12, 0));
+        progressRow.setOpaque(false);
+        progressRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        lessonProgressBar = new JProgressBar(0, 100);
+        lessonProgressBar.setBorderPainted(false);
+        lessonProgressBar.setBackground(Theme.RAISED);
+        lessonProgressBar.setForeground(Theme.ACCENT);
+        lessonProgressBar.setPreferredSize(new Dimension(300, 12));
+        lessonProgressText = new JLabel("기록 대기");
+        lessonProgressText.setFont(Theme.body(Theme.FONT_14, 0));
+        lessonProgressText.setForeground(Theme.MUTED);
+        progressRow.add(lessonProgressBar, BorderLayout.CENTER);
+        progressRow.add(lessonProgressText, BorderLayout.EAST);
+        infoPanel.add(progressRow);
 
 
         // 오른쪽 버튼
@@ -325,24 +438,22 @@ public final class HomeScreen extends JPanel implements Screen {
                 new FlowLayout(
                         FlowLayout.RIGHT,
                         8,
-                        15
+                        8
                 )
         );
 
         buttonPanel.setOpaque(false);
 
 
-        JButton continueButton = createAccentButton(
-                "레슨 이어 하기"
+        continueButton = createAccentButton(
+                "▶  레슨 이어 하기"
         );
 
-        continueButton.addActionListener(e ->
-                navigator.go(new Route.Lessons())
-        );
+        continueButton.addActionListener(e -> navigator.go(recommendedRoute));
 
 
         JButton listButton = createOutlineButton(
-                "레슨 목록"
+                "☷  레슨 목록"
         );
 
         listButton.addActionListener(e ->
@@ -364,65 +475,6 @@ public final class HomeScreen extends JPanel implements Screen {
 
 
     // =================================================
-    // 3. 주요 기능 제목
-    // =================================================
-
-    private JPanel createSectionTitle() {
-
-        JPanel panel = new JPanel(
-                new BorderLayout()
-        );
-
-        panel.setOpaque(false);
-
-        JLabel title = new JLabel("주요 학습 메뉴");
-
-        title.setFont(
-                Theme.title(Theme.FONT_21)
-        );
-
-        title.setForeground(Theme.TEXT);
-
-        JLabel subtitle = new JLabel(
-                "원하는 메뉴를 선택해 체스를 배워보세요."
-        );
-
-        subtitle.setFont(
-                Theme.body(Theme.FONT_12, 0)
-        );
-
-        subtitle.setForeground(Theme.MUTED);
-
-
-        JPanel textPanel = new JPanel();
-
-        textPanel.setLayout(
-                new BoxLayout(
-                        textPanel,
-                        BoxLayout.Y_AXIS
-                )
-        );
-
-        textPanel.setOpaque(false);
-
-        textPanel.add(title);
-
-        textPanel.add(Box.createVerticalStrut(4));
-
-        textPanel.add(subtitle);
-
-
-        panel.add(textPanel, BorderLayout.CENTER);
-
-        panel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 55)
-        );
-
-        return panel;
-    }
-
-
-    // =================================================
     // 4. 기능별 카드
     // =================================================
 
@@ -435,21 +487,23 @@ public final class HomeScreen extends JPanel implements Screen {
         panel.setOpaque(false);
 
         panel.setPreferredSize(
-                new Dimension(800, 225)
+                new Dimension(800, 315)
         );
 
         panel.setMaximumSize(
-                new Dimension(Integer.MAX_VALUE, 240)
+                new Dimension(Integer.MAX_VALUE, 330)
         );
 
 
         // 룰학습
         panel.add(
                 createFeatureCard(
-                        "▤",
+                        "lessons",
+                        "BOOK",
                         "룰학습",
                         "체스의 기본 규칙과\n핵심 개념 배우기",
-                        "기초부터 차근차근",
+                        "기록 불러오는 중",
+                        0,
                         new Color(0xF3DCC0),
                         new Color(0x754B2B),
                         () -> navigator.go(new Route.Lessons())
@@ -460,10 +514,12 @@ public final class HomeScreen extends JPanel implements Screen {
         // 체스 퀴즈
         panel.add(
                 createFeatureCard(
-                        "♟",
+                        "quiz",
+                        "QUIZ",
                         "체스 퀴즈",
                         "풀면서 익히는\n실전 감각",
-                        "문제로 실력 확인",
+                        "기록 불러오는 중",
+                        0,
                         new Color(0xDCE8F8),
                         new Color(0x315D91),
                         () -> navigator.go(new Route.Puzzles())
@@ -474,10 +530,12 @@ public final class HomeScreen extends JPanel implements Screen {
         // 명국 기보
         panel.add(
                 createFeatureCard(
-                        "♛",
+                        "library",
+                        "CROWN",
                         "명국 기보",
                         "명국으로 배우는\n전략과 전술",
-                        "명국 감상하기",
+                        "기보 기록 API 연동 대기",
+                        0,
                         new Color(0xE2EDD9),
                         new Color(0x527448),
                         () -> navigator.go(new Route.Library())
@@ -488,10 +546,12 @@ public final class HomeScreen extends JPanel implements Screen {
         // AI 대전
         panel.add(
                 createFeatureCard(
-                        "♞",
+                        "ai",
+                        "ROBOT",
                         "AI 대전",
                         "나만의 난이도로\n대국 연습하기",
-                        "AI와 대국하기",
+                        "AI 기록 API 연동 대기",
+                        0,
                         new Color(0xEAE0F6),
                         new Color(0x70509A),
                         () -> navigator.go(new Route.NewGame())
@@ -505,10 +565,12 @@ public final class HomeScreen extends JPanel implements Screen {
 
     // 개별 기능 카드
     private JPanel createFeatureCard(
+            String metricKey,
             String icon,
             String title,
             String description,
-            String actionText,
+            String statistic,
+            int progressValue,
             Color background,
             Color foreground,
             Runnable action
@@ -542,17 +604,7 @@ public final class HomeScreen extends JPanel implements Screen {
         topPanel.setOpaque(false);
 
 
-        JLabel iconLabel = new JLabel(icon);
-
-        iconLabel.setFont(
-                new Font(
-                        "Serif",
-                        Font.PLAIN,
-                        39
-                )
-        );
-
-        iconLabel.setForeground(foreground);
+        JLabel iconLabel = new JLabel(new FeatureIcon(icon, foreground));
 
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -560,7 +612,7 @@ public final class HomeScreen extends JPanel implements Screen {
         JLabel titleLabel = new JLabel(title);
 
         titleLabel.setFont(
-                Theme.title(Theme.FONT_21)
+                Theme.title(Theme.FONT_28)
         );
 
         titleLabel.setForeground(foreground);
@@ -593,69 +645,44 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
 
-        // 바로가기 버튼
-        JButton button = new JButton(
-                actionText + "  →"
-        );
+        JPanel statisticPanel = new JPanel();
+        statisticPanel.setLayout(new BoxLayout(statisticPanel, BoxLayout.Y_AXIS));
+        statisticPanel.setOpaque(false);
 
-        button.setFont(
-                Theme.body(Theme.FONT_12, 1)
-        );
+        JLabel statisticLabel = new JLabel(statistic);
+        statisticLabel.setFont(Theme.body(Theme.FONT_16, 1));
+        statisticLabel.setForeground(foreground.darker());
+        statisticLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        button.setForeground(foreground);
+        JProgressBar progress = new JProgressBar(0, 100);
+        progress.setValue(progressValue);
+        progress.setBorderPainted(false);
+        progress.setBackground(new Color(
+                Math.min(255, background.getRed() + 15),
+                Math.min(255, background.getGreen() + 15),
+                Math.min(255, background.getBlue() + 15)
+        ));
+        progress.setForeground(foreground);
+        progress.setPreferredSize(new Dimension(150, 12));
+        progress.setMaximumSize(new Dimension(Integer.MAX_VALUE, 12));
 
-        button.setBackground(background);
+        metricLabels.put(metricKey, statisticLabel);
+        metricBars.put(metricKey, progress);
 
-        button.setOpaque(false);
-
-        button.setFocusPainted(false);
-
-        button.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                foreground.darker()
-                        ),
-                        new EmptyBorder(7, 5, 7, 5)
-                )
-        );
-
-        button.setCursor(
-                Cursor.getPredefinedCursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
-
-        button.addActionListener(e -> action.run());
+        statisticPanel.add(statisticLabel);
+        statisticPanel.add(Box.createVerticalStrut(10));
+        statisticPanel.add(progress);
 
 
         card.add(topPanel, BorderLayout.NORTH);
 
         card.add(descriptionLabel, BorderLayout.CENTER);
 
-        card.add(button, BorderLayout.SOUTH);
+        card.add(statisticPanel, BorderLayout.SOUTH);
 
 
         // 카드 전체를 눌러도 이동
-        card.setCursor(
-                Cursor.getPredefinedCursor(
-                        Cursor.HAND_CURSOR
-                )
-        );
-
-        card.addMouseListener(
-                new java.awt.event.MouseAdapter() {
-
-                    @Override
-                    public void mouseClicked(
-                            java.awt.event.MouseEvent e
-                    ) {
-
-                        if (e.getSource() == card) {
-                            action.run();
-                        }
-                    }
-                }
-        );
+        makeClickable(card, action);
 
 
         return card;
@@ -728,6 +755,113 @@ public final class HomeScreen extends JPanel implements Screen {
         );
 
         return button;
+    }
+
+
+    private void makeClickable(Component component, Runnable action) {
+        component.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        component.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent event) {
+                action.run();
+            }
+        });
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                makeClickable(child, action);
+            }
+        }
+    }
+
+
+    private static final class FeatureIcon implements Icon {
+
+        private final String kind;
+        private final Color color;
+
+        private FeatureIcon(String kind, Color color) {
+            this.kind = kind;
+            this.color = color;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 64;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 64;
+        }
+
+        @Override
+        public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            g2.translate(x, y);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(color);
+
+            switch (kind) {
+                case "BOOK" -> drawBook(g2);
+                case "QUIZ" -> drawQuiz(g2);
+                case "CROWN" -> drawCrown(g2);
+                case "ROBOT" -> drawRobot(g2);
+                default -> { }
+            }
+            g2.dispose();
+        }
+
+        private static void drawBook(Graphics2D g2) {
+            Path2D page = new Path2D.Double();
+            page.moveTo(32, 18);
+            page.curveTo(23, 13, 14, 14, 8, 18);
+            page.lineTo(8, 50);
+            page.curveTo(17, 46, 25, 47, 32, 52);
+            page.curveTo(39, 47, 47, 46, 56, 50);
+            page.lineTo(56, 18);
+            page.curveTo(50, 14, 41, 13, 32, 18);
+            page.closePath();
+            g2.fill(page);
+            g2.setColor(new Color(0xF3DCC0));
+            g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND,
+                    BasicStroke.JOIN_ROUND));
+            g2.drawLine(32, 19, 32, 49);
+        }
+
+        private static void drawQuiz(Graphics2D g2) {
+            int[] xs = {32, 38, 45, 45, 52, 45, 45, 38, 32, 26, 19, 19,
+                    12, 19, 19, 26};
+            int[] ys = {7, 17, 13, 22, 32, 42, 51, 47, 57, 47, 51, 42,
+                    32, 22, 13, 17};
+            g2.fillPolygon(new Polygon(xs, ys, xs.length));
+            g2.setColor(new Color(0xDCE8F8));
+            g2.fillOval(25, 25, 14, 14);
+        }
+
+        private static void drawCrown(Graphics2D g2) {
+            int[] xs = {8, 19, 27, 32, 38, 47, 56, 51, 13};
+            int[] ys = {20, 30, 17, 31, 17, 30, 20, 49, 49};
+            g2.fillPolygon(new Polygon(xs, ys, xs.length));
+            g2.fillRoundRect(15, 52, 34, 5, 3, 3);
+            g2.fillOval(5, 16, 8, 8);
+            g2.fillOval(28, 9, 8, 8);
+            g2.fillOval(51, 16, 8, 8);
+        }
+
+        private static void drawRobot(Graphics2D g2) {
+            g2.setStroke(new BasicStroke(6f, BasicStroke.CAP_ROUND,
+                    BasicStroke.JOIN_ROUND));
+            g2.drawLine(32, 8, 32, 16);
+            g2.drawRoundRect(13, 17, 38, 34, 10, 10);
+            g2.drawLine(8, 27, 13, 27);
+            g2.drawLine(51, 27, 56, 27);
+            g2.drawLine(8, 40, 13, 40);
+            g2.drawLine(51, 40, 56, 40);
+            g2.fillOval(23, 29, 5, 5);
+            g2.fillOval(37, 29, 5, 5);
+            g2.drawArc(25, 34, 14, 9, 200, 140);
+        }
     }
 
 
@@ -815,14 +949,25 @@ public final class HomeScreen extends JPanel implements Screen {
 
     @Override
     public void onShow(Route route) {
-
-        // 홈 화면 진입 시 필요한 작업
+        Progress current = services.progress();
+        if (observedProgress != current) {
+            if (observedProgress != null) {
+                observedProgress.removeChangeListener(progressChangeListener);
+            }
+            observedProgress = current;
+            if (observedProgress != null) {
+                observedProgress.addChangeListener(progressChangeListener);
+            }
+        }
+        refreshSummary();
     }
 
 
     @Override
     public void onHide() {
-
-        // 홈 화면 이탈 시 정리할 작업
+        if (observedProgress != null) {
+            observedProgress.removeChangeListener(progressChangeListener);
+            observedProgress = null;
+        }
     }
 }

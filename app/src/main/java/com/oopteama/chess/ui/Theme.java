@@ -61,17 +61,28 @@ public final class Theme {
     private static final String BODY_FONT_RESOURCE =
             "/fonts/Pretendard-Regular.ttf";
 
+    private static final String BODY_BOLD_FONT_RESOURCE =
+            "/fonts/Pretendard-Bold.ttf";
+
     private static final String TITLE_FONT_RESOURCE =
             "/fonts/NotoSerifKR-Bold.ttf";
 
+    // 본문 일반 글꼴
     private static final Font BODY_FONT = loadFont(
             BODY_FONT_RESOURCE,
-            new Font("Malgun Gothic", Font.PLAIN, FONT_14)
+            new Font(Font.DIALOG, Font.PLAIN, FONT_14)
     );
 
+    // 본문 굵은 글꼴
+    private static final Font BODY_BOLD_FONT = loadFont(
+            BODY_BOLD_FONT_RESOURCE,
+            new Font(Font.DIALOG, Font.BOLD, FONT_14)
+    );
+
+    // 제목 글꼴
     private static final Font TITLE_FONT = loadFont(
             TITLE_FONT_RESOURCE,
-            new Font("Malgun Gothic", Font.BOLD, FONT_21)
+            new Font(Font.DIALOG, Font.BOLD, FONT_21)
     );
 
     private static boolean installed;
@@ -126,19 +137,28 @@ public final class Theme {
 
     /**
      * 본문 글꼴을 반환한다.
-     * weight가 0이면 보통 굵기, 그 외에는 굵은 글씨를 사용한다.
+     * weight가 0이면 Pretendard Regular,
+     * 그 외에는 Pretendard Bold를 사용한다.
      */
     public static Font body(int size, int weight) {
-        int safeSize = Math.max(1, size);
-        int style = (weight == 0) ? Font.PLAIN : Font.BOLD;
 
-        return BODY_FONT.deriveFont(style, (float) safeSize);
+        int safeSize = Math.max(1, size);
+
+        // 요청된 굵기에 따라 실제 폰트 파일을 선택한다.
+        Font baseFont = (weight == 0)
+                ? BODY_FONT
+                : BODY_BOLD_FONT;
+
+        return baseFont.deriveFont((float) safeSize);
     }
 
-    /** 제목 글꼴을 반환한다. */
+    /**
+     * 제목 글꼴을 반환한다.
+     * Noto Serif KR Bold를 사용한다.
+     */
     public static Font title(int size) {
+
         return TITLE_FONT.deriveFont(
-                Font.BOLD,
                 (float) Math.max(1, size)
         );
     }
@@ -172,7 +192,7 @@ public final class Theme {
         installed = true;
     }
 
-    /**Swing 컴포넌트의 기본 색상과 글꼴을 설정한다.*/
+    /** Swing 컴포넌트의 기본 색상과 글꼴을 설정한다. */
     private static void applyUiDefaults() {
 
         ColorUIResource window = new ColorUIResource(WINDOW);
