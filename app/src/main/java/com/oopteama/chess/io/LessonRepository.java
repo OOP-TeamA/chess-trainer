@@ -3,26 +3,18 @@ package com.oopteama.chess.io;
 import com.oopteama.chess.content.Lesson;
 import com.oopteama.chess.content.LessonStep;
 import com.oopteama.chess.content.RulesKind;
-import com.oopteama.chess.content.goal.CheckGoal;
-import com.oopteama.chess.content.goal.InputMode;
-import com.oopteama.chess.content.goal.MateGoal;
-import com.oopteama.chess.content.goal.MoveGoal;
 import com.oopteama.chess.content.goal.StepGoal;
-import com.oopteama.chess.core.Fen;
-import com.oopteama.chess.core.FenFormatException;
 import com.oopteama.chess.core.MalformedDataException;
 import com.oopteama.chess.core.Position;
 import com.oopteama.chess.core.Square;
-import com.oopteama.chess.core.rules.RuleSet;
 import com.oopteama.chess.core.rules.StandardRules;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 /**
  * 레슨 파일 하나를 레슨 하나로 읽는다(RULE-01, RULE-02). 파일은 {@code @lesson <id>} 1개와 {@code @step} 1개 이상이다.
@@ -45,8 +37,6 @@ public final class LessonRepository extends BlockRepository<Lesson> {
 
     private static final String LESSON = "lesson";
     private static final String STEP = "step";
-    /** 레슨 ID. 학습 기록에 쉼표 목록으로 저장되므로 구분자로 쓰이는 문자를 막는다. */
-    private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]*");
     private static final StandardRules STANDARD = new StandardRules();
 
     @Override
@@ -81,10 +71,7 @@ public final class LessonRepository extends BlockRepository<Lesson> {
         if (head == null) {
             throw error(blocks.get(0), "@lesson 블록이 없습니다");
         }
-        String id = head.id();
-        if (!ID.matcher(id).matches()) {
-            throw error(head, "레슨 ID는 영문 소문자·숫자·-·_로 씁니다: '" + id + "'");
-        }
+        String id = BlockChecks.id(head, "레슨"); // 학습 기록에 쉼표 목록으로 저장되므로 구분자 문자를 막는다
         String where = "레슨 " + id;
         String title = head.require("title");
         String summary = head.require("summary");
@@ -101,23 +88,12 @@ public final class LessonRepository extends BlockRepository<Lesson> {
 
     private static LessonStep step(Block b, String where) throws MalformedDataException {
         String fen = b.require("fen");
-        Position start;
-        try {
-            start = Fen.parse(fen);
-        } catch (FenFormatException e) {
-            throw error(b, where + ": fen 형식 오류: " + e.getMessage());
-        }
+        Position start = BlockChecks.fen(b, where, "fen");
         RulesKind kind = rulesKind(b, where);
         String text = b.require("text");
-        String spec = b.require("goal");
-        StepGoal goal;
-        try {
-            goal = StepGoal.parse(spec);
-        } catch (MalformedDataException e) {
-            throw error(b, where + ": " + e.getMessage());
-        }
-        Set<Square> highlight = squares(b, where, "highlight");
-        Set<Square> hint = squares(b, where, "hint");
+        StepGoal goal = BlockChecks.goal(b, where, "goal");
+        Set<Square> highlight = BlockChecks.squares(b, where, "highlight");
+        Set<Square> hint = BlockChecks.squares(b, where, "hint");
         checkPlayable(b, where, start, kind, goal);
         return new LessonStep(fen, kind, text, highlight, goal, hint, b.get("fail", ""), b.get("success", ""));
     }
@@ -132,19 +108,9 @@ public final class LessonRepository extends BlockRepository<Lesson> {
                         + String.join(" ", problems));
             }
         }
-        if ((goal instanceof CheckGoal || goal instanceof MateGoal)
-                && start.kingSquare(start.sideToMove().opposite()).isEmpty()) {
-            throw error(b, where + ": 체크·메이트 목표인데 상대 킹이 국면에 없습니다");
-        }
-        RuleSet rules = kind.rules();
-        if (goal instanceof MoveGoal move) {
-            for (String uci : move.uci()) {
-                if (rules.fromUci(start, uci).isEmpty()) {
-                    throw error(b, where + ": 정답 수 " + uci + "는 이 국면에서 둘 수 없습니다");
-                }
-            }
-        } else if (goal.inputMode() == InputMode.MOVE && goal.solution(start, rules).isEmpty()) {
-            throw error(b, where + ": 이 국면에는 목표를 이루는 수가 없습니다");
+        Optional<String> unreachable = BlockChecks.unreachable(start, kind.rules(), goal);
+        if (unreachable.isPresent()) {
+            throw error(b, where + ": " + unreachable.get());
         }
     }
 
@@ -155,18 +121,6 @@ public final class LessonRepository extends BlockRepository<Lesson> {
             case "sandbox" -> RulesKind.SANDBOX;
             default -> throw error(b, where + ": rules는 standard 또는 sandbox입니다: '" + value + "'");
         };
-    }
-
-    private static Set<Square> squares(Block b, String where, String key) throws MalformedDataException {
-        Set<Square> out = new LinkedHashSet<>();
-        for (String name : b.list(key)) {
-            try {
-                out.add(Square.of(name.toLowerCase(Locale.ROOT)));
-            } catch (IllegalArgumentException e) {
-                throw error(b, where + ": " + key + "의 칸 이름이 잘못됐습니다: '" + name + "'");
-            }
-        }
-        return out;
     }
 
     private static int positiveInt(Block b, String where, String key) throws MalformedDataException {
@@ -184,6 +138,6 @@ public final class LessonRepository extends BlockRepository<Lesson> {
 
     /** 블록 위치를 붙인 형식 오류. */
     private static MalformedDataException error(Block b, String message) {
-        return new MalformedDataException("%s:%d: %s".formatted(b.source(), b.line(), message), b.source(), b.line());
+        return BlockChecks.error(b, message);
     }
 }
