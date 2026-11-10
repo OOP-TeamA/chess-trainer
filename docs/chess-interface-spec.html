@@ -556,7 +556,8 @@ figure.uml .src{font-family:var(--mono);font-size:.74rem;color:var(--faint);marg
 <span class="cmt">/** 백프. StandardRules.validate 통과, solution의 모든 수가 순서대로 합법이어야 함. */</span>
 <span class="kw">public</span> <span class="kw">final</span> <span class="kw">class</span> PuzzleRepository <span class="kw">extends</span> PerBlockRepository&lt;Puzzle&gt; { }
 
-<span class="cmt">/** 백프. fen과 try.fen 파싱 가능, related의 id 존재는 Glossary 생성 후 테스트로 검사. */</span>
+<span class="cmt">/** 백프. fen은 문법만 검사. try.fen은 StandardRules.validate 통과와 try.goal 달성 가능까지 검사(직접 해보기는 표준 규칙).
+    related의 id 존재는 Glossary 생성 후 테스트로 검사. */</span>
 <span class="kw">public</span> <span class="kw">final</span> <span class="kw">class</span> GlossaryRepository <span class="kw">extends</span> PerBlockRepository&lt;GlossaryEntry&gt; { }
 
 <span class="cmt">/** QUIZ-05. data/term-quiz.txt의 answer=1..4를 TermQuestion.answerIndex 0..3으로 변환한다.
@@ -646,7 +647,8 @@ figure.uml .src{font-family:var(--mono);font-size:.74rem;color:var(--faint);marg
         <span class="kw">record</span> Link(String target, String label) <span class="kw">implements</span> Segment { }
     }
     <span class="kw">public</span> <span class="kw">static</span> List&lt;Segment&gt; parse(String text);
-    <span class="cmt">/** JEditorPane용 HTML. 해석되는 링크만 &lt;a href=&quot;term:id&quot;&gt;, 나머지는 표시문 그대로. 본문은 이스케이프. */</span>
+    <span class="cmt">/** JEditorPane용 HTML 조각(&lt;html&gt; 태그 없음). 해석되는 링크만 &lt;a href=&quot;term:id&quot;&gt;, 나머지는 표시문 그대로.
+        본문은 이스케이프하고 줄바꿈은 &lt;br&gt;. */</span>
     <span class="kw">public</span> <span class="kw">static</span> String toHtml(String text, Glossary glossary);
 }
 
