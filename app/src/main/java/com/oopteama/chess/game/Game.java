@@ -17,6 +17,7 @@ import java.util.Optional;
 public final class Game {
 
     private final RuleSet rules;
+    private final Position start;   // history() 사본을 다시 만들 때 쓰는 시작 국면
     private final Position pos;
     private final GameHistory history;
     private final List<GameListener> listeners = new ArrayList<>();
@@ -25,6 +26,7 @@ public final class Game {
     public Game(Position start, RuleSet rules) {
         Objects.requireNonNull(start);
         this.rules = Objects.requireNonNull(rules);
+        this.start = start.copy();
         this.pos = start.copy();   // copy()는 되돌리기 스택을 비우므로 시작 국면 너머로는 undo 불가(G12)
         this.history = new GameHistory(Fen.write(start), rules.repetitionKey(start));
         this.result = rules.checkEnd(pos, history).orElse(null);   // 시작부터 끝난 국면 대비
@@ -49,27 +51,29 @@ public final class Game {
         history.push(move, rules.repetitionKey(pos));
         result = rules.checkEnd(pos, history).orElse(null);
 
-        Position after = pos.copy();
-        for (GameListener l : snapshotListeners()) l.moveMade(move, after);
+        for (GameListener l : snapshotListeners()) l.moveMade(move, pos.copy());   // 리스너마다 사본
         if (result != null) {
             GameResult r = result;
             for (GameListener l : snapshotListeners()) l.gameEnded(r);
         }
     }
 
-    /** plies수만큼 되돌린다. 종료 상태(기권 포함)도 해제. 되돌릴 수보다 많으면 IllegalArgumentException. */
+    /**
+     * plies수만큼 되돌린다. 종료 상태(기권 포함)도 해제. 되돌릴 수보다 많으면 IllegalArgumentException.
+     * 0이면 아무것도 바꾸지 않는다(종료 상태도 그대로).
+     */
     public void undo(int plies) {
         if (plies < 0 || plies > history.moves().size()) {
             throw new IllegalArgumentException("되돌릴 수 없는 수: " + plies);
         }
+        if (plies == 0) return;
         result = null;
         for (int i = 0; i < plies; i++) {
             List<Move> moves = history.moves();
             Move last = moves.get(moves.size() - 1);
             pos.unmake();
             history.pop();
-            Position after = pos.copy();
-            for (GameListener l : snapshotListeners()) l.moveUndone(last, after);
+            for (GameListener l : snapshotListeners()) l.moveUndone(last, pos.copy());
         }
     }
 
@@ -83,7 +87,20 @@ public final class Game {
 
     public Optional<GameResult> result() { return Optional.ofNullable(result); }
 
-    public GameHistory history() { return history; }
+    /**
+     * 수순과 반복 기록의 사본. 바꿔도 대국에는 영향이 없다(국면과 기록이 어긋나지 않도록).
+     * 호출마다 시작 국면부터 다시 만들므로 수 개수에 비례하는 비용이 든다.
+     * 다른 스레드(AI 탐색)에 넘겨도 안전하다.
+     */
+    public GameHistory history() {
+        Position replay = start.copy();
+        GameHistory copy = new GameHistory(history.startFen(), rules.repetitionKey(replay));
+        for (Move m : history.moves()) {
+            replay.make(m);
+            copy.push(m, rules.repetitionKey(replay));
+        }
+        return copy;
+    }
 
     // TODO(AI-08, GAME-06): toPgn(Map<String, String> tags) : notation.PgnGame
     //  notation 패키지(CORE-08 San/Pgn, 백1)가 들어오는 11/20 PGN 단계에서 추가한다.
