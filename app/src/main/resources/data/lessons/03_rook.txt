@@ -1,0 +1,30 @@
+@lesson rook
+order=3
+title=룩
+summary=가로나 세로로 움직이고, 다른 기물을 뛰어넘을 수 없습니다.
+
+@step
+fen=8/8/8/8/3R4/8/8/8 w - - 0 1
+rules=sandbox
+text=d4의 룩을 가로나 세로로 한 번 옮겨 보세요. d7과 g4는 이동할 수 있는 칸의 예시입니다.
+highlight=d7,g4
+goal=any-move
+success=룩은 중간에 기물이 없으면 가로나 세로로 여러 칸 이동할 수 있습니다.
+
+@step
+fen=8/8/3P4/8/3R4/8/8/8 w - - 0 1
+rules=sandbox
+text=d6에 아군 폰이 있습니다. d4의 룩을 폰 바로 앞까지 위로 옮겨 보세요.
+goal=move:d4d5
+fail=d6의 아군 폰이 길을 막고 있습니다. 폰을 만나기 직전 칸을 찾아보세요.
+hint=d4,d5
+success=d5까지 이동했습니다. 룩은 아군 기물이 있는 칸으로 들어가거나 그 기물을 뛰어넘을 수 없습니다.
+
+@step
+fen=8/8/3p4/8/3R4/8/8/8 w - - 0 1
+rules=sandbox
+text=이번에는 d6에 상대 폰이 있습니다. d4의 룩을 움직여 상대 폰을 잡아 보세요.
+goal=move:d4d6
+fail=상대 폰을 잡으려면 그 폰이 있는 칸에 룩을 놓으세요.
+hint=d4,d6
+success=룩이 d6에서 상대 폰을 잡았습니다. 잡은 기물이 있던 칸에서 이동을 끝냅니다.
