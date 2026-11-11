@@ -14,13 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.Set;
 
 /**
  * 프로필 하나의 학습 기록(메모리 모델). EDT 전용.
  *
- * <p>현재 범위: 레슨 완료, 퍼즐별 시도·정답, 용어 퀴즈 기록, 난이도별 AI 전적, 점수, 변경 리스너.
- * 기보 맞히기·오답 노트·즐겨찾기는 04단계에 추가한다.
+ * <p>현재 범위: 레슨 완료, 퍼즐별 시도·정답, 용어 퀴즈 기록, 난이도별 AI 전적, 기보 맞히기 최고값, 점수, 변경 리스너.
+ * 오답 노트·즐겨찾기는 04단계에 추가한다.
  * 저장은 {@link ProgressStore}가 하며, 변경 리스너와 저장의 연결은 AppContext가 맡는다.
  *
  * <p>값이 실제로 바뀐 경우에만 리스너를 호출한다.
@@ -42,6 +43,8 @@ public final class Progress {
     private int termQuizSolved;
     /** 난이도별 AI 전적(난이도 선언 순서). 없는 난이도는 0,0,0. */
     private final Map<Difficulty, AiRecord> aiRecords = new EnumMap<>(Difficulty.class);
+    /** 기보 ID별 기보 맞히기 최고 정답률(처음 기록한 순서). */
+    private final Map<String, Double> bestGuesses = new LinkedHashMap<>();
     /** 이 단계가 아직 해석하지 않는 키(오답 노트·즐겨찾기 등). 다시 저장할 때 그대로 보존한다. */
     private final Map<String, String> preserved = new LinkedHashMap<>();
     private static final AttemptStats NO_ATTEMPTS = new AttemptStats(0, 0);
@@ -184,6 +187,36 @@ public final class Progress {
     }
 
     /**
+     * 기보 맞히기 한 판의 정답률을 기록한다(PROG-01, GAME-05). 기보별 최고값만 남기며,
+     * 기존 최고값 이하이면 아무것도 바꾸지 않는다(리스너도 호출하지 않음).
+     *
+     * @param gameId 기보 ID(번들은 파일명에서 {@code .txt}를 뺀 이름)
+     * @param ratio  정답률, 0 이상 1 이하
+     * @throws IllegalArgumentException ID가 비었거나 쉼표·공백·제어 문자를 포함할 때, 정답률이 범위 밖이거나 NaN일 때
+     */
+    public void recordGuess(String gameId, double ratio) {
+        String id = checkId(gameId);
+        checkRatio(ratio);
+        Double best = bestGuesses.get(id);
+        if (best == null || ratio > best) {
+            bestGuesses.put(id, ratio);
+            fireChanged();
+        }
+    }
+
+    /**
+     * 기보 맞히기 최고 정답률.
+     *
+     * @param gameId 기보 ID
+     * @return 0~1 최고값. 한 번도 기록하지 않았으면 비어 있음
+     */
+    public OptionalDouble bestGuess(String gameId) {
+        Objects.requireNonNull(gameId, "gameId");
+        Double best = bestGuesses.get(gameId);
+        return best == null ? OptionalDouble.empty() : OptionalDouble.of(best);
+    }
+
+    /**
      * 순위 점수. 서로 다른 완료 레슨 ×10 + 해결 퍼즐 ID ×5 + 정답 용어 문항 ID ×1.
      *
      * @return 점수
@@ -217,13 +250,15 @@ public final class Progress {
 
     /** 저장 파일에서 읽은 값을 리스너 호출 없이 채운다. */
     void restore(Set<String> lessons, Map<String, AttemptStats> puzzleStats, Set<String> correctIds,
-                 AttemptStats quiz, Map<Difficulty, AiRecord> ai, Map<String, String> others) {
+                 AttemptStats quiz, Map<Difficulty, AiRecord> ai, Map<String, Double> guesses,
+                 Map<String, String> others) {
         lessonsDone.addAll(lessons);
         puzzles.putAll(puzzleStats);
         termQuizCorrectIds.addAll(correctIds);
         termQuizAttempted = quiz.attempted();
         termQuizSolved = quiz.solved();
         aiRecords.putAll(ai);
+        bestGuesses.putAll(guesses);
         preserved.putAll(others);
     }
 
@@ -235,6 +270,11 @@ public final class Progress {
     /** 기록이 있는 난이도별 AI 전적(난이도 선언 순서). */
     Map<Difficulty, AiRecord> aiRecords() {
         return Collections.unmodifiableMap(aiRecords);
+    }
+
+    /** 기보 ID별 최고 정답률(기록 순서). */
+    Map<String, Double> bestGuesses() {
+        return Collections.unmodifiableMap(bestGuesses);
     }
 
     /** 해석하지 않고 보존 중인 키와 값(파일 순서). */
@@ -268,6 +308,18 @@ public final class Progress {
             throw new IllegalArgumentException("기록할 수 없는 ID: '" + id + "'");
         }
         return id;
+    }
+
+    /**
+     * 정답률이 0 이상 1 이하인지 검사한다(NaN 거부).
+     *
+     * @throws IllegalArgumentException 범위 밖이거나 NaN일 때
+     */
+    static double checkRatio(double ratio) {
+        if (!(ratio >= 0.0 && ratio <= 1.0)) {
+            throw new IllegalArgumentException("정답률은 0 이상 1 이하여야 합니다: " + ratio);
+        }
+        return ratio;
     }
 
     private void fireChanged() {

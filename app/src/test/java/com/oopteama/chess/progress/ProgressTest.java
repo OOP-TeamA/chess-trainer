@@ -172,4 +172,36 @@ class ProgressTest {
         assertThrows(IllegalArgumentException.class, () -> new AiRecord(0, 0, -1));
         assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.INTRO));
     }
+
+    @Test
+    void 기보_맞히기는_기보별_최고값만_남기고_바뀔_때만_알린다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        assertTrue(p.bestGuess("opera-1858").isEmpty());
+
+        p.recordGuess("opera-1858", 0.5);
+        p.recordGuess("opera-1858", 0.82);
+        p.recordGuess("opera-1858", 0.6);   // 낮으면 무시
+        p.recordGuess("opera-1858", 0.82);  // 같으면 무시
+        p.recordGuess("immortal", 0.0);     // 0도 기록
+
+        assertEquals(0.82, p.bestGuess("opera-1858").getAsDouble());
+        assertEquals(0.0, p.bestGuess("immortal").getAsDouble());
+        assertEquals(3, calls.get());
+        assertEquals(0, p.score()); // 기보 맞히기는 점수에 들어가지 않는다
+    }
+
+    @Test
+    void 기보_맞히기는_범위_밖_정답률과_잘못된_ID를_거부한다() {
+        Progress p = new Progress();
+        for (double bad : new double[] {-0.01, 1.01, Double.NaN, Double.POSITIVE_INFINITY}) {
+            assertThrows(IllegalArgumentException.class, () -> p.recordGuess("opera-1858", bad), "" + bad);
+        }
+        assertThrows(IllegalArgumentException.class, () -> p.recordGuess("a b", 0.5));
+        assertThrows(NullPointerException.class, () -> p.recordGuess(null, 0.5));
+        assertThrows(NullPointerException.class, () -> p.bestGuess(null));
+        p.recordGuess("opera-1858", 1.0);
+        assertEquals(1.0, p.bestGuess("opera-1858").getAsDouble());
+    }
 }
