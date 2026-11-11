@@ -91,6 +91,16 @@
   .dependency-check p>b{color:var(--accent)}
   .done{padding:11px 18px;background:var(--paper);border-top:1px solid var(--line);font-size:.91rem}
   .done b{color:var(--accent)}
+  .flow-key.is-done-key i{width:14px;height:14px;border:1px solid #b8c1be;border-radius:3px;background:#eceeec}
+  .lane-task.is-done{background:#eceeec;border-color:#b8c1be;color:#8a9692}
+  .lane-task.is-done:hover,.lane-task.is-done[aria-pressed="true"]{background:#e2e6e4}
+  .lane-task.is-done[aria-pressed="true"]{outline-color:#8a9692}
+  .lane-task.is-done strong::after{content:" · 완료";font-weight:500}
+  code.is-done,.assign li.is-done .dir{color:#98a39f}
+  .assign li.is-done{background:#f1f3f1;color:#8a9692}
+  .assign li.is-done h3{color:#7a8682;background:#e2e6e4}
+  .assign li.is-done h3::after{content:" ✓"}
+  .assign li.is-done .work code{color:inherit}
   .foot{font-size:.89rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
   .foot ul{padding-left:1.2em;margin:6px 0 0}
   @media screen and (max-width:760px){
@@ -127,6 +137,7 @@
       <div class="flow-meta">
         <span class="flow-key"><i aria-hidden="true"></i>컴파일에 필요한 파일</span>
         <span class="flow-key integration"><i aria-hidden="true"></i>실제 기능 연결·검증에 필요한 결과물</span>
+        <span class="flow-key is-done-key"><i aria-hidden="true"></i>완료(11/11 main 기준)</span>
         <a id="flow-details-link" href="#s01">전체 파일 분담과 대기 조건 보기 ↓</a>
       </div>
       <div class="chart-scroll" id="flow-scroll" role="region" aria-label="7개 담당자 레인의 파일 흐름도" tabindex="0">
@@ -154,7 +165,8 @@
       <p><b>타입 색상</b> · 인터페이스 <code class="java-interface">RuleSet.java</code> · 클래스 <code class="java-class">StandardRules.java</code> · 레코드·열거형은 기본색</p>
       <p><b>콘텐츠·테스트</b> · <code>data/</code>는 <code>app/src/main/resources/data/</code>입니다. JUnit 테스트는 <code>app/src/test/java/com/oopteama/chess/</code> 아래의 대응 패키지에 둡니다.</p>
       <p><b>제안 표시</b> · 세부 화면 이름이나 파일 담당이 명세에 정해져 있지 않은 곳에는 <span class="proposed">제안</span>을 붙였습니다. 같은 파일이 여러 단계에 나오면 처음 만든 담당자가 그 단계의 기능을 이어서 구현합니다.</p>
-      <p><b>대기 조건 읽는 법</b> · <b>컴파일</b>은 다른 사람이 만든 타입이 현재 브랜치에 있어야 실제 코드를 빌드할 수 있다는 뜻입니다. <b>연결</b>은 샘플로 개발하고 실제 기능·데이터가 준비된 뒤 통합할 수 있다는 뜻입니다. 현재 Java 소스는 <code class="java-class">Main.java</code>뿐이므로 아래 의존은 계획과 인터페이스 명세의 참조 관계를 기준으로 확인했습니다.</p>
+      <p><b>대기 조건 읽는 법</b> · <b>컴파일</b>은 다른 사람이 만든 타입이 현재 브랜치에 있어야 실제 코드를 빌드할 수 있다는 뜻입니다. <b>연결</b>은 샘플로 개발하고 실제 기능·데이터가 준비된 뒤 통합할 수 있다는 뜻입니다. 아래 의존은 계획과 인터페이스 명세의 참조 관계를 기준으로 정했습니다.</p>
+      <p><b>완료 표시</b> · 회색은 2026-11-11 <code>main</code>(<code>87ca20e</code>)에 병합되고 그 단계에 적힌 작업까지 끝난 파일입니다. 같은 파일도 단계마다 맡은 일이 달라 단계별로 따로 판단합니다. 예를 들어 <code class="java-class">Game.java</code>는 02단계에서는 완료지만 04단계의 <code>toPgn()</code>이 남아 04단계에서는 회색이 아닙니다. 담당 칸의 파일이 모두 끝나면 칸 전체가 회색이 되고, 열린 PR에 있는 파일은 병합 전까지 회색으로 바꾸지 않습니다.</p>
     </div>
 
     <article class="stage" id="s01" aria-labelledby="title-01">
@@ -305,6 +317,7 @@
     </article>
   </section>
 
+  <p class="section-note">2026-11-11 · 11/11 main 기준으로 완료한 작업을 회색으로 표시했습니다.</p>
   <p class="section-note">2026-11-07 개정 · PR 리뷰에 따라 로더·채점·공용 컨트롤러 담당과 프로필·순위의 11/23~25 통합 순서를 명시했습니다.</p>
   <footer class="foot" aria-labelledby="notes-title">
     <h2 id="notes-title">함께 지킬 공용 계약</h2>
@@ -319,6 +332,52 @@
   </footer>
 </main>
 <script>
+  // 완료 현황 · 2026-11-11 main(87ca20e) 기준. 단계(01~06)마다 역할별로, main에 병합되고 그 단계에 적힌
+  // 작업까지 끝난 파일 이름이다. 같은 파일도 단계마다 하는 일이 달라 단계별로 따로 적는다.
+  // 위 레인 도표와 아래 단계별 목록이 모두 이 목록으로 회색 표시되므로 PR을 병합하면 여기만 고친다.
+  const doneFiles = [
+    { // 01
+      b1: ['Side.java', 'PieceType.java', 'Square.java', 'Move.java', 'MoveKind.java', 'Position.java', 'Fen.java',
+        'DataException.java', 'MalformedDataException.java', 'FenFormatException.java', 'RuleSet.java', 'Piece.java',
+        'GameHistory.java', 'GameResult.java'],
+      b2: ['Block.java', 'BlockReader.java', 'BlockRepository.java', 'PerBlockRepository.java', 'DataPaths.java',
+        'ArchitectureTest.java'],
+      b3: ['Player.java', 'GameListener.java', 'Async.java', 'AiSetup.java', 'Difficulty.java', 'Evaluator.java'],
+      f3: ['glossary.txt', 'opera-1858.txt'],
+      bf: ['gradle.properties', 'build.gradle.kts', 'InputMode.java', 'StepGoal.java']
+    },
+    { // 02
+      b1: ['Position.java', 'Fen.java', 'GameHistory.java', 'GameResult.java', 'StandardRules.java', 'SandboxRules.java',
+        'SlidingPiece.java', 'PieceFactory.java', 'King.java', 'Queen.java', 'Rook.java', 'Bishop.java', 'Knight.java',
+        'Pawn.java', 'PgnGame.java', 'PgnMove.java'],
+      b2: ['TextFiles.java', 'Progress.java', 'ProgressStore.java', 'AttemptStats.java', 'Profile.java',
+        'ProfileManager.java', 'BlockRepository.java', 'PerBlockRepository.java'],
+      b3: ['Game.java', 'HumanPlayer.java', 'GameController.java', 'MaterialEvaluator.java', 'AlphaBetaSearch.java',
+        'SearchLimits.java', 'SearchResult.java', 'Async.java'],
+      f3: ['glossary.txt'],
+      bf: ['Lesson.java', 'LessonStep.java', 'RulesKind.java', 'AnyMoveGoal.java', 'MoveGoal.java', 'SquareGoal.java',
+        'CheckGoal.java', 'MateGoal.java', 'LessonRepository.java', 'Exercise.java', 'GoalExercise.java',
+        'LessonStepExercise.java', 'FeedbackLadder.java', 'Verdict.java']
+    },
+    { // 03
+      b1: ['Position.java', 'StandardRules.java'],
+      b2: ['Progress.java', 'ProgressStore.java'],
+      b3: ['Game.java', 'HumanPlayer.java', 'GameController.java', 'AiPlayer.java', 'AlphaBetaSearch.java'],
+      f3: ['glossary.txt']
+    },
+    { // 04 · Game.java는 toPgn()이 남아 제외
+      b1: ['San.java', 'SanException.java', 'Pgn.java', 'PgnFormatException.java', 'StandardRules.java', 'PgnGame.java'],
+      b3: ['GameController.java', 'AiPlayer.java', 'Difficulty.java', 'PstEvaluator.java'],
+      f3: ['opera-1858.txt']
+    },
+    {}, // 05
+    {}  // 06
+  ].map(stage => new Map(Object.entries(stage).map(([role, files]) => [role, new Set(files)])));
+  const baseName = text => text.replace(/\/+$/, '').split('/').at(-1);
+  const isDone = (stageIndex, role, file) => Boolean(doneFiles[stageIndex]?.get(role)?.has(baseName(file)));
+  const taskDone = (stageIndex, role, files) =>
+    files.length > 0 && files.every(file => isDone(stageIndex, role, file));
+
   const laneRoles = {
     b1: ['백1', '체스 규칙'], b2: ['백2', '데이터·사용자'], b3: ['백3', 'AI·대국'],
     f1: ['프1', '공통 화면'], f2: ['프2', '학습 화면'], f3: ['프3', '기보·용어'], bf: ['백프', '학습 로직·통합']
@@ -617,10 +676,10 @@
       const heading = document.createElement('b');
       heading.textContent = label;
       const related = activeStage.edges.filter(edge => edge[near] === selectedTask).map(edge => {
-        const { role, title, files } = tasks.get(edge[far]);
+        const { role, title, files, done } = tasks.get(edge[far]);
         const name = role === 'all' ? title : `${laneRoles[role][0]} ${title}`;
         const kind = edge[2] === 'integration' ? '연결·검증' : '컴파일';
-        return `${name}${files.length ? ` (${files.join(', ')})` : ''} [${kind}]`;
+        return `${name}${files.length ? ` (${files.join(', ')})` : ''} [${kind}${done ? ' · 완료' : ''}]`;
       });
       row.append(heading, ` · ${related.join(' / ') || '이 도표에서는 없음'}`);
       selection.append(row);
@@ -669,7 +728,9 @@
         button.dataset.task = id;
         button.style.gridRow = row;
         button.style.gridColumn = role === 'all' ? '5 / 8' : roleIds.indexOf(role) + 2;
-        button.setAttribute('aria-label', `${role === 'all' ? '' : laneRoles[role][0] + ' '}${[title, ...files].join(', ')}`);
+        const done = taskDone(index, role, files);
+        button.classList.toggle('is-done', done);
+        button.setAttribute('aria-label', `${role === 'all' ? '' : laneRoles[role][0] + ' '}${[title, ...files].join(', ')}${done ? ', 완료' : ''}`);
         const label = document.createElement('strong');
         label.textContent = title;
         button.append(label);
@@ -682,10 +743,11 @@
             code.textContent = file;
           }
           code.className = typeStyles.get(file.split('/').at(-1)) || '';
+          code.classList.toggle('is-done', isDone(index, role, file));
           button.append(code);
         }
         button.addEventListener('click', () => showTask(id));
-        tasks.set(id, { row, role, title, files, button });
+        tasks.set(id, { row, role, title, files, button, done });
         board.append(button);
       }
     }
@@ -702,7 +764,9 @@
     const title = document.createElement('strong');
     title.textContent = `0${i + 1} · ${stage.label}`;
     const date = document.createElement('span');
-    date.textContent = stage.date;
+    const nodes = stage.rounds.flatMap(([, list]) => list);
+    const finished = nodes.filter(([, role, , ...files]) => taskDone(i, role, files)).length;
+    date.textContent = `${stage.date} · 완료 ${finished}/${nodes.length}`;
     tab.append(title, date);
     tab.addEventListener('click', () => showStage(i));
     stagePicker.append(tab);
@@ -710,6 +774,15 @@
   chart.hidden = false;
   showStage(0);
   new ResizeObserver(drawLines).observe(board);
+
+  for (const article of document.querySelectorAll('article.stage')) {
+    const stageIndex = Number(article.id.slice(1)) - 1;
+    for (const item of article.querySelectorAll('.assign [data-role]')) {
+      const files = Array.from(item.querySelectorAll('code')).filter(code => !code.closest('.work'));
+      for (const code of files) code.classList.toggle('is-done', isDone(stageIndex, item.dataset.role, code.textContent));
+      item.classList.toggle('is-done', files.length > 0 && files.every(code => code.classList.contains('is-done')));
+    }
+  }
 
   const filter = document.getElementById('role-filter');
   const assignments = document.querySelectorAll('.assign [data-role]');
