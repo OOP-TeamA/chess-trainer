@@ -1,8 +1,13 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.core.GameResult;
+import com.oopteama.chess.core.Side;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,8 +19,8 @@ import java.util.Set;
 /**
  * 프로필 하나의 학습 기록(메모리 모델). EDT 전용.
  *
- * <p>현재 범위: 레슨 완료, 퍼즐별 시도·정답, 용어 퀴즈 기록, 점수, 변경 리스너.
- * AI 전적·기보 맞히기·오답 노트·즐겨찾기는 04단계에 추가한다.
+ * <p>현재 범위: 레슨 완료, 퍼즐별 시도·정답, 용어 퀴즈 기록, 난이도별 AI 전적, 점수, 변경 리스너.
+ * 기보 맞히기·오답 노트·즐겨찾기는 04단계에 추가한다.
  * 저장은 {@link ProgressStore}가 하며, 변경 리스너와 저장의 연결은 AppContext가 맡는다.
  *
  * <p>값이 실제로 바뀐 경우에만 리스너를 호출한다.
@@ -35,9 +40,12 @@ public final class Progress {
     private final Map<String, AttemptStats> puzzles = new LinkedHashMap<>();
     private int termQuizAttempted;
     private int termQuizSolved;
+    /** 난이도별 AI 전적(난이도 선언 순서). 없는 난이도는 0,0,0. */
+    private final Map<Difficulty, AiRecord> aiRecords = new EnumMap<>(Difficulty.class);
     /** 이 단계가 아직 해석하지 않는 키(오답 노트·즐겨찾기 등). 다시 저장할 때 그대로 보존한다. */
     private final Map<String, String> preserved = new LinkedHashMap<>();
     private static final AttemptStats NO_ATTEMPTS = new AttemptStats(0, 0);
+    private static final AiRecord NO_GAMES = new AiRecord(0, 0, 0);
     private final List<Runnable> listeners = new ArrayList<>();
     /** 읽지 못한 기록 파일에서 시작했으면 그 경로, 아니면 null. ProgressStore만 다룬다. */
     private Path unreadableSource;
@@ -143,6 +151,39 @@ public final class Progress {
     }
 
     /**
+     * 끝난 AI 대국 하나를 사용자 기준 승·패·무로 기록한다(PROG-01, AI-07). 대국 종료당 한 번 호출한다.
+     * 기권은 {@link GameResult#resignation}이 만든 결과대로 진 쪽의 패배가 된다.
+     *
+     * @param d        대국 난이도
+     * @param result   대국 결과
+     * @param userSide 사용자가 둔 쪽
+     */
+    public void recordAiGame(Difficulty d, GameResult result, Side userSide) {
+        Objects.requireNonNull(d, "d");
+        Objects.requireNonNull(result, "result");
+        Objects.requireNonNull(userSide, "userSide");
+        AiRecord before = aiRecord(d);
+        AiRecord after = result.winner()
+                .map(winner -> winner == userSide
+                        ? new AiRecord(before.wins() + 1, before.losses(), before.draws())
+                        : new AiRecord(before.wins(), before.losses() + 1, before.draws()))
+                .orElseGet(() -> new AiRecord(before.wins(), before.losses(), before.draws() + 1));
+        aiRecords.put(d, after);
+        fireChanged();
+    }
+
+    /**
+     * 난이도별 누적 AI 전적.
+     *
+     * @param d 난이도
+     * @return 사용자 기준 승·패·무. 기록이 없으면 0,0,0
+     */
+    public AiRecord aiRecord(Difficulty d) {
+        Objects.requireNonNull(d, "d");
+        return aiRecords.getOrDefault(d, NO_GAMES);
+    }
+
+    /**
      * 순위 점수. 서로 다른 완료 레슨 ×10 + 해결 퍼즐 ID ×5 + 정답 용어 문항 ID ×1.
      *
      * @return 점수
@@ -176,18 +217,24 @@ public final class Progress {
 
     /** 저장 파일에서 읽은 값을 리스너 호출 없이 채운다. */
     void restore(Set<String> lessons, Map<String, AttemptStats> puzzleStats, Set<String> correctIds,
-                 AttemptStats quiz, Map<String, String> others) {
+                 AttemptStats quiz, Map<Difficulty, AiRecord> ai, Map<String, String> others) {
         lessonsDone.addAll(lessons);
         puzzles.putAll(puzzleStats);
         termQuizCorrectIds.addAll(correctIds);
         termQuizAttempted = quiz.attempted();
         termQuizSolved = quiz.solved();
+        aiRecords.putAll(ai);
         preserved.putAll(others);
     }
 
     /** 퍼즐 ID별 시도·정답(기록 순서). */
     Map<String, AttemptStats> puzzles() {
         return Collections.unmodifiableMap(puzzles);
+    }
+
+    /** 기록이 있는 난이도별 AI 전적(난이도 선언 순서). */
+    Map<Difficulty, AiRecord> aiRecords() {
+        return Collections.unmodifiableMap(aiRecords);
     }
 
     /** 해석하지 않고 보존 중인 키와 값(파일 순서). */

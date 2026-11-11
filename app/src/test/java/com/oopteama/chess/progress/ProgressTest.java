@@ -1,5 +1,8 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.core.GameResult;
+import com.oopteama.chess.core.Side;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -134,5 +137,39 @@ class ProgressTest {
         assertThrows(IllegalArgumentException.class, () -> new AttemptStats(1, 2));
         assertThrows(IllegalArgumentException.class, () -> new AttemptStats(0, -1));
         assertEquals(3, new AttemptStats(3, 3).solved());
+    }
+
+    @Test
+    void AI_대국은_사용자_쪽_기준으로_승패무를_난이도별로_센다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        GameResult whiteMates = new GameResult(GameResult.Outcome.WHITE_WINS, GameResult.Reason.CHECKMATE);
+        GameResult stalemate = new GameResult(GameResult.Outcome.DRAW, GameResult.Reason.STALEMATE);
+
+        p.recordAiGame(Difficulty.INTRO, whiteMates, Side.WHITE);   // 백으로 이김
+        p.recordAiGame(Difficulty.INTRO, whiteMates, Side.BLACK);   // 흑으로 짐
+        p.recordAiGame(Difficulty.INTRO, stalemate, Side.BLACK);    // 무승부
+        p.recordAiGame(Difficulty.INTRO, GameResult.resignation(Side.WHITE), Side.WHITE); // 기권은 패배
+        p.recordAiGame(Difficulty.ADVANCED, GameResult.resignation(Side.WHITE), Side.BLACK); // 상대 기권은 승리
+
+        assertEquals(new AiRecord(1, 2, 1), p.aiRecord(Difficulty.INTRO));
+        assertEquals(new AiRecord(1, 0, 0), p.aiRecord(Difficulty.ADVANCED));
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.BEGINNER));
+        assertEquals(5, calls.get());
+        assertEquals(0, p.score()); // AI 전적은 점수에 들어가지 않는다
+    }
+
+    @Test
+    void AI_기록은_null과_음수_전적을_거부한다() {
+        Progress p = new Progress();
+        GameResult draw = new GameResult(GameResult.Outcome.DRAW, GameResult.Reason.REPETITION);
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(null, draw, Side.WHITE));
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(Difficulty.INTRO, null, Side.WHITE));
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(Difficulty.INTRO, draw, null));
+        assertThrows(NullPointerException.class, () -> p.aiRecord(null));
+        assertThrows(IllegalArgumentException.class, () -> new AiRecord(-1, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new AiRecord(0, 0, -1));
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.INTRO));
     }
 }

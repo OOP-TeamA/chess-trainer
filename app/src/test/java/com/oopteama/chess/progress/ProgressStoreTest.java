@@ -1,5 +1,8 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.core.GameResult;
+import com.oopteama.chess.core.Side;
 import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.TextFiles;
 import org.junit.jupiter.api.Test;
@@ -279,5 +282,46 @@ class ProgressStoreTest {
         assertThrows(IllegalArgumentException.class, () -> store().load("index"));
         assertThrows(NullPointerException.class, () -> store().save("default", null));
         assertThrows(NullPointerException.class, () -> new ProgressStore(null));
+    }
+
+    @Test
+    void AI_전적이_재시작_후에도_유지되고_난이도_key로_저장된다() throws IOException {
+        Progress p = store().load("default");
+        GameResult blackMates = new GameResult(GameResult.Outcome.BLACK_WINS, GameResult.Reason.CHECKMATE);
+        p.recordAiGame(Difficulty.BEGINNER, blackMates, Side.BLACK);
+        p.recordAiGame(Difficulty.BEGINNER, blackMates, Side.WHITE);
+        p.recordAiGame(Difficulty.INTRO, GameResult.resignation(Side.BLACK), Side.WHITE);
+        store().save("default", p);
+
+        Progress again = store().load("default");
+        assertEquals(new AiRecord(1, 0, 0), again.aiRecord(Difficulty.INTRO));
+        assertEquals(new AiRecord(1, 1, 0), again.aiRecord(Difficulty.BEGINNER));
+        assertEquals(new AiRecord(0, 0, 0), again.aiRecord(Difficulty.ADVANCED));
+        assertEquals(List.of("quiz.attempts=0", "quiz.correct.count=0",
+                        "ai.record.intro=1,0,0", "ai.record.beginner=1,1,0"),
+                TextFiles.readLines(new DataPaths(tmp).profileFile("default")));
+    }
+
+    @Test
+    void 잘못된_AI_전적_줄은_건너뛰고_모르는_난이도는_보존한다() throws IOException {
+        writeProfile("default", """
+                ai.record.intro=3,1
+                ai.record.intro=3,-1,0
+                ai.record.intro=3,1,0
+                ai.record.intro=9,9,9
+                ai.record.beginner=a,b,c
+                ai.record.expert=2,0,0
+                ai.record.INTRO=5,5,5
+                """);
+        Progress p = store().load("default");
+        assertEquals(new AiRecord(3, 1, 0), p.aiRecord(Difficulty.INTRO)); // 세 수가 아니거나 음수인 줄 뒤의 첫 유효값
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.BEGINNER));
+
+        store().save("default", p);
+        List<String> saved = TextFiles.readLines(new DataPaths(tmp).profileFile("default"));
+        assertTrue(saved.contains("ai.record.intro=3,1,0"));
+        assertTrue(saved.contains("ai.record.expert=2,0,0"));  // 모르는 난이도 key는 그대로
+        assertTrue(saved.contains("ai.record.INTRO=5,5,5"));   // key는 대소문자까지 같아야 해석
+        assertTrue(saved.stream().noneMatch(l -> l.startsWith("ai.record.beginner")));
     }
 }
