@@ -59,7 +59,7 @@ public final class Progress {
      * 레슨을 완료로 기록한다(RULE-08). 이미 완료한 레슨이면 아무것도 바꾸지 않는다.
      *
      * @param lessonId 레슨 ID
-     * @throws IllegalArgumentException ID가 비었거나 쉼표·공백·제어 문자를 포함할 때
+     * @throws IllegalArgumentException ID가 비었거나 쉼표·등호(=)·공백·제어 문자를 포함할 때
      */
     public void markLessonDone(String lessonId) {
         if (lessonsDone.add(checkId(lessonId))) {
@@ -73,7 +73,7 @@ public final class Progress {
      *
      * @param puzzleId 퍼즐 ID
      * @param solved   정답 공개(REVEAL) 전에 끝까지 풀었으면 true(HINT까지는 허용), 공개에 한 번이라도 도달했으면 false
-     * @throws IllegalArgumentException ID가 비었거나 쉼표·공백·제어 문자를 포함할 때
+     * @throws IllegalArgumentException ID가 비었거나 쉼표·등호(=)·공백·제어 문자를 포함할 때
      */
     public void recordPuzzle(String puzzleId, boolean solved) {
         AttemptStats before = puzzleAttempts(checkId(puzzleId));
@@ -112,7 +112,7 @@ public final class Progress {
      *
      * @param questionId 문항 ID
      * @param correct    정답 여부
-     * @throws IllegalArgumentException ID가 비었거나 쉼표·공백·제어 문자를 포함할 때
+     * @throws IllegalArgumentException ID가 비었거나 쉼표·등호(=)·공백·제어 문자를 포함할 때
      */
     public void recordTermQuiz(String questionId, boolean correct) {
         String id = checkId(questionId);
@@ -211,13 +211,13 @@ public final class Progress {
     }
 
     /**
-     * 기록 파일의 목록 값에 들어갈 수 있는 ID인지 검사한다.
+     * 기록 파일의 목록 값이나 키(예: {@code puzzle.attempt.<id>})에 들어갈 수 있는 ID인지 검사한다.
      *
-     * @throws IllegalArgumentException 비었거나 쉼표·공백·제어 문자를 포함할 때
+     * @throws IllegalArgumentException 비었거나 쉼표·등호(=)·공백·제어 문자를 포함할 때
      */
     static String checkId(String id) {
         Objects.requireNonNull(id, "id");
-        if (id.isEmpty() || id.chars().anyMatch(c -> c == ',' || Character.isWhitespace(c) || Character.isISOControl(c))) {
+        if (id.isEmpty() || id.chars().anyMatch(c -> c == ',' || c == '=' || Character.isWhitespace(c) || Character.isISOControl(c))) {
             throw new IllegalArgumentException("기록할 수 없는 ID: '" + id + "'");
         }
         return id;
