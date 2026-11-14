@@ -3,7 +3,6 @@ package com.oopteama.chess.ui;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -137,7 +136,7 @@ public abstract class BoardScreen extends JPanel implements Screen {
         subtitleLabel = new JLabel();
 
         subtitleLabel.setFont(
-                Theme.body(Theme.FONT_14, Font.PLAIN)
+                Theme.body(Theme.FONT_14, 400)
         );
 
         subtitleLabel.setForeground(
@@ -427,23 +426,10 @@ public abstract class BoardScreen extends JPanel implements Screen {
 
 
     // =========================================
-    // 화면 추가 시 패널 초기화
-    // =========================================
-
-    @Override
-    public void addNotify() {
-
-        super.addNotify();
-
-        initializePanels();
-    }
-
-
-    // =========================================
     // 오른쪽 패널 최초 한 번만 생성
     // =========================================
 
-    private void initializePanels() {
+    protected final void initializePanels() {
 
         if (panelsInitialized) {
 
