@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.util.ArrayList;
@@ -427,7 +426,7 @@ public class MoveListPanel extends JPanel {
             );
 
             emptyLabel.setFont(
-                    Theme.body(Theme.FONT_12, 0)
+                    Theme.body(Theme.FONT_12, 400)
             );
 
             emptyLabel.setForeground(
@@ -717,7 +716,7 @@ public class MoveListPanel extends JPanel {
         );
 
         label.setFont(
-                Theme.body(Theme.FONT_12, 1)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         label.setForeground(
@@ -740,7 +739,7 @@ public class MoveListPanel extends JPanel {
         JButton button = new JButton(san);
 
         button.setFont(
-                Theme.body(Theme.FONT_14, Font.BOLD)
+                Theme.body(Theme.FONT_14, 600)
         );
 
         button.setHorizontalAlignment(
@@ -940,7 +939,7 @@ public class MoveListPanel extends JPanel {
             );
 
             numberLabel.setFont(
-                    Theme.body(Theme.FONT_12, 1)
+                    Theme.body(Theme.FONT_12, 600)
             );
 
             numberLabel.setForeground(
