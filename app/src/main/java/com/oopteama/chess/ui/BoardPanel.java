@@ -1238,7 +1238,7 @@ public class BoardPanel extends JPanel {
     ) {
 
         g2.setFont(
-                Theme.body(Theme.FONT_12, Font.BOLD)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         g2.setColor(Theme.MUTED);

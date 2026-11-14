@@ -137,17 +137,19 @@ public final class Theme {
 
     /**
      * 본문 글꼴을 반환한다.
-     * weight가 0이면 Pretendard Regular,
-     * 그 외에는 Pretendard Bold를 사용한다.
+     *
+     * weight가 400이면 Pretendard Regular,
+     * weight가 500이면 Pretendard Regular,
+     * weight가 600 이상이면 Pretendard Bold를 사용한다.
      */
     public static Font body(int size, int weight) {
 
         int safeSize = Math.max(1, size);
 
         // 요청된 굵기에 따라 실제 폰트 파일을 선택한다.
-        Font baseFont = (weight == 0)
-                ? BODY_FONT
-                : BODY_BOLD_FONT;
+        Font baseFont = (weight >= 600)
+                ? BODY_BOLD_FONT
+                : BODY_FONT;
 
         return baseFont.deriveFont((float) safeSize);
     }
@@ -203,11 +205,12 @@ public final class Theme {
         ColorUIResource muted = new ColorUIResource(MUTED);
         ColorUIResource accent = new ColorUIResource(ACCENT);
 
+        // 명세의 글꼴 굵기 기준 사용
         FontUIResource normalFont =
-                new FontUIResource(body(FONT_14, Font.PLAIN));
+                new FontUIResource(body(FONT_14, 400));
 
         FontUIResource boldFont =
-                new FontUIResource(body(FONT_14, Font.BOLD));
+                new FontUIResource(body(FONT_14, 600));
 
         // 전체 컴포넌트 기본값
         UIManager.put("control", panel);
