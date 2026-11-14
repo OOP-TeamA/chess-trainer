@@ -289,6 +289,17 @@ public final class MainFrame extends JFrame implements Navigator {
         }
 
 
+        // 용어 퀴즈 화면
+        // TODO: Front2의 TermQuizScreen 구현 완료 후 실제 화면으로 교체
+        if (route instanceof Route.TermQuiz) {
+
+            return new PlaceholderScreen(
+                "TermQuiz",
+                getRouteTitle(route)
+            );
+        }
+
+
         // 아직 구현하지 않은 화면은 임시 화면으로 생성
         String key = route.getClass().getSimpleName();
 

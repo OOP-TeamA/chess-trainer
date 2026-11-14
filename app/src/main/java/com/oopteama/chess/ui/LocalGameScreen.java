@@ -1,8 +1,13 @@
 package com.oopteama.chess.ui;
 
+import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.GridLayout;
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +35,7 @@ import com.oopteama.chess.game.Game;
 import com.oopteama.chess.game.GameListener;
 import com.oopteama.chess.nav.Route;
 
+
 /**
  * 사람과 사람이 한 기기에서 번갈아 체스를 두는 화면.
  *
@@ -37,6 +43,9 @@ import com.oopteama.chess.nav.Route;
  * Game 객체를 통해 대국 상태를 관리한다.
  */
 public final class LocalGameScreen extends BoardScreen {
+
+    // 비활성화된 조작 버튼에 사용할 글자색
+    private static final Color DISABLED_BUTTON_TEXT = new Color(0xC6AD8B);
 
     // 체스 규칙
     private final RuleSet rules;
@@ -163,6 +172,10 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
         refreshView();
+
+        // 하위 화면의 필드와 대국 객체가 초기화된 후
+        // 오른쪽 정보 패널과 하단 조작 버튼을 생성한다.
+        initializePanels();
     }
 
 
@@ -188,7 +201,7 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
         badge.setFont(
-                Theme.body(Theme.FONT_12, Font.BOLD)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         badge.setForeground(
@@ -283,7 +296,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel turnHeading = new JLabel("현재 차례");
 
         turnHeading.setFont(
-                Theme.body(Theme.FONT_12, 1)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         turnHeading.setForeground(
@@ -310,7 +323,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel countHeading = new JLabel("대국 진행");
 
         countHeading.setFont(
-                Theme.body(Theme.FONT_12, 1)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         countHeading.setForeground(
@@ -323,7 +336,7 @@ public final class LocalGameScreen extends BoardScreen {
         moveCountLabel = new JLabel();
 
         moveCountLabel.setFont(
-                Theme.body(Theme.FONT_16, 1)
+                Theme.body(Theme.FONT_16, 600)
         );
 
         moveCountLabel.setForeground(
@@ -337,7 +350,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel statusHeading = new JLabel("상태");
 
         statusHeading.setFont(
-                Theme.body(Theme.FONT_12, 1)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         statusHeading.setForeground(
@@ -361,7 +374,7 @@ public final class LocalGameScreen extends BoardScreen {
         JLabel resultHeading = new JLabel("대국 결과");
 
         resultHeading.setFont(
-                Theme.body(Theme.FONT_12, 1)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         resultHeading.setForeground(
@@ -388,7 +401,7 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
         guideLabel.setFont(
-                Theme.body(Theme.FONT_12, 0)
+                Theme.body(Theme.FONT_12, 400)
         );
 
         guideLabel.setForeground(
@@ -475,7 +488,7 @@ public final class LocalGameScreen extends BoardScreen {
         area.setBorder(null);
 
         area.setFont(
-                Theme.body(fontSize, Font.BOLD)
+                Theme.body(fontSize, 600)
         );
 
         area.setAlignmentX(LEFT_ALIGNMENT);
@@ -576,7 +589,7 @@ public final class LocalGameScreen extends BoardScreen {
         JButton button = new JButton(text);
 
         button.setFont(
-                Theme.body(Theme.FONT_14, Font.BOLD)
+                Theme.body(Theme.FONT_14, 600)
         );
 
         button.setForeground(
@@ -607,10 +620,10 @@ public final class LocalGameScreen extends BoardScreen {
 
     private JButton createSecondaryButton(String text) {
 
-        JButton button = new JButton(text);
+        JButton button = new ReadableDisabledButton(text);
 
         button.setFont(
-                Theme.body(Theme.FONT_12, Font.BOLD)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         button.setForeground(
@@ -646,10 +659,10 @@ public final class LocalGameScreen extends BoardScreen {
 
     private JButton createDangerButton(String text) {
 
-        JButton button = new JButton(text);
+        JButton button = new ReadableDisabledButton(text);
 
         button.setFont(
-                Theme.body(Theme.FONT_12, Font.BOLD)
+                Theme.body(Theme.FONT_12, 600)
         );
 
         button.setForeground(
@@ -1106,19 +1119,96 @@ public final class LocalGameScreen extends BoardScreen {
         );
 
 
-        // 버튼 활성화 상태
+        // 버튼 활성화 상태와 글자색을 함께 갱신한다.
         if (undoButton != null) {
 
-            undoButton.setEnabled(
+            updateButtonState(
+                    undoButton,
+                    "한 수 무르기",
                     !game.history().moves().isEmpty()
             );
         }
 
         if (resignButton != null) {
 
-            resignButton.setEnabled(
+            updateButtonState(
+                    resignButton,
+                    "기권",
                     result.isEmpty()
             );
+        }
+    }
+
+
+    /**
+     * 버튼의 활성화 상태를 갱신한다.
+     * 비활성화 글자색은 ReadableDisabledButton이 직접 그린다.
+     */
+    private void updateButtonState(
+            JButton button,
+            String text,
+            boolean enabled
+    ) {
+        button.setText(text);
+        button.setEnabled(enabled);
+    }
+
+
+    /**
+     * Look and Feel이 비활성화 글자색을 덮어쓰지 않도록
+     * 버튼의 글자를 직접 그리는 버튼이다.
+     */
+    private static final class ReadableDisabledButton extends JButton {
+
+        private boolean hideTextDuringSuperPaint;
+
+        private ReadableDisabledButton(String text) {
+            super(text);
+        }
+
+        @Override
+        public String getText() {
+            if (hideTextDuringSuperPaint) {
+                return "";
+            }
+            return super.getText();
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            String text = super.getText();
+
+            // 기본 UI는 배경과 테두리만 그리도록 글자를 잠시 숨긴다.
+            hideTextDuringSuperPaint = true;
+            super.paintComponent(graphics);
+            hideTextDuringSuperPaint = false;
+
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+
+            Graphics2D g2 = (Graphics2D) graphics.create();
+            try {
+                g2.setRenderingHint(
+                        RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON
+                );
+
+                g2.setFont(getFont());
+                g2.setColor(isEnabled()
+                        ? getForeground()
+                        : DISABLED_BUTTON_TEXT);
+
+                FontMetrics metrics = g2.getFontMetrics();
+                int textWidth = metrics.stringWidth(text);
+                int x = (getWidth() - textWidth) / 2;
+                int y = (getHeight() - metrics.getHeight()) / 2
+                        + metrics.getAscent();
+
+                g2.drawString(text, x, y);
+            } finally {
+                g2.dispose();
+            }
         }
     }
 
