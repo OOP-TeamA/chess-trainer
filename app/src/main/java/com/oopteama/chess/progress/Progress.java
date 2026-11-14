@@ -192,7 +192,7 @@ public final class Progress {
      *
      * @param gameId 기보 ID(번들은 파일명에서 {@code .txt}를 뺀 이름)
      * @param ratio  정답률, 0 이상 1 이하
-     * @throws IllegalArgumentException ID가 비었거나 쉼표·공백·제어 문자를 포함할 때, 정답률이 범위 밖이거나 NaN일 때
+     * @throws IllegalArgumentException ID가 비었거나 쉼표·등호(=)·공백·제어 문자를 포함할 때, 정답률이 범위 밖이거나 NaN일 때
      */
     public void recordGuess(String gameId, double ratio) {
         String id = checkId(gameId);

@@ -202,6 +202,7 @@ class ProgressTest {
             assertThrows(IllegalArgumentException.class, () -> p.recordGuess("opera-1858", bad), "" + bad);
         }
         assertThrows(IllegalArgumentException.class, () -> p.recordGuess("a b", 0.5));
+        assertThrows(IllegalArgumentException.class, () -> p.recordGuess("a=b", 0.5)); // replay.best.<id> 키가 잘림
         assertThrows(NullPointerException.class, () -> p.recordGuess(null, 0.5));
         assertThrows(NullPointerException.class, () -> p.bestGuess(null));
         p.recordGuess("opera-1858", 1.0);
