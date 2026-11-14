@@ -20,7 +20,8 @@ import java.util.logging.Logger;
  * 레슨 파일 하나를 레슨 하나로 읽는다(RULE-01, RULE-02). 파일은 {@code @lesson <id>} 1개와 {@code @step} 1개 이상이다.
  *
  * <p>로드 시점 검증으로 체험형 원칙(P1)을 강제한다. 하나라도 어기면 레슨 전체를 건너뛰고
- * {@code 파일명:행번호: 설명}을 경고 로그에 남긴다.
+ * {@code 파일명:행번호: 설명}을 경고 로그에 남긴다. 형식이 깨진 블록(같은 키가 두 번 등)이 있거나 빈 파일이어도
+ * 일부 단계만 빠진 레슨을 만들지 않고 파일을 통째로 건너뛴다({@link #skipFileOnProblems()}).
  * <ul>
  *   <li>{@code @lesson}: ID는 영문 소문자·숫자·{@code -}·{@code _}. title, summary, 양의 정수 order 필수</li>
  *   <li>{@code @step}: fen, text, goal 필수. rules는 standard(기본값) 또는 sandbox. highlight·hint는 칸 목록</li>
@@ -49,10 +50,13 @@ public final class LessonRepository extends BlockRepository<Lesson> {
         }
     }
 
+    /** 파일 하나가 레슨 하나이므로 형식 오류가 있는 파일과 빈 파일은 통째로 건너뛴다. */
+    @Override
+    protected boolean skipFileOnProblems() {
+        return true;
+    }
+
     private static Lesson lesson(List<Block> blocks) throws MalformedDataException {
-        if (blocks.isEmpty()) {
-            throw new MalformedDataException("레슨 파일에 읽을 블록이 없습니다", "<unknown>", 0);
-        }
         Block head = null;
         List<Block> stepBlocks = new ArrayList<>();
         for (Block b : blocks) {

@@ -53,6 +53,8 @@ class LessonRepositoryTest {
             """;
 
     private final Logger log = Logger.getLogger(LessonRepository.class.getName());
+    /** 형식 오류와 빈 파일 경고는 공통 로더가 남긴다. */
+    private final Logger loaderLog = Logger.getLogger(BlockRepository.class.getName());
     private final List<String> warnings = new ArrayList<>();
     private final Handler capture = new Handler() {
         @Override
@@ -75,11 +77,13 @@ class LessonRepositoryTest {
     @BeforeEach
     void captureLog() {
         log.addHandler(capture);
+        loaderLog.addHandler(capture);
     }
 
     @AfterEach
     void releaseLog() {
         log.removeHandler(capture);
+        loaderLog.removeHandler(capture);
     }
 
     private static List<Lesson> load(String text) throws IOException {
@@ -195,7 +199,7 @@ class LessonRepositoryTest {
 
     static Stream<Arguments> brokenLessons() {
         return Stream.of(
-            Arguments.of("빈 파일", "# 주석만\n", "레슨 파일에 읽을 블록이 없습니다"),
+            Arguments.of("빈 파일", "# 주석만\n", "t.txt: 읽을 블록이 없어 파일을 건너뜁니다"),
             Arguments.of("@lesson 없음", VALID.replace("@lesson rook", "@step"), "t.txt:1: @lesson 블록이 없습니다"),
             Arguments.of("@lesson 두 개", VALID + "@lesson other\ntitle=x\n", "t.txt:11: @lesson 블록은 파일에 하나만"),
             Arguments.of("@lesson 앞의 키", "order=1\n" + VALID, "t.txt:1: 레슨 파일에 쓸 수 없는 블록입니다: @lesson 앞의 키"),
@@ -224,6 +228,16 @@ class LessonRepositoryTest {
             Arguments.of("두 번째 단계만 잘못돼도 레슨 전체를 건너뜀",
                 VALID + "\n@step\nfen=8/8/8/8/8/8/8/R7 w - - 0 1\nrules=sandbox\ntext=t\ngoal=move:a1h8\n",
                 "t.txt:12: 레슨 rook 2단계: 정답 수 a1h8"));
+    }
+
+    @Test
+    void malformedStepBlockSkipsWholeLessonInsteadOfDroppingTheStep() throws IOException {
+        // 같은 키가 두 번 나온 @step은 블록 파서가 버린다. 그 단계만 빠진 레슨이 로드되면 안 된다.
+        String text = VALID + "\n@step\nfen=8/8/8/8/8/8/8/R7 w - - 0 1\nrules=sandbox\ntext=t\ngoal=any-move\ngoal=check\n";
+        assertEquals(List.of(), load(text));
+        assertEquals(2, warnings.size(), () -> String.join("\n", warnings));
+        assertTrue(warnings.get(0).startsWith("t.txt:") && warnings.get(0).contains("'goal'"), warnings.get(0));
+        assertEquals("t.txt: 형식 오류가 1건 있어 파일 전체를 건너뜁니다", warnings.get(1));
     }
 
     @ParameterizedTest(name = "{0}")
