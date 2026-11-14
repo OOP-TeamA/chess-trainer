@@ -76,6 +76,9 @@ class ProgressTest {
     void 퍼즐_ID를_검사한다() {
         Progress p = new Progress();
         assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("p 1", true));
+        // 퍼즐 ID는 저장 키(puzzle.attempt.<id>)에 들어가므로 = 가 있으면 다시 읽을 때 키가 잘린다
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("p=1", true));
+        assertThrows(IllegalArgumentException.class, () -> p.markLessonDone("a=b"));
         assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("", true));
         assertThrows(NullPointerException.class, () -> p.recordPuzzle(null, true));
         assertThrows(NullPointerException.class, () -> p.puzzleState(null));
