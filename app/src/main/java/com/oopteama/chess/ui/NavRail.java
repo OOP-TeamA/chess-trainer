@@ -98,11 +98,11 @@ public final class NavRail extends JPanel {
         labels.setOpaque(false);
 
         JLabel name = new JLabel("학습자");
-        name.setFont(Theme.body(Theme.FONT_16, 1));
+        name.setFont(Theme.body(Theme.FONT_16, 600));
         name.setForeground(Theme.TEXT);
 
         scoreLabel = new JLabel("점수 —");
-        scoreLabel.setFont(Theme.body(Theme.FONT_14, 1));
+        scoreLabel.setFont(Theme.body(Theme.FONT_14, 600));
         scoreLabel.setForeground(new Color(0x342316));
         scoreLabel.setOpaque(true);
         scoreLabel.setBackground(Theme.ACCENT);
@@ -151,7 +151,7 @@ public final class NavRail extends JPanel {
                 menu,
                 "lessons",
                 NavIcon.LESSONS,
-                "체스 레슨",
+                "룰학습",
                 new Route.Lessons()
         );
 
@@ -380,7 +380,7 @@ public final class NavRail extends JPanel {
             super(text, new NavGlyphIcon(icon));
 
             setFont(
-                    Theme.body(Theme.FONT_16, 1)
+                    Theme.body(Theme.FONT_16, 600)
             );
 
             setForeground(Theme.MUTED);
