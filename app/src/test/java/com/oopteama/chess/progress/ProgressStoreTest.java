@@ -1,5 +1,8 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.core.GameResult;
+import com.oopteama.chess.core.Side;
 import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.TextFiles;
 import org.junit.jupiter.api.Test;
@@ -279,5 +282,90 @@ class ProgressStoreTest {
         assertThrows(IllegalArgumentException.class, () -> store().load("index"));
         assertThrows(NullPointerException.class, () -> store().save("default", null));
         assertThrows(NullPointerException.class, () -> new ProgressStore(null));
+    }
+
+    @Test
+    void AI_전적이_재시작_후에도_유지되고_난이도_key로_저장된다() throws IOException {
+        Progress p = store().load("default");
+        GameResult blackMates = new GameResult(GameResult.Outcome.BLACK_WINS, GameResult.Reason.CHECKMATE);
+        p.recordAiGame(Difficulty.BEGINNER, blackMates, Side.BLACK);
+        p.recordAiGame(Difficulty.BEGINNER, blackMates, Side.WHITE);
+        p.recordAiGame(Difficulty.INTRO, GameResult.resignation(Side.BLACK), Side.WHITE);
+        store().save("default", p);
+
+        Progress again = store().load("default");
+        assertEquals(new AiRecord(1, 0, 0), again.aiRecord(Difficulty.INTRO));
+        assertEquals(new AiRecord(1, 1, 0), again.aiRecord(Difficulty.BEGINNER));
+        assertEquals(new AiRecord(0, 0, 0), again.aiRecord(Difficulty.ADVANCED));
+        assertEquals(List.of("quiz.attempts=0", "quiz.correct.count=0",
+                        "ai.record.intro=1,0,0", "ai.record.beginner=1,1,0"),
+                TextFiles.readLines(new DataPaths(tmp).profileFile("default")));
+    }
+
+    @Test
+    void 잘못된_AI_전적_줄은_건너뛰고_모르는_난이도는_보존한다() throws IOException {
+        writeProfile("default", """
+                ai.record.intro=3,1
+                ai.record.intro=3,-1,0
+                ai.record.intro=3,1,0
+                ai.record.intro=9,9,9
+                ai.record.beginner=a,b,c
+                ai.record.expert=2,0,0
+                ai.record.INTRO=5,5,5
+                """);
+        Progress p = store().load("default");
+        assertEquals(new AiRecord(3, 1, 0), p.aiRecord(Difficulty.INTRO)); // 세 수가 아니거나 음수인 줄 뒤의 첫 유효값
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.BEGINNER));
+
+        store().save("default", p);
+        List<String> saved = TextFiles.readLines(new DataPaths(tmp).profileFile("default"));
+        assertTrue(saved.contains("ai.record.intro=3,1,0"));
+        assertTrue(saved.contains("ai.record.expert=2,0,0"));  // 모르는 난이도 key는 그대로
+        assertTrue(saved.contains("ai.record.INTRO=5,5,5"));   // key는 대소문자까지 같아야 해석
+        assertTrue(saved.stream().noneMatch(l -> l.startsWith("ai.record.beginner")));
+    }
+
+    @Test
+    void 기보_맞히기_최고값이_재시작_후에도_같은_값으로_유지된다() throws IOException {
+        Progress p = store().load("default");
+        p.recordGuess("opera-1858", 0.82);
+        p.recordGuess("immortal", 2.0 / 3);
+        p.recordGuess("tiny", 1.0 / 1001);  // Double.toString이면 지수 표기가 되는 값
+        p.recordGuess("perfect", 1.0);
+        store().save("default", p);
+
+        List<String> lines = TextFiles.readLines(new DataPaths(tmp).profileFile("default"));
+        assertTrue(lines.contains("replay.best.opera-1858=0.82"));
+        assertTrue(lines.contains("replay.best.perfect=1.0"));
+        assertTrue(lines.stream().noneMatch(l -> l.contains("E")), lines.toString());
+
+        Progress again = store().load("default");
+        assertEquals(0.82, again.bestGuess("opera-1858").getAsDouble());
+        assertEquals(2.0 / 3, again.bestGuess("immortal").getAsDouble());
+        assertEquals(1.0 / 1001, again.bestGuess("tiny").getAsDouble());
+        assertEquals(1.0, again.bestGuess("perfect").getAsDouble());
+    }
+
+    @Test
+    void 잘못된_기보_최고값_줄은_건너뛰고_같은_키의_첫_유효값을_쓴다() throws IOException {
+        writeProfile("default", """
+                replay.best.opera-1858=1.5
+                replay.best.opera-1858=-0.1
+                replay.best.opera-1858=8.2E-1
+                replay.best.opera-1858=0.75
+                replay.best.opera-1858=0.9
+                replay.best.a,b=0.5
+                replay.best.immortal=abc
+                replay.best.whole=1
+                """);
+        Progress p = store().load("default");
+        assertEquals(0.75, p.bestGuess("opera-1858").getAsDouble());
+        assertTrue(p.bestGuess("immortal").isEmpty());
+        assertEquals(1.0, p.bestGuess("whole").getAsDouble());
+
+        store().save("default", p);
+        List<String> saved = TextFiles.readLines(new DataPaths(tmp).profileFile("default"));
+        assertTrue(saved.contains("replay.best.opera-1858=0.75"));
+        assertTrue(saved.stream().noneMatch(l -> l.startsWith("replay.best.immortal") || l.startsWith("replay.best.a,b")));
     }
 }
