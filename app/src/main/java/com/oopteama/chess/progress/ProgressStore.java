@@ -1,15 +1,18 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
 import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.TextFiles;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -18,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * 프로필별 학습 기록 파일 {@code profiles/<id>.txt}의 읽기·쓰기(기능 명세 6장 프로필 계약).
@@ -30,7 +34,10 @@ import java.util.logging.Logger;
  *   <li>잘못된 줄은 파일명·행 번호를 로그에 남기고 건너뛰며, 나머지 유효한 키는 복구한다.</li>
  *   <li>같은 키가 다시 나오면 처음 유효한 값을 쓴다.</li>
  *   <li>{@code puzzle.attempt.<id>=시도,정답}은 두 수가 0 이상이고 정답이 시도 이하여야 한다.</li>
- *   <li>이 단계가 해석하지 않는 키(오답 노트·즐겨찾기·AI 전적 등)는 그대로 보존해 다시 저장한다.</li>
+ *   <li>{@code ai.record.<난이도 key>=승,패,무}는 세 수가 0 이상이어야 한다. 키가 {@link Difficulty#key()}에
+ *       없는 난이도면 해석하지 않고 보존한다.</li>
+ *   <li>{@code replay.best.<기보ID>=정답률}은 0 이상 1 이하의 소수(지수 표기 없음)여야 한다.</li>
+ *   <li>이 단계가 해석하지 않는 키(오답 노트·즐겨찾기 등)는 그대로 보존해 다시 저장한다.</li>
  * </ul>
  * 쓰기는 {@link TextFiles#writeAtomic}으로 파일 전체를 원자적으로 바꾼다.
  */
@@ -44,6 +51,12 @@ public final class ProgressStore {
     static final String QUIZ_CORRECT_COUNT = "quiz.correct.count";
     /** 퍼즐 기록 키 접두사. 뒤에 퍼즐 ID가 붙는다. */
     static final String PUZZLE_ATTEMPT_PREFIX = "puzzle.attempt.";
+    /** AI 전적 키 접두사. 뒤에 {@link Difficulty#key()}가 붙는다. */
+    static final String AI_RECORD_PREFIX = "ai.record.";
+    /** 기보 맞히기 최고값 키 접두사. 뒤에 기보 ID가 붙는다. */
+    static final String REPLAY_BEST_PREFIX = "replay.best.";
+    /** 저장 파일의 정답률 표기: 지수·부호 없는 소수. */
+    private static final Pattern RATIO = Pattern.compile("[0-9]+([.][0-9]+)?");
 
     private static final char KEY_VALUE_SEPARATOR = '=';
     private static final String LIST_SEPARATOR = ",";
@@ -133,6 +146,10 @@ public final class ProgressStore {
         AttemptStats quiz = p.termQuizAttempts();
         appendLine(sb, QUIZ_ATTEMPTS, Integer.toString(quiz.attempted()));
         appendLine(sb, QUIZ_CORRECT_COUNT, Integer.toString(quiz.solved()));
+        p.aiRecords().forEach((d, r) -> appendLine(sb, AI_RECORD_PREFIX + d.key(),
+                r.wins() + LIST_SEPARATOR + r.losses() + LIST_SEPARATOR + r.draws()));
+        p.bestGuesses().forEach((id, ratio) ->
+                appendLine(sb, REPLAY_BEST_PREFIX + id, BigDecimal.valueOf(ratio).toPlainString()));
         p.preserved().forEach((key, value) -> appendLine(sb, key, value));
         return sb.toString();
     }
@@ -158,6 +175,8 @@ public final class ProgressStore {
         private final Set<String> lessons = new LinkedHashSet<>();
         private final Set<String> correctIds = new LinkedHashSet<>();
         private final Map<String, AttemptStats> puzzles = new LinkedHashMap<>();
+        private final Map<Difficulty, AiRecord> aiRecords = new EnumMap<>(Difficulty.class);
+        private final Map<String, Double> guesses = new LinkedHashMap<>();
         private final Map<String, String> others = new LinkedHashMap<>();
         private int attempts;
         private int correctCount;
@@ -176,7 +195,7 @@ public final class ProgressStore {
                 correctCount = 0;
             }
             Progress p = new Progress();
-            p.restore(lessons, puzzles, correctIds, new AttemptStats(attempts, correctCount), others);
+            p.restore(lessons, puzzles, correctIds, new AttemptStats(attempts, correctCount), aiRecords, guesses, others);
             return p;
         }
 
@@ -216,6 +235,16 @@ public final class ProgressStore {
                 default -> {
                     if (key.startsWith(PUZZLE_ATTEMPT_PREFIX)) {
                         yield readPuzzle(key.substring(PUZZLE_ATTEMPT_PREFIX.length()), value, lineNo);
+                    }
+                    if (key.startsWith(REPLAY_BEST_PREFIX)) {
+                        yield readBestGuess(key.substring(REPLAY_BEST_PREFIX.length()), value, lineNo);
+                    }
+                    if (key.startsWith(AI_RECORD_PREFIX)) {
+                        Difficulty d = difficultyOf(key.substring(AI_RECORD_PREFIX.length()));
+                        if (d != null) {
+                            yield readAiRecord(d, value, lineNo);
+                        }
+                        // 모르는 난이도 키는 다른 키처럼 보존한다(콘텐츠에서 빠진 ID 보존 규칙과 같음).
                     }
                     others.put(key, value);
                     yield true;
@@ -280,6 +309,62 @@ public final class ProgressStore {
                 return false;
             }
             puzzles.put(id, new AttemptStats(attempted, solved));
+            return true;
+        }
+
+        /** 저장 키의 난이도. {@link Difficulty#key()}와 정확히 같아야 하며, 없으면 null. */
+        private static Difficulty difficultyOf(String key) {
+            for (Difficulty d : Difficulty.values()) {
+                if (d.key().equals(key)) {
+                    return d;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * {@code ai.record.<난이도>=승,패,무}를 읽는다. 수가 세 개가 아니거나 0 이상의 정수가 아니면
+         * 경고하고 무효로 본다(같은 키의 다음 줄을 쓸 수 있음).
+         */
+        private boolean readAiRecord(Difficulty d, String value, int lineNo) {
+            String[] parts = value.split(LIST_SEPARATOR, -1);
+            if (parts.length != 3) {
+                warn(lineNo, "AI 전적은 '승,패,무' 세 수여야 합니다: " + value);
+                return false;
+            }
+            int wins = readCount(parts[0].strip(), lineNo);
+            int losses = readCount(parts[1].strip(), lineNo);
+            int draws = readCount(parts[2].strip(), lineNo);
+            if (wins == INVALID || losses == INVALID || draws == INVALID) {
+                return false;
+            }
+            aiRecords.put(d, new AiRecord(wins, losses, draws));
+            return true;
+        }
+
+        /**
+         * {@code replay.best.<기보ID>=정답률}을 읽는다. ID가 잘못되었거나, 지수·부호 없는 소수가 아니거나,
+         * 1보다 크면 경고하고 무효로 본다(같은 키의 다음 줄을 쓸 수 있음).
+         */
+        private boolean readBestGuess(String id, String value, int lineNo) {
+            try {
+                Progress.checkId(id);
+            } catch (IllegalArgumentException e) {
+                warn(lineNo, "잘못된 기보 ID: " + e.getMessage());
+                return false;
+            }
+            if (!RATIO.matcher(value).matches()) {
+                warn(lineNo, "정답률은 0 이상 1 이하의 소수여야 합니다: " + value);
+                return false;
+            }
+            double ratio = Double.parseDouble(value);
+            try {
+                Progress.checkRatio(ratio);
+            } catch (IllegalArgumentException e) {
+                warn(lineNo, e.getMessage());
+                return false;
+            }
+            guesses.put(id, ratio);
             return true;
         }
 
