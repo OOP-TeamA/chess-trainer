@@ -103,10 +103,13 @@ public final class HomeScreen extends JPanel implements Screen {
         }
 
         int totalLessons = lessons.size();
-        int completedLessons = progress.lessonsDone().size();
+        long completedLessons = lessons.stream()
+                .filter(lesson -> progress.lessonsDone().contains(lesson.id()))
+                .count();
+
         int lessonPercent = totalLessons == 0
                 ? 0
-                : Math.min(100, completedLessons * 100 / totalLessons);
+                : (int)(completedLessons * 100 / totalLessons);
 
         updateMetric(
                 "lessons",
