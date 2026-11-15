@@ -1,5 +1,8 @@
 package com.oopteama.chess.progress;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.core.GameResult;
+import com.oopteama.chess.core.Side;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -40,6 +43,46 @@ class ProgressTest {
         assertEquals(new AttemptStats(3, 2), p.termQuizAttempts());
         assertEquals(Set.of("q0001"), p.termQuizCorrectIds());
         assertEquals(1, p.score());
+    }
+
+    @Test
+    void 퍼즐은_종료마다_시도가_늘고_해결_상태와_5점은_유지된다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p0001"));
+        assertEquals(new AttemptStats(0, 0), p.puzzleAttempts("p0001"));
+
+        p.recordPuzzle("p0001", true);   // HINT까지만 보고 완주
+        assertEquals(new AttemptStats(1, 1), p.puzzleAttempts("p0001"));
+        p.recordPuzzle("p0001", false);  // REVEAL 후 완주
+        assertEquals(new AttemptStats(2, 1), p.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0001"));
+        p.recordPuzzle("p0001", true);   // 공개 없이 재완주
+        assertEquals(new AttemptStats(3, 2), p.puzzleAttempts("p0001"));
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0001"));
+        assertEquals(5, p.score());
+        assertEquals(3, calls.get());
+
+        p.recordPuzzle("p0002", false);
+        assertEquals(PuzzleState.FAILED, p.puzzleState("p0002"));
+        assertEquals(5, p.score());
+        p.recordPuzzle("p0002", true);
+        assertEquals(PuzzleState.SOLVED, p.puzzleState("p0002"));
+        assertEquals(10, p.score());
+    }
+
+    @Test
+    void 퍼즐_ID를_검사한다() {
+        Progress p = new Progress();
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("p 1", true));
+        // 퍼즐 ID는 저장 키(puzzle.attempt.<id>)에 들어가므로 = 가 있으면 다시 읽을 때 키가 잘린다
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("p=1", true));
+        assertThrows(IllegalArgumentException.class, () -> p.markLessonDone("a=b"));
+        assertThrows(IllegalArgumentException.class, () -> p.recordPuzzle("", true));
+        assertThrows(NullPointerException.class, () -> p.recordPuzzle(null, true));
+        assertThrows(NullPointerException.class, () -> p.puzzleState(null));
+        assertEquals(PuzzleState.UNSEEN, p.puzzleState("p 1"));
     }
 
     @Test
@@ -97,5 +140,72 @@ class ProgressTest {
         assertThrows(IllegalArgumentException.class, () -> new AttemptStats(1, 2));
         assertThrows(IllegalArgumentException.class, () -> new AttemptStats(0, -1));
         assertEquals(3, new AttemptStats(3, 3).solved());
+    }
+
+    @Test
+    void AI_대국은_사용자_쪽_기준으로_승패무를_난이도별로_센다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        GameResult whiteMates = new GameResult(GameResult.Outcome.WHITE_WINS, GameResult.Reason.CHECKMATE);
+        GameResult stalemate = new GameResult(GameResult.Outcome.DRAW, GameResult.Reason.STALEMATE);
+
+        p.recordAiGame(Difficulty.INTRO, whiteMates, Side.WHITE);   // 백으로 이김
+        p.recordAiGame(Difficulty.INTRO, whiteMates, Side.BLACK);   // 흑으로 짐
+        p.recordAiGame(Difficulty.INTRO, stalemate, Side.BLACK);    // 무승부
+        p.recordAiGame(Difficulty.INTRO, GameResult.resignation(Side.WHITE), Side.WHITE); // 기권은 패배
+        p.recordAiGame(Difficulty.ADVANCED, GameResult.resignation(Side.WHITE), Side.BLACK); // 상대 기권은 승리
+
+        assertEquals(new AiRecord(1, 2, 1), p.aiRecord(Difficulty.INTRO));
+        assertEquals(new AiRecord(1, 0, 0), p.aiRecord(Difficulty.ADVANCED));
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.BEGINNER));
+        assertEquals(5, calls.get());
+        assertEquals(0, p.score()); // AI 전적은 점수에 들어가지 않는다
+    }
+
+    @Test
+    void AI_기록은_null과_음수_전적을_거부한다() {
+        Progress p = new Progress();
+        GameResult draw = new GameResult(GameResult.Outcome.DRAW, GameResult.Reason.REPETITION);
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(null, draw, Side.WHITE));
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(Difficulty.INTRO, null, Side.WHITE));
+        assertThrows(NullPointerException.class, () -> p.recordAiGame(Difficulty.INTRO, draw, null));
+        assertThrows(NullPointerException.class, () -> p.aiRecord(null));
+        assertThrows(IllegalArgumentException.class, () -> new AiRecord(-1, 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> new AiRecord(0, 0, -1));
+        assertEquals(new AiRecord(0, 0, 0), p.aiRecord(Difficulty.INTRO));
+    }
+
+    @Test
+    void 기보_맞히기는_기보별_최고값만_남기고_바뀔_때만_알린다() {
+        Progress p = new Progress();
+        AtomicInteger calls = new AtomicInteger();
+        p.addChangeListener(calls::incrementAndGet);
+        assertTrue(p.bestGuess("opera-1858").isEmpty());
+
+        p.recordGuess("opera-1858", 0.5);
+        p.recordGuess("opera-1858", 0.82);
+        p.recordGuess("opera-1858", 0.6);   // 낮으면 무시
+        p.recordGuess("opera-1858", 0.82);  // 같으면 무시
+        p.recordGuess("immortal", 0.0);     // 0도 기록
+
+        assertEquals(0.82, p.bestGuess("opera-1858").getAsDouble());
+        assertEquals(0.0, p.bestGuess("immortal").getAsDouble());
+        assertEquals(3, calls.get());
+        assertEquals(0, p.score()); // 기보 맞히기는 점수에 들어가지 않는다
+    }
+
+    @Test
+    void 기보_맞히기는_범위_밖_정답률과_잘못된_ID를_거부한다() {
+        Progress p = new Progress();
+        for (double bad : new double[] {-0.01, 1.01, Double.NaN, Double.POSITIVE_INFINITY}) {
+            assertThrows(IllegalArgumentException.class, () -> p.recordGuess("opera-1858", bad), "" + bad);
+        }
+        assertThrows(IllegalArgumentException.class, () -> p.recordGuess("a b", 0.5));
+        assertThrows(IllegalArgumentException.class, () -> p.recordGuess("a=b", 0.5)); // replay.best.<id> 키가 잘림
+        assertThrows(NullPointerException.class, () -> p.recordGuess(null, 0.5));
+        assertThrows(NullPointerException.class, () -> p.bestGuess(null));
+        p.recordGuess("opera-1858", 1.0);
+        assertEquals(1.0, p.bestGuess("opera-1858").getAsDouble());
     }
 }
