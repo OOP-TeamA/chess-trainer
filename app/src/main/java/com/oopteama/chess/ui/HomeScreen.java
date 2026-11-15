@@ -12,8 +12,8 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.LinearGradientPaint;
 import java.awt.GridLayout;
+import java.awt.LinearGradientPaint;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
@@ -24,8 +24,8 @@ import java.util.Objects;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
 import javax.swing.Icon;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
@@ -206,7 +206,7 @@ public final class HomeScreen extends JPanel implements Screen {
                 "<html>기본부터 AI 대전까지,<br>"
                         + "체계적으로 배우는 체스 학습 프로그램</html>"
         );
-        subtitle.setFont(Theme.body(13, Font.BOLD));
+        subtitle.setFont(Theme.body(13, 600));
         subtitle.setForeground(Theme.MUTED);
 
         textPanel.add(title);
@@ -307,7 +307,7 @@ public final class HomeScreen extends JPanel implements Screen {
         infoPanel.setOpaque(false);
 
         JLabel badge = new JLabel("이어서 하기");
-        badge.setFont(Theme.body(Theme.FONT_12, 1));
+        badge.setFont(Theme.body(Theme.FONT_12, 600));
         badge.setForeground(Theme.ACCENT);
         badge.setOpaque(true);
         badge.setBackground(Theme.RAISED);
@@ -320,7 +320,7 @@ public final class HomeScreen extends JPanel implements Screen {
         resumeTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         resumeDescription = new JLabel("다음 학습을 확인하고 있어요.");
-        resumeDescription.setFont(Theme.body(Theme.FONT_12, 0));
+        resumeDescription.setFont(Theme.body(Theme.FONT_12, 400));
         resumeDescription.setForeground(Theme.MUTED);
         resumeDescription.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -342,7 +342,7 @@ public final class HomeScreen extends JPanel implements Screen {
         lessonProgressBar.setPreferredSize(new Dimension(300, 12));
 
         lessonProgressText = new JLabel("기록 대기");
-        lessonProgressText.setFont(Theme.body(Theme.FONT_14, 0));
+        lessonProgressText.setFont(Theme.body(Theme.FONT_14, 400));
         lessonProgressText.setForeground(Theme.MUTED);
 
         progressRow.add(lessonProgressBar, BorderLayout.CENTER);
@@ -477,7 +477,7 @@ public final class HomeScreen extends JPanel implements Screen {
                         + description.replace("\n", "<br>")
                         + "</div></html>"
         );
-        descriptionLabel.setFont(Theme.body(14, 0));
+        descriptionLabel.setFont(Theme.body(14, 400));
         descriptionLabel.setForeground(foreground);
         descriptionLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -491,7 +491,7 @@ public final class HomeScreen extends JPanel implements Screen {
         statisticPanel.setOpaque(false);
 
         JLabel statisticLabel = new JLabel(statistic);
-        statisticLabel.setFont(Theme.body(Theme.FONT_16, 1));
+        statisticLabel.setFont(Theme.body(Theme.FONT_16, 600));
         statisticLabel.setForeground(foreground.darker());
         statisticLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -600,7 +600,7 @@ public final class HomeScreen extends JPanel implements Screen {
             }
         };
 
-        button.setFont(Theme.body(Theme.FONT_12, 1));
+        button.setFont(Theme.body(Theme.FONT_12, 600));
         button.setForeground(foreground);
         button.setBackground(background);
         button.setOpaque(false);
