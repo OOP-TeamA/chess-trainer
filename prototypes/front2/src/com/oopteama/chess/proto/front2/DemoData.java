@@ -1,7 +1,5 @@
 package com.oopteama.chess.proto.front2;
 
-import java.util.*;
-
 public final class DemoData {
     public static final class Lesson {
         public final String title, tagline;
@@ -24,7 +22,7 @@ public final class DemoData {
     }
     public static final Lesson[] LESSONS = {
         new Lesson("체스판과 좌표", "64칸의 보드와 위치를 읽어 봅니다.",
-            "체스판은 8×8로, 총 64개의 밝고 어두운 칸이 번갈아 있습니다.", "가로줄은 a부터 h까지 파일(file), 세로줄은 1부터 8까지 랭크(rank)입니다.", "백의 오른쪽 아래 칸은 밝은색(h1)입니다. 예: e4는 e파일과 4랭크의 교차점입니다."),
+            "체스판은 8×8로, 총 64개의 밝고 어두운 칸이 번갈아 있습니다.", "세로줄은 a부터 h까지 파일(file), 가로줄은 1부터 8까지 랭크(rank)입니다.", "백의 오른쪽 아래 칸은 밝은색(h1)입니다. 예: e4는 e파일과 4랭크의 교차점입니다."),
         new Lesson("기물의 이동", "킹·퀸·룩·비숍·나이트·폰", 
             "룩은 가로·세로, 비숍은 대각선, 퀸은 두 방식을 합쳐 이동합니다.", "킹은 한 칸씩 이동하지만 공격받는 칸으로 이동할 수 없습니다.", "나이트는 2칸+1칸의 L자로 이동하며 기물을 뛰어넘을 수 있습니다. 폰은 전진하지만 대각선으로 잡습니다."),
         new Lesson("나이트 집중 학습", "L자 이동과 포크 전술 익히기",
