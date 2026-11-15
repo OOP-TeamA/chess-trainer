@@ -296,6 +296,15 @@ public abstract class BoardScreen extends JPanel implements Screen {
         );
     }
 
+    // =========================================
+    // 컴포넌트가 화면에 추가될 때 패널 초기화
+    // =========================================
+     @Override
+     public void addNotify() {
+
+        super.addNotify();
+        initializePanels();
+      }
 
     // =========================================
     // 하위 화면에서 구현할 메서드
@@ -335,7 +344,6 @@ public abstract class BoardScreen extends JPanel implements Screen {
         );
     }
 
-
     // =========================================
     // 오른쪽 상단 컴포넌트 설정
     // =========================================
@@ -355,7 +363,6 @@ public abstract class BoardScreen extends JPanel implements Screen {
 
         topRightPanel.repaint();
     }
-
 
     // =========================================
     // 체스판 상태 갱신
@@ -423,7 +430,6 @@ public abstract class BoardScreen extends JPanel implements Screen {
                 )
         );
     }
-
 
     // =========================================
     // 오른쪽 패널 최초 한 번만 생성
