@@ -29,7 +29,8 @@ import java.util.logging.Logger;
  *       원본을 {@code <id>.txt.unreadable-<시각>}으로 옮겨 덮어쓰지 않는다.</li>
  *   <li>잘못된 줄은 파일명·행 번호를 로그에 남기고 건너뛰며, 나머지 유효한 키는 복구한다.</li>
  *   <li>같은 키가 다시 나오면 처음 유효한 값을 쓴다.</li>
- *   <li>이 단계가 해석하지 않는 키(퍼즐·오답 노트·즐겨찾기·AI 전적 등)는 그대로 보존해 다시 저장한다.</li>
+ *   <li>{@code puzzle.attempt.<id>=시도,정답}은 두 수가 0 이상이고 정답이 시도 이하여야 한다.</li>
+ *   <li>이 단계가 해석하지 않는 키(오답 노트·즐겨찾기·AI 전적 등)는 그대로 보존해 다시 저장한다.</li>
  * </ul>
  * 쓰기는 {@link TextFiles#writeAtomic}으로 파일 전체를 원자적으로 바꾼다.
  */
@@ -41,6 +42,8 @@ public final class ProgressStore {
     static final String QUIZ_CORRECT_UNIQUE = "quiz.correct.unique";
     static final String QUIZ_ATTEMPTS = "quiz.attempts";
     static final String QUIZ_CORRECT_COUNT = "quiz.correct.count";
+    /** 퍼즐 기록 키 접두사. 뒤에 퍼즐 ID가 붙는다. */
+    static final String PUZZLE_ATTEMPT_PREFIX = "puzzle.attempt.";
 
     private static final char KEY_VALUE_SEPARATOR = '=';
     private static final String LIST_SEPARATOR = ",";
@@ -124,6 +127,8 @@ public final class ProgressStore {
     static String format(Progress p) {
         StringBuilder sb = new StringBuilder();
         appendList(sb, LESSON_DONE, p.lessonsDone());
+        p.puzzles().forEach((id, stats) ->
+                appendLine(sb, PUZZLE_ATTEMPT_PREFIX + id, stats.attempted() + LIST_SEPARATOR + stats.solved()));
         appendList(sb, QUIZ_CORRECT_UNIQUE, p.termQuizCorrectIds());
         AttemptStats quiz = p.termQuizAttempts();
         appendLine(sb, QUIZ_ATTEMPTS, Integer.toString(quiz.attempted()));
@@ -152,6 +157,7 @@ public final class ProgressStore {
         private final Set<String> seen = new HashSet<>();
         private final Set<String> lessons = new LinkedHashSet<>();
         private final Set<String> correctIds = new LinkedHashSet<>();
+        private final Map<String, AttemptStats> puzzles = new LinkedHashMap<>();
         private final Map<String, String> others = new LinkedHashMap<>();
         private int attempts;
         private int correctCount;
@@ -170,7 +176,7 @@ public final class ProgressStore {
                 correctCount = 0;
             }
             Progress p = new Progress();
-            p.restore(lessons, correctIds, new AttemptStats(attempts, correctCount), others);
+            p.restore(lessons, puzzles, correctIds, new AttemptStats(attempts, correctCount), others);
             return p;
         }
 
@@ -208,6 +214,9 @@ public final class ProgressStore {
                     yield n != INVALID;
                 }
                 default -> {
+                    if (key.startsWith(PUZZLE_ATTEMPT_PREFIX)) {
+                        yield readPuzzle(key.substring(PUZZLE_ATTEMPT_PREFIX.length()), value, lineNo);
+                    }
                     others.put(key, value);
                     yield true;
                 }
@@ -242,6 +251,35 @@ public final class ProgressStore {
                 return false;
             }
             into.addAll(valid);
+            return true;
+        }
+
+        /**
+         * {@code puzzle.attempt.<id>=시도,정답}을 읽는다. ID가 잘못되었거나, 수가 두 개가 아니거나,
+         * 0 이상의 정수가 아니거나, 정답이 시도보다 많으면 경고하고 무효로 본다(같은 키의 다음 줄을 쓸 수 있음).
+         */
+        private boolean readPuzzle(String id, String value, int lineNo) {
+            try {
+                Progress.checkId(id);
+            } catch (IllegalArgumentException e) {
+                warn(lineNo, "잘못된 퍼즐 ID: " + e.getMessage());
+                return false;
+            }
+            String[] parts = value.split(LIST_SEPARATOR, -1);
+            if (parts.length != 2) {
+                warn(lineNo, "퍼즐 기록은 '시도,정답' 두 수여야 합니다: " + value);
+                return false;
+            }
+            int attempted = readCount(parts[0].strip(), lineNo);
+            int solved = readCount(parts[1].strip(), lineNo);
+            if (attempted == INVALID || solved == INVALID) {
+                return false;
+            }
+            if (solved > attempted) {
+                warn(lineNo, "퍼즐 '%s'의 정답 수 %d가 시도 수 %d보다 많습니다".formatted(id, solved, attempted));
+                return false;
+            }
+            puzzles.put(id, new AttemptStats(attempted, solved));
             return true;
         }
 
