@@ -4,10 +4,10 @@ Java Swing으로 만드는 체스 학습 프로그램 팀 프로젝트입니다.
 
 ## 현재 상태
 
-현재 저장소에는 Gradle 실행 설정과 빈 `JFrame`을 띄우는 `Main`만 구현되어 있습니다. 아래 명세서의 기능과 패키지 구조는 **개발 목표**이며, 구현 완료 목록이 아닙니다.
+`:app:run`은 `Main` → `app.ChessApp` 순서로 번들 콘텐츠(`app/src/main/resources/data/`)와 사용자 기록(`~/.chesslearn`)을 읽어 메인 창을 띄웁니다. 아래 명세서의 기능 중 일부만 구현되어 있으며, 명세서의 기능과 패키지 구조는 **개발 목표**이지 구현 완료 목록이 아닙니다.
 
 - Gradle 모듈: `app` (단일 모듈)
-- 현재 진입점: `app/src/main/java/com/oopteama/chess/Main.java`
+- 현재 진입점: `app/src/main/java/com/oopteama/chess/Main.java` → `app/ChessApp.java`(객체 조립은 `app/AppContext.java`)
 - 기준 Java 패키지: `com.oopteama.chess`
 - 현재 Gradle toolchain: Java 25 (`app/build.gradle.kts`)
 
@@ -29,7 +29,7 @@ macOS/Linux:
 ./gradlew :app:test
 ```
 
-현재 `test` 소스는 아직 없습니다.
+테스트는 `app/src/test/java`에 있으며 `:app:test`로 모두 실행합니다.
 
 ## 문서와 개발 순서
 
