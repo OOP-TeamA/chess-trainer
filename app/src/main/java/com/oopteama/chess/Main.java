@@ -1,15 +1,14 @@
 package com.oopteama.chess;
 
-import javax.swing.*;
+import com.oopteama.chess.app.ChessApp;
 
-public class Main {
+/** Gradle {@code :app:run}과 실행 JAR의 진입점. 실제 시작 순서는 {@link ChessApp}이 맡는다. */
+public final class Main {
+
+    private Main() {
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame f = new JFrame("Chess Trainer");
-            f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            f.setSize(800, 600);
-            f.setLocationRelativeTo(null);
-            f.setVisible(true);
-        });
+        ChessApp.main(args);
     }
 }

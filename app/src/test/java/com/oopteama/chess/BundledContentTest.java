@@ -8,17 +8,21 @@ import com.oopteama.chess.content.Glossary;
 import com.oopteama.chess.content.GlossaryEntry;
 import com.oopteama.chess.content.Lesson;
 import com.oopteama.chess.content.LessonStep;
+import com.oopteama.chess.content.Puzzle;
 import com.oopteama.chess.content.TermCategory;
 import com.oopteama.chess.content.TermLinks;
 import com.oopteama.chess.content.TermQuestion;
 import com.oopteama.chess.content.TermTry;
+import com.oopteama.chess.exercise.PuzzleExercise;
 import com.oopteama.chess.exercise.TermTryExercise;
 import com.oopteama.chess.exercise.Verdict;
 import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.GlossaryRepository;
 import com.oopteama.chess.io.LessonRepository;
+import com.oopteama.chess.io.PuzzleRepository;
 import com.oopteama.chess.io.TermQuestionRepository;
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
@@ -26,13 +30,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
  * 전체 콘텐츠 로드(기능 명세 9장): JAR에 들어갈 {@code data/}의 레슨·용어·용어 퀴즈가 경고 없이 읽히고,
- * 서로 가리키는 ID와 [[용어]] 링크의 대상이 모두 있는지 확인한다. 퍼즐과 기보 재생은 해당 로더가 생기면 더한다.
+ * 서로 가리키는 ID와 [[용어]] 링크의 대상이 모두 있는지 확인한다. 퍼즐은 {@code data/puzzles.txt}가 생기면 검사한다.
  */
 class BundledContentTest {
 
@@ -159,6 +164,30 @@ class BundledContentTest {
             try (BufferedReader in = new BufferedReader(paths.openResource("data/games/" + name))) {
                 assertLinksResolve(glossary, "기보 " + name, in.lines().collect(Collectors.joining("\n")));
             }
+        }
+        assertNoWarnings();
+    }
+
+    @Test
+    void puzzlesLoadAndEachSolutionSolvesItsPuzzle() throws IOException {
+        List<Puzzle> puzzles;
+        try (Reader in = paths.openResource("data/puzzles.txt")) {
+            puzzles = new PuzzleRepository().loadAll(in, "puzzles.txt");
+        } catch (FileNotFoundException e) {
+            Assumptions.abort("data/puzzles.txt가 아직 없습니다(프2 작성 예정)");
+            return;
+        }
+        assertTrue(!puzzles.isEmpty(), "퍼즐이 하나 이상 있어야 합니다");
+        Glossary glossary = glossary();
+        for (Puzzle p : puzzles) {
+            PuzzleExercise exercise = new PuzzleExercise(p);
+            Verdict verdict;
+            do {
+                verdict = exercise.submit(exercise.solution().orElseThrow(() -> new AssertionError(p.id())));
+                assertTrue(!(verdict instanceof Verdict.Wrong), p.id());
+            } while (verdict instanceof Verdict.Continue);
+            assertInstanceOf(Verdict.Solved.class, verdict, p.id());
+            assertLinksResolve(glossary, "퍼즐 " + p.id(), p.explain());
         }
         assertNoWarnings();
     }
