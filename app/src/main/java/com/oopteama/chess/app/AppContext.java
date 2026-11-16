@@ -14,6 +14,7 @@ import com.oopteama.chess.io.TermQuestionRepository;
 import com.oopteama.chess.progress.ProfileManager;
 import com.oopteama.chess.progress.Progress;
 import com.oopteama.chess.progress.ProgressStore;
+import com.oopteama.chess.progress.Recommender;
 import com.oopteama.chess.ui.Services;
 
 import java.io.FileNotFoundException;
@@ -49,6 +50,7 @@ public final class AppContext implements Services {
     private final ProfileManager profiles;
     private final ProgressStore progressStore;
     private final Progress progress;
+    private final Recommender recommender;
 
     /** 기록이 바뀔 때마다 저장한다. 실패는 로그에 남기고, 창을 닫을 때 {@link #saveProgress()}가 다시 시도한다. */
     private final Runnable autoSave = this::saveQuietly;
@@ -64,6 +66,7 @@ public final class AppContext implements Services {
         this.profiles = profiles;
         this.progressStore = progressStore;
         this.progress = progress;
+        this.recommender = new Recommender(this.lessons, this.puzzles, progress);
         progress.addChangeListener(autoSave);
     }
 
@@ -183,5 +186,10 @@ public final class AppContext implements Services {
     @Override
     public Progress progress() {
         return progress;
+    }
+
+    @Override
+    public Recommender recommender() {
+        return recommender;
     }
 }
