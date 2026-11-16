@@ -31,8 +31,14 @@ class AppContextTest {
         AppContext context;
         try (TestLog log = TestLog.captureAll()) {
             context = AppContext.load(new DataPaths(userDir));
-            assertEquals(List.of(), log.messages().stream().filter(m -> !m.startsWith("콘텐츠 로드:")).toList(),
+            // 퍼즐 파일은 프2가 작성할 때까지 없을 수 있다. 그 경고 외에는 없어야 한다.
+            assertEquals(List.of(), log.messages().stream()
+                            .filter(m -> !m.startsWith("콘텐츠 로드:") && !m.equals(AppContext.PUZZLES_MISSING))
+                            .toList(),
                     "번들 콘텐츠와 빈 사용자 폴더는 경고 없이 읽혀야 한다");
+            boolean puzzleFileExists = AppContext.class.getClassLoader().getResource(AppContext.PUZZLES_FILE) != null;
+            assertEquals(!puzzleFileExists, log.messages().contains(AppContext.PUZZLES_MISSING));
+            assertEquals(puzzleFileExists, !context.puzzles().isEmpty());
         }
 
         assertTrue(context.lessons().stream().anyMatch(l -> l.id().equals("knight")), "나이트 레슨");

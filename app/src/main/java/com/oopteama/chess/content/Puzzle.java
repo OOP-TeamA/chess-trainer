@@ -20,6 +20,13 @@ import java.util.Set;
  */
 public record Puzzle(String id, Set<String> themes, String fen, List<String> solutionUci, String explain) {
 
+    /**
+     * 퍼즐 파일에 쓸 수 있는 주제(기능 명세 7장 콘텐츠 작성 가이드). 퍼즐 주제 목록 화면의 표시 순서이기도 하다.
+     * 주제를 더하려면 백프와 합의한 뒤 이 목록을 고친다.
+     */
+    public static final List<String> THEMES =
+            List.of("메이트인1", "메이트인2", "백랭크", "포크", "핀", "스큐어", "디스커버드어택", "프로모션");
+
     /** 메이트 주제의 접두어(메이트인1, 메이트인2 …). */
     private static final String MATE_THEME_PREFIX = "메이트";
 

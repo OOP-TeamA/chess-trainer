@@ -2,12 +2,14 @@ package com.oopteama.chess.app;
 
 import com.oopteama.chess.content.Glossary;
 import com.oopteama.chess.content.Lesson;
+import com.oopteama.chess.content.Puzzle;
 import com.oopteama.chess.content.RulesKind;
 import com.oopteama.chess.content.TermQuestion;
 import com.oopteama.chess.core.rules.RuleSet;
 import com.oopteama.chess.io.DataPaths;
 import com.oopteama.chess.io.GlossaryRepository;
 import com.oopteama.chess.io.LessonRepository;
+import com.oopteama.chess.io.PuzzleRepository;
 import com.oopteama.chess.io.TermQuestionRepository;
 import com.oopteama.chess.progress.ProfileManager;
 import com.oopteama.chess.progress.Progress;
@@ -35,10 +37,13 @@ public final class AppContext implements Services {
 
     static final String LESSONS_DIR = "data/lessons";
     static final String GLOSSARY_FILE = "data/glossary.txt";
+    static final String PUZZLES_FILE = "data/puzzles.txt";
+    static final String PUZZLES_MISSING = PUZZLES_FILE + "이 없어 퍼즐 없이 시작합니다";
     static final String TERM_QUIZ_FILE = "data/term-quiz.txt";
 
     private final DataPaths paths;
     private final List<Lesson> lessons;
+    private final List<Puzzle> puzzles;
     private final Glossary glossary;
     private final List<TermQuestion> termQuestions;
     private final ProfileManager profiles;
@@ -48,10 +53,12 @@ public final class AppContext implements Services {
     /** 기록이 바뀔 때마다 저장한다. 실패는 로그에 남기고, 창을 닫을 때 {@link #saveProgress()}가 다시 시도한다. */
     private final Runnable autoSave = this::saveQuietly;
 
-    private AppContext(DataPaths paths, List<Lesson> lessons, Glossary glossary, List<TermQuestion> termQuestions,
+    private AppContext(DataPaths paths, List<Lesson> lessons, List<Puzzle> puzzles, Glossary glossary,
+                       List<TermQuestion> termQuestions,
                        ProfileManager profiles, ProgressStore progressStore, Progress progress) {
         this.paths = paths;
         this.lessons = List.copyOf(lessons);
+        this.puzzles = List.copyOf(puzzles);
         this.glossary = glossary;
         this.termQuestions = List.copyOf(termQuestions);
         this.profiles = profiles;
@@ -62,7 +69,7 @@ public final class AppContext implements Services {
 
     /**
      * 모든 콘텐츠와 활성 프로필의 기록을 읽는다. 콘텐츠 형식 오류는 각 저장소가 로그에 남기고 그 항목만 건너뛴다.
-     * 레슨 목록에 적힌 파일이 없으면 경고하고 그 레슨만 건너뛴다.
+     * 레슨 목록에 적힌 파일이 없으면 경고하고 그 레슨만 건너뛴다. 퍼즐 파일이 아직 없으면 경고하고 퍼즐 없이 시작한다.
      *
      * @param paths 경로 계산기(앱은 {@link DataPaths#standard()}, 테스트는 임시 폴더)
      * @return 조립된 컨텍스트
@@ -71,6 +78,7 @@ public final class AppContext implements Services {
     public static AppContext load(DataPaths paths) throws IOException {
         Objects.requireNonNull(paths, "paths");
         List<Lesson> lessons = loadLessons(paths);
+        List<Puzzle> puzzles = loadPuzzles(paths);
         Glossary glossary;
         try (Reader in = paths.openResource(GLOSSARY_FILE)) {
             glossary = new Glossary(new GlossaryRepository().loadAll(in, fileName(GLOSSARY_FILE)));
@@ -82,9 +90,9 @@ public final class AppContext implements Services {
         ProfileManager profiles = new ProfileManager(paths);
         ProgressStore store = new ProgressStore(paths);
         Progress progress = store.load(profiles.active().id());
-        LOG.info("콘텐츠 로드: 레슨 %d개, 용어 %d개, 용어 문항 %d개, 프로필 %s"
-                .formatted(lessons.size(), glossary.all().size(), questions.size(), profiles.active().id()));
-        return new AppContext(paths, lessons, glossary, questions, profiles, store, progress);
+        LOG.info("콘텐츠 로드: 레슨 %d개, 퍼즐 %d개, 용어 %d개, 용어 문항 %d개, 프로필 %s".formatted(lessons.size(),
+                puzzles.size(), glossary.all().size(), questions.size(), profiles.active().id()));
+        return new AppContext(paths, lessons, puzzles, glossary, questions, profiles, store, progress);
     }
 
     /** {@code lessons/index.txt} 순서대로 레슨을 읽는다. 목록에 있지만 없는 파일은 건너뛴다. */
@@ -98,6 +106,16 @@ public final class AppContext implements Services {
             }
         }
         return out;
+    }
+
+    /** 퍼즐 파일을 읽는다. 아직 작성되지 않았으면 빈 목록. */
+    private static List<Puzzle> loadPuzzles(DataPaths paths) throws IOException {
+        try (Reader in = paths.openResource(PUZZLES_FILE)) {
+            return new PuzzleRepository().loadAll(in, fileName(PUZZLES_FILE));
+        } catch (FileNotFoundException e) {
+            LOG.warning(PUZZLES_MISSING);
+            return List.of();
+        }
     }
 
     private static String fileName(String resource) {
@@ -145,6 +163,11 @@ public final class AppContext implements Services {
     @Override
     public List<Lesson> lessons() {
         return lessons;
+    }
+
+    @Override
+    public List<Puzzle> puzzles() {
+        return puzzles;
     }
 
     @Override
