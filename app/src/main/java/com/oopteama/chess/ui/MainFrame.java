@@ -153,6 +153,12 @@ public final class MainFrame extends JFrame implements Navigator {
         add(cardPanel, BorderLayout.CENTER);
 
 
+        // 기록이 바뀌면(레슨 완료, 퀴즈 정답 등) 화면 이동 없이도 레일 점수를 갱신
+        if (services.progress() != null) {
+            services.progress().addChangeListener(this::refreshProfileBadge);
+        }
+
+
         // 첫 화면은 홈
         go(new Route.Home());
     }
@@ -264,6 +270,17 @@ public final class MainFrame extends JFrame implements Navigator {
 
         // 왼쪽 메뉴 선택 상태 변경
         navRail.setActiveRoute(route);
+
+        refreshProfileBadge();
+    }
+
+
+    // 왼쪽 레일의 프로필 이름과 점수를 현재 서비스 값으로 갱신
+    private void refreshProfileBadge() {
+
+        if (services.profiles() != null) {
+            navRail.setProfileName(services.profiles().active().name());
+        }
 
         // 프로필 점수는 현재 서비스가 제공하는 학습 기록에서 읽는다.
         if (services.progress() != null) {

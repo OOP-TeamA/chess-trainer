@@ -48,6 +48,7 @@ public final class NavRail extends JPanel {
     // 현재 선택된 메뉴
     private String activeKey = "home";
     private JLabel scoreLabel;
+    private JLabel nameLabel;
 
 
     public NavRail(Navigator navigator) {
@@ -97,9 +98,9 @@ public final class NavRail extends JPanel {
         labels.setLayout(new BoxLayout(labels, BoxLayout.Y_AXIS));
         labels.setOpaque(false);
 
-        JLabel name = new JLabel("학습자");
-        name.setFont(Theme.body(Theme.FONT_16, 600));
-        name.setForeground(Theme.TEXT);
+        nameLabel = new JLabel("학습자");
+        nameLabel.setFont(Theme.body(Theme.FONT_16, 600));
+        nameLabel.setForeground(Theme.TEXT);
 
         scoreLabel = new JLabel("점수 —");
         scoreLabel.setFont(Theme.body(Theme.FONT_14, 600));
@@ -108,7 +109,7 @@ public final class NavRail extends JPanel {
         scoreLabel.setBackground(Theme.ACCENT);
         scoreLabel.setBorder(new EmptyBorder(4, 9, 4, 9));
 
-        labels.add(name);
+        labels.add(nameLabel);
         labels.add(Box.createVerticalStrut(7));
         labels.add(scoreLabel);
         profile.add(labels);
@@ -118,6 +119,12 @@ public final class NavRail extends JPanel {
 
     public void setScore(int score) {
         scoreLabel.setText("점수 " + Math.max(0, score));
+    }
+
+
+    /** 활성 프로필의 표시 이름. 비었으면 기본 이름 "학습자". */
+    public void setProfileName(String name) {
+        nameLabel.setText(name == null || name.isBlank() ? "학습자" : name);
     }
 
 

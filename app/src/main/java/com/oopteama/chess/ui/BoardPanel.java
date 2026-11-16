@@ -33,6 +33,7 @@ import javax.swing.Timer;
 
 import com.oopteama.chess.content.goal.InputMode;
 import com.oopteama.chess.core.Move;
+import com.oopteama.chess.core.MoveKind;
 import com.oopteama.chess.core.PieceType;
 import com.oopteama.chess.core.Position;
 import com.oopteama.chess.core.Side;
@@ -437,7 +438,8 @@ public class BoardPanel extends JPanel {
     // 기물 이동 처리
     // =========================================
 
-    private void handleMoveClick(Square square) {
+    /** 이동 모드의 칸 입력 하나. 테스트에서 클릭을 흉내 낼 때도 쓴다. */
+    void handleMoveClick(Square square) {
 
         // 선택된 기물이 없는 경우
         if (selectedSquare == null) {
@@ -480,24 +482,66 @@ public class BoardPanel extends JPanel {
                 }
             }
 
-            // 이동 이벤트 전달
-            for (
-                    Consumer<Move> listener :
-                    List.copyOf(moveListeners)
-            ) {
+            emitMove(selectedMove);
 
-                listener.accept(selectedMove);
-            }
+            return;
+        }
 
-            selectedSquare = null;
+        // 킹을 고른 뒤 같은 편 룩을 누르면 그쪽 캐슬링으로 둔다.
+        Optional<Move> castling = castlingTowardRook(selectedSquare, square);
 
-            repaint();
+        if (castling.isPresent()) {
+
+            emitMove(castling.get());
 
             return;
         }
 
         // 다른 기물 선택
         selectSquare(square);
+    }
+
+
+    // 이동 이벤트 전달 후 선택 해제
+    private void emitMove(Move move) {
+
+        for (
+                Consumer<Move> listener :
+                List.copyOf(moveListeners)
+        ) {
+
+            listener.accept(move);
+        }
+
+        selectedSquare = null;
+
+        repaint();
+    }
+
+
+    /** 킹 칸에서 출발하는 합법 캐슬링 중 움직일 룩이 clicked 칸에 있는 수. */
+    private Optional<Move> castlingTowardRook(Square kingSquare, Square clicked) {
+
+        return legalMoves.stream()
+                .filter(move -> move.from().equals(kingSquare) && isCastling(move))
+                .filter(move -> castlingRookSquare(move).equals(clicked))
+                .findFirst();
+    }
+
+
+    private static boolean isCastling(Move move) {
+
+        return move.kind() == MoveKind.CASTLE_SHORT
+                || move.kind() == MoveKind.CASTLE_LONG;
+    }
+
+
+    /** 캐슬링에서 함께 움직이는 룩의 출발 칸(킹사이드 h파일, 퀸사이드 a파일). */
+    private static Square castlingRookSquare(Move move) {
+
+        int rookFile = move.kind() == MoveKind.CASTLE_SHORT ? 7 : 0;
+
+        return new Square(rookFile, move.from().rank());
     }
 
 
@@ -1033,6 +1077,34 @@ public class BoardPanel extends JPanel {
                         center.y - diameter / 2,
                         diameter,
                         diameter
+                );
+            }
+
+            if (isCastling(move)) {
+                // 캐슬링은 도착 칸 점만으로는 알아보기 어려워, 함께 움직일 룩에도 강조 링을 그린다.
+                // 룩을 눌러도 캐슬링된다(handleMoveClick).
+                Point rook = squareCenter(x, y, size, castlingRookSquare(move));
+                int ring = (int) (size * 0.80f);
+
+                g2.setColor(new Color(
+                        Theme.ACCENT.getRed(),
+                        Theme.ACCENT.getGreen(),
+                        Theme.ACCENT.getBlue(),
+                        230
+                ));
+                g2.setStroke(new BasicStroke(
+                        Math.max(2.0f, size / 22f),
+                        BasicStroke.CAP_ROUND,
+                        BasicStroke.JOIN_ROUND,
+                        10f,
+                        new float[] {Math.max(4f, size / 9f), Math.max(3f, size / 14f)},
+                        0f
+                ));
+                g2.drawOval(
+                        rook.x - ring / 2,
+                        rook.y - ring / 2,
+                        ring,
+                        ring
                 );
             }
         }

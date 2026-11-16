@@ -6,6 +6,7 @@ import com.oopteama.chess.ui.Theme;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,18 +21,24 @@ public final class ChessApp {
     /** 시작에 실패했을 때의 종료 코드. */
     private static final int STARTUP_FAILURE = 1;
 
+    /**
+     * 사용자 폴더를 바꾸는 시스템 속성. 시연용 {@code :app:runDemo}가 저장소 안의 더미 기록 폴더를 넘길 때 쓴다.
+     * 없으면 표준 폴더({@code ~/.chesslearn})를 쓴다.
+     */
+    static final String USER_DIR_PROPERTY = "chesslearn.home";
+
     private ChessApp() {
     }
 
     /**
-     * 표준 사용자 폴더({@code ~/.chesslearn})로 앱을 시작한다.
+     * 표준 사용자 폴더({@code ~/.chesslearn}), 또는 {@value #USER_DIR_PROPERTY} 속성의 폴더로 앱을 시작한다.
      *
      * @param args 쓰지 않는다
      */
     public static void main(String[] args) {
         AppContext context;
         try {
-            context = AppContext.load(DataPaths.standard());
+            context = AppContext.load(userPaths());
         } catch (IOException | RuntimeException e) {
             LOG.log(Level.SEVERE, "콘텐츠나 학습 기록을 읽지 못해 시작할 수 없습니다", e);
             System.err.println("Chess Trainer를 시작하지 못했습니다: " + e.getMessage());
@@ -43,5 +50,14 @@ public final class ChessApp {
             MainFrame frame = new MainFrame(context, context::saveProgress);
             frame.setVisible(true);
         });
+    }
+
+    private static DataPaths userPaths() {
+        String dir = System.getProperty(USER_DIR_PROPERTY, "").strip();
+        if (dir.isEmpty()) {
+            return DataPaths.standard();
+        }
+        LOG.info("사용자 폴더를 %s 속성으로 바꿉니다: %s".formatted(USER_DIR_PROPERTY, dir));
+        return new DataPaths(Path.of(dir));
     }
 }

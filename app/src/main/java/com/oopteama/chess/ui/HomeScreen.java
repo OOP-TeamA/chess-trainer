@@ -17,10 +17,12 @@ import java.awt.LinearGradientPaint;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -32,11 +34,17 @@ import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
+import com.oopteama.chess.ai.Difficulty;
+import com.oopteama.chess.content.FamousGame;
 import com.oopteama.chess.content.Lesson;
+import com.oopteama.chess.content.Puzzle;
 import com.oopteama.chess.nav.Navigator;
 import com.oopteama.chess.nav.Route;
+import com.oopteama.chess.progress.AiRecord;
 import com.oopteama.chess.progress.AttemptStats;
 import com.oopteama.chess.progress.Progress;
+import com.oopteama.chess.progress.PuzzleState;
+import com.oopteama.chess.progress.Recommendation;
 
 
 public final class HomeScreen extends JPanel implements Screen {
@@ -89,8 +97,8 @@ public final class HomeScreen extends JPanel implements Screen {
         if (progress == null) {
             updateMetric("lessons", "기록 연동 대기", 0);
             updateMetric("quiz", "기록 연동 대기", 0);
-            updateMetric("library", "기록 API 연동 대기", 0);
-            updateMetric("ai", "기록 API 연동 대기", 0);
+            updateMetric("library", "기록 연동 대기", 0);
+            updateMetric("ai", "기록 연동 대기", 0);
 
             if (resumeTitle != null) {
                 resumeTitle.setText("학습 기록을 불러올 수 없습니다");
@@ -119,36 +127,21 @@ public final class HomeScreen extends JPanel implements Screen {
                 lessonPercent
         );
 
-        AttemptStats quizStats = progress.termQuizAttempts();
-        int attempted = quizStats == null ? 0 : quizStats.attempted();
-        int correct = quizStats == null ? 0 : quizStats.solved();
-        int accuracy = attempted == 0 ? 0 : Math.min(100, correct * 100 / attempted);
-
-        updateMetric(
-                "quiz",
-                attempted == 0
-                        ? "아직 퀴즈 기록 없음"
-                        : attempted + "문제, 정답률 " + accuracy + "%",
-                accuracy
-        );
-
-        // GameLibrary 데이터 접근 API가 Services에 추가되면 실제 기보 수치로 연결합니다.
-        updateMetric("library", "기보 기록 API 연동 대기", 0);
-        // AI 대국 기록은 AI 서비스 계약 통합 후 표시합니다.
-        updateMetric("ai", "AI 기록 API 연동 대기", 0);
+        updateQuizMetric(progress);
+        updateLibraryMetric(progress);
+        updateAiMetric(progress);
 
         if (resumeTitle != null) {
-            Lesson nextLesson = lessons.stream()
-                    .filter(lesson -> !progress.lessonsDone().contains(lesson.id()))
-                    .findFirst()
-                    .orElse(null);
+            Optional<Recommendation> next = services.recommender() == null
+                    ? Optional.empty()
+                    : services.recommender().next();
 
-            if (nextLesson != null) {
-                resumeTitle.setText("레슨 " + nextLesson.order() + ". " + nextLesson.title());
-                resumeDescription.setText("다음 추천 · 미완료 첫 레슨");
-                recommendedRoute = new Route.Lesson(nextLesson.id(), 0);
+            if (next.isPresent()) {
+                resumeTitle.setText(next.get().title());
+                resumeDescription.setText("다음 추천 · " + next.get().reason());
+                recommendedRoute = next.get().route();
             } else if (!lessons.isEmpty()) {
-                resumeTitle.setText("모든 레슨을 완료했어요");
+                resumeTitle.setText("추천 목표를 모두 달성했어요");
                 resumeDescription.setText("다른 학습 메뉴에서 계속 연습해 보세요.");
                 recommendedRoute = new Route.Lessons();
             } else {
@@ -157,12 +150,115 @@ public final class HomeScreen extends JPanel implements Screen {
                 recommendedRoute = new Route.Lessons();
             }
 
+            continueButton.setText(continueText(recommendedRoute));
+
             lessonProgressBar.setValue(lessonPercent);
             lessonProgressText.setText(totalLessons == 0
                     ? "0 / 0 레슨"
                     : completedLessons + " / " + totalLessons + " 레슨 · "
                             + lessonPercent + "%");
         }
+    }
+
+
+    /** 체스 퀴즈 카드: 해결한 퍼즐 수(PuzzleState.SOLVED)와 용어 퀴즈 정답률. 퍼즐이 없으면 용어 퀴즈만. */
+    private void updateQuizMetric(Progress progress) {
+        AttemptStats quizStats = progress.termQuizAttempts();
+        int attempted = quizStats == null ? 0 : quizStats.attempted();
+        int correct = quizStats == null ? 0 : quizStats.solved();
+        int accuracy = attempted == 0 ? 0 : Math.min(100, correct * 100 / attempted);
+        String termText = attempted == 0 ? "" : " · 용어 " + accuracy + "%";
+
+        List<Puzzle> puzzles = services.puzzles() == null ? List.of() : services.puzzles();
+
+        if (puzzles.isEmpty()) {
+            updateMetric(
+                    "quiz",
+                    attempted == 0
+                            ? "아직 퀴즈 기록 없음"
+                            : attempted + "문제, 정답률 " + accuracy + "%",
+                    accuracy
+            );
+            return;
+        }
+
+        long solved = puzzles.stream()
+                .filter(p -> progress.puzzleState(p.id()) == PuzzleState.SOLVED)
+                .count();
+
+        updateMetric(
+                "quiz",
+                "퍼즐 " + solved + "/" + puzzles.size() + termText,
+                (int) (solved * 100 / puzzles.size())
+        );
+    }
+
+
+    /** 명국 기보 카드: 번들 기보 수와 기보 맞히기를 해 본 기보 수(Progress.bestGuess). */
+    private void updateLibraryMetric(Progress progress) {
+        List<FamousGame> games;
+
+        try {
+            games = services.games() == null ? List.of() : services.games().bundled();
+        } catch (IOException e) {
+            updateMetric("library", "기보를 읽지 못했습니다", 0);
+            return;
+        }
+
+        if (games.isEmpty()) {
+            updateMetric("library", "기보 콘텐츠 없음", 0);
+            return;
+        }
+
+        long guessed = games.stream()
+                .filter(game -> progress.bestGuess(game.id()).isPresent())
+                .count();
+
+        updateMetric(
+                "library",
+                "명국 " + games.size() + "편 · 맞히기 " + guessed + "편",
+                (int) (guessed * 100 / games.size())
+        );
+    }
+
+
+    /** AI 대전 카드: 모든 난이도의 승·패·무 합계와 승률 막대(Progress.aiRecord). */
+    private void updateAiMetric(Progress progress) {
+        int wins = 0;
+        int losses = 0;
+        int draws = 0;
+
+        for (Difficulty difficulty : Difficulty.values()) {
+            AiRecord record = progress.aiRecord(difficulty);
+            wins += record.wins();
+            losses += record.losses();
+            draws += record.draws();
+        }
+
+        int played = wins + losses + draws;
+
+        updateMetric(
+                "ai",
+                played == 0
+                        ? "아직 대국 기록 없음"
+                        : wins + "승 " + losses + "패 " + draws + "무",
+                played == 0 ? 0 : wins * 100 / played
+        );
+    }
+
+
+    /** 추천 화면에 맞춘 이어 하기 버튼 문구. */
+    private static String continueText(Route route) {
+        if (route instanceof Route.Lesson) {
+            return "▶  레슨 이어 하기";
+        }
+        if (route instanceof Route.Puzzle) {
+            return "▶  퍼즐 풀기";
+        }
+        if (route instanceof Route.AiGame) {
+            return "▶  AI 대전 시작";
+        }
+        return "▶  이어 하기";
     }
 
 
@@ -415,7 +511,7 @@ public final class HomeScreen extends JPanel implements Screen {
                 "CROWN",
                 "명국 기보",
                 "명국으로 배우는\n전략과 전술",
-                "기보 기록 API 연동 대기",
+                "기록 불러오는 중",
                 0,
                 new Color(0xE2EDD9),
                 new Color(0x527448),
@@ -427,7 +523,7 @@ public final class HomeScreen extends JPanel implements Screen {
                 "ROBOT",
                 "AI 대전",
                 "나만의 난이도로\n대국 연습하기",
-                "AI 기록 API 연동 대기",
+                "기록 불러오는 중",
                 0,
                 new Color(0xEAE0F6),
                 new Color(0x70509A),

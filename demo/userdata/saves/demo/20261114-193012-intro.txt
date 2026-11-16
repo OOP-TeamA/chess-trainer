@@ -1,0 +1,9 @@
+[Event "AI 대전"]
+[Site "Chess Trainer"]
+[Date "2026.11.14"]
+[Round "-"]
+[White "민준"]
+[Black "AI (입문)"]
+[Result "1-0"]
+
+1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0

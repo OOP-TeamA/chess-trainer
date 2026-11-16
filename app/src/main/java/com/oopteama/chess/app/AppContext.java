@@ -7,6 +7,7 @@ import com.oopteama.chess.content.RulesKind;
 import com.oopteama.chess.content.TermQuestion;
 import com.oopteama.chess.core.rules.RuleSet;
 import com.oopteama.chess.io.DataPaths;
+import com.oopteama.chess.io.GameLibrary;
 import com.oopteama.chess.io.GlossaryRepository;
 import com.oopteama.chess.io.LessonRepository;
 import com.oopteama.chess.io.PuzzleRepository;
@@ -47,6 +48,7 @@ public final class AppContext implements Services {
     private final List<Puzzle> puzzles;
     private final Glossary glossary;
     private final List<TermQuestion> termQuestions;
+    private final GameLibrary games;
     private final ProfileManager profiles;
     private final ProgressStore progressStore;
     private final Progress progress;
@@ -56,13 +58,14 @@ public final class AppContext implements Services {
     private final Runnable autoSave = this::saveQuietly;
 
     private AppContext(DataPaths paths, List<Lesson> lessons, List<Puzzle> puzzles, Glossary glossary,
-                       List<TermQuestion> termQuestions,
+                       List<TermQuestion> termQuestions, GameLibrary games,
                        ProfileManager profiles, ProgressStore progressStore, Progress progress) {
         this.paths = paths;
         this.lessons = List.copyOf(lessons);
         this.puzzles = List.copyOf(puzzles);
         this.glossary = glossary;
         this.termQuestions = List.copyOf(termQuestions);
+        this.games = games;
         this.profiles = profiles;
         this.progressStore = progressStore;
         this.progress = progress;
@@ -91,11 +94,14 @@ public final class AppContext implements Services {
             questions = new TermQuestionRepository(glossary).loadAll(in, fileName(TERM_QUIZ_FILE));
         }
         ProfileManager profiles = new ProfileManager(paths);
+        GameLibrary games = new GameLibrary(paths, profiles.active().id());
+        int bundledGames = games.bundled().size(); // 시작할 때 읽어 두고 형식 오류를 로그로 알린다
         ProgressStore store = new ProgressStore(paths);
         Progress progress = store.load(profiles.active().id());
-        LOG.info("콘텐츠 로드: 레슨 %d개, 퍼즐 %d개, 용어 %d개, 용어 문항 %d개, 프로필 %s".formatted(lessons.size(),
-                puzzles.size(), glossary.all().size(), questions.size(), profiles.active().id()));
-        return new AppContext(paths, lessons, puzzles, glossary, questions, profiles, store, progress);
+        LOG.info("콘텐츠 로드: 레슨 %d개, 퍼즐 %d개, 용어 %d개, 용어 문항 %d개, 기보 %d개, 프로필 %s".formatted(
+                lessons.size(), puzzles.size(), glossary.all().size(), questions.size(), bundledGames,
+                profiles.active().id()));
+        return new AppContext(paths, lessons, puzzles, glossary, questions, games, profiles, store, progress);
     }
 
     /** {@code lessons/index.txt} 순서대로 레슨을 읽는다. 목록에 있지만 없는 파일은 건너뛴다. */
@@ -184,8 +190,18 @@ public final class AppContext implements Services {
     }
 
     @Override
+    public GameLibrary games() {
+        return games;
+    }
+
+    @Override
     public Progress progress() {
         return progress;
+    }
+
+    @Override
+    public ProfileManager profiles() {
+        return profiles;
     }
 
     @Override

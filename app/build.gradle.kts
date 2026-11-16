@@ -45,3 +45,33 @@ tasks.named<Test>("test") {
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
+
+// ---- 시연용 더미 기록으로 실행 (로컬 전용) ----
+// demo/userdata(원본, 읽기 전용)를 build/demo-home에 한 번 복사하고 그 폴더를 사용자 폴더로 앱을 띄운다.
+// 실제 ~/.chesslearn은 건드리지 않는다. 기록은 실행 사이에 유지되며, resetDemo(또는 clean)로 원본 상태로 되돌린다.
+val demoSeed = rootProject.layout.projectDirectory.dir("demo/userdata")
+val demoHome = layout.buildDirectory.dir("demo-home")
+
+val seedDemoHome by tasks.registering(Copy::class) {
+    description = "demo/userdata를 build/demo-home에 복사한다(이미 있으면 건너뜀)."
+    from(demoSeed)
+    into(demoHome)
+    val marker = demoHome.map { it.file("profiles/index.txt").asFile }
+    onlyIf { !marker.get().exists() }
+}
+
+tasks.register<JavaExec>("runDemo") {
+    group = "application"
+    description = "시연용 더미 기록(build/demo-home)으로 앱을 실행한다."
+    dependsOn(seedDemoHome)
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass = application.mainClass
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    systemProperty("chesslearn.home", demoHome.get().asFile.absolutePath)
+}
+
+tasks.register<Delete>("resetDemo") {
+    group = "application"
+    description = "build/demo-home을 지워 다음 runDemo가 더미 기록 원본에서 다시 시작하게 한다."
+    delete(demoHome)
+}
