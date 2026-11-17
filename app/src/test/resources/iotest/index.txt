@@ -1,6 +1,0 @@
-# 테스트용 목록
-
-first.txt
-  second.txt  
-sub/evil.txt
-..

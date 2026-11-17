@@ -1,6 +1,6 @@
 package com.oopteama.chess.nav;
 
-import com.oopteama.chess.game.AiSetup;
+import com.oopteama.chess.api.SideColor;
 
 public sealed interface Route {
 
@@ -21,7 +21,11 @@ public sealed interface Route {
     // 대국
     record LocalGame() implements Route { }
     record NewGame() implements Route { }
-    record AiGame(AiSetup setup) implements Route { }
+    record AiGame(String difficulty, SideColor userSide) implements Route {
+        public AiGame() {
+            this("BEGINNER", SideColor.WHITE);
+        }
+    }
 
     // 기보 및 용어집
     record Library() implements Route { }

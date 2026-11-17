@@ -21,23 +21,27 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-import com.oopteama.chess.content.goal.InputMode;
-import com.oopteama.chess.core.Move;
-import com.oopteama.chess.core.PieceType;
-import com.oopteama.chess.core.Position;
-import com.oopteama.chess.core.Side;
-import com.oopteama.chess.core.Square;
-import com.oopteama.chess.core.piece.Piece;
+import com.oopteama.chess.api.BoardInputMode;
+import com.oopteama.chess.api.BoardSnapshot;
+import com.oopteama.chess.api.LegalMoveView;
+import com.oopteama.chess.api.MoveInput;
+import com.oopteama.chess.api.PieceKind;
+import com.oopteama.chess.api.PieceView;
+import com.oopteama.chess.api.SideColor;
 
 
 public class BoardPanel extends JPanel {
@@ -68,8 +72,8 @@ public class BoardPanel extends JPanel {
 
 
     public record Arrow(
-            Square from,
-            Square to,
+            int from,
+            int to,
             ArrowKind kind
     ) { }
 
@@ -78,25 +82,19 @@ public class BoardPanel extends JPanel {
     // 내부 데이터
     // =========================================
 
-    private Position position = Position.initial();
+    private BoardSnapshot snapshot = BoardSnapshot.empty();
 
-    private List<Move> legalMoves = List.of();
-
-    private Optional<InputMode> inputMode =
-            Optional.empty();
-
-    private Optional<Square> checkSquare =
-            Optional.empty();
+    private BoardInputMode inputMode = BoardInputMode.LOCKED;
 
     private boolean flipped = false;
 
-    private Square selectedSquare;
+    private Integer selectedSquare;
 
-    private Square wrongSquare;
+    private Integer wrongSquare;
 
     private Timer wrongTimer;
 
-    private final Map<Square, EnumSet<Mark>> marks =
+    private final Map<Integer, EnumSet<Mark>> marks =
             new HashMap<>();
 
     private List<Arrow> arrows = List.of();
@@ -106,10 +104,10 @@ public class BoardPanel extends JPanel {
     // 이벤트 리스너
     // =========================================
 
-    private final List<Consumer<Move>> moveListeners =
+    private final List<Consumer<MoveInput>> moveListeners =
             new ArrayList<>();
 
-    private final List<Consumer<Square>> squareListeners =
+    private final List<IntConsumer> squareListeners =
             new ArrayList<>();
 
 
@@ -156,66 +154,38 @@ public class BoardPanel extends JPanel {
     // =========================================
 
     /**
-     * 보드에 표시할 국면을 사본으로 설정한다.
-     * <p>새 국면을 설정하면 이전 국면의 합법 수, 선택 상태,
-     * 체크·오답 표시, 칸 강조 및 화살표를 초기화한다.
-     * 따라서 이동 입력과 시각적 표시를 계속 사용하려면 호출자가
-     * 이어서 {@link #setLegalMoves(List)}, {@link #setCheckSquare(Optional)},
-     * {@link #mark(Collection, Mark)}, {@link #setArrows(List)} 등을 호출해야 한다.
+     * 보드에 표시할 국면 스냅샷을 설정한다.
+     * <p>새 스냅샷을 설정하면 이전 국면의 선택 상태, 체크·오답 표시,
+     * 칸 강조 및 화살표를 초기화하고, 직전 수가 있으면 자동으로 강조한다.
      */
-    public void setPosition(Position snapshot) {
+    public void setSnapshot(BoardSnapshot snapshot) {
 
-        this.position = Objects.requireNonNull(
-                snapshot
-        ).copy();
+        this.snapshot = Objects.requireNonNull(snapshot, "snapshot");
 
-        // 새 국면에 이전 국면의 입력 상태가 남지 않도록 초기화한다.
-        legalMoves = List.of();
         selectedSquare = null;
-
-        // 이전 국면의 시각적 표시를 초기화한다.
-        checkSquare = Optional.empty();
         marks.clear();
         arrows = List.of();
         wrongSquare = null;
 
-        // 진행 중인 오답 표시 타이머도 정리한다.
         if (wrongTimer != null) {
             wrongTimer.stop();
             wrongTimer = null;
         }
 
-        repaint();
-    }
-
-
-    public void setCheckSquare(Optional<Square> king) {
-
-        this.checkSquare = Objects.requireNonNull(king);
+        snapshot.lastMove().ifPresent(last -> mark(
+                List.of(last.from(), last.to()),
+                Mark.LAST_MOVE
+        ));
 
         repaint();
     }
 
 
-    public void setLegalMoves(List<Move> moves) {
+    public void setInputMode(BoardInputMode mode) {
 
-        this.legalMoves = List.copyOf(moves);
+        this.inputMode = Objects.requireNonNull(mode, "mode");
 
-        selectedSquare = null;
-
-        repaint();
-    }
-
-
-    public void setInputMode(Optional<InputMode> mode) {
-
-        this.inputMode = Objects.requireNonNull(mode);
-
-        if (
-                mode.isEmpty()
-                || mode.get() == InputMode.SQUARE
-        ) {
-
+        if (mode == BoardInputMode.LOCKED || mode == BoardInputMode.SQUARE) {
             selectedSquare = null;
         }
 
@@ -238,15 +208,15 @@ public class BoardPanel extends JPanel {
     // =========================================
 
     public void mark(
-            Collection<Square> squares,
+            Collection<Integer> squares,
             Mark mark
     ) {
 
         Objects.requireNonNull(squares);
         Objects.requireNonNull(mark);
 
-        for (Square square : squares) {
-
+        for (int square : squares) {
+            checkSquareIndex(square);
             marks.computeIfAbsent(
                     square,
                     key -> EnumSet.noneOf(Mark.class)
@@ -280,9 +250,9 @@ public class BoardPanel extends JPanel {
     // 오답 칸 표시
     // =========================================
 
-    public void flashWrong(Square square) {
+    public void flashWrong(int square) {
 
-        Objects.requireNonNull(square);
+        checkSquareIndex(square);
 
         if (wrongTimer != null) {
 
@@ -325,7 +295,7 @@ public class BoardPanel extends JPanel {
     // =========================================
 
     public void addMoveListener(
-            Consumer<Move> listener
+            Consumer<MoveInput> listener
     ) {
 
         addIdentity(moveListeners, listener);
@@ -333,7 +303,7 @@ public class BoardPanel extends JPanel {
 
 
     public void addSquareListener(
-            Consumer<Square> listener
+            IntConsumer listener
     ) {
 
         addIdentity(squareListeners, listener);
@@ -341,7 +311,7 @@ public class BoardPanel extends JPanel {
 
 
     public void removeMoveListener(
-            Consumer<Move> listener
+            Consumer<MoveInput> listener
     ) {
 
         removeIdentity(moveListeners, listener);
@@ -349,7 +319,7 @@ public class BoardPanel extends JPanel {
 
 
     public void removeSquareListener(
-            Consumer<Square> listener
+            IntConsumer listener
     ) {
 
         removeIdentity(squareListeners, listener);
@@ -398,30 +368,24 @@ public class BoardPanel extends JPanel {
 
     private void handleClick(int x, int y) {
 
-        // 입력 모드가 비어 있으면 입력 잠금
-        if (inputMode.isEmpty()) {
+        if (inputMode == BoardInputMode.LOCKED) {
 
             return;
         }
 
-        Optional<Square> clicked =
-                getSquareAt(x, y);
+        OptionalInt clicked = getSquareAt(x, y);
 
         if (clicked.isEmpty()) {
 
             return;
         }
 
-        Square square = clicked.get();
+        int square = clicked.getAsInt();
 
         // 칸 선택 모드
-        if (inputMode.get() == InputMode.SQUARE) {
+        if (inputMode == BoardInputMode.SQUARE) {
 
-            for (
-                    Consumer<Square> listener :
-                    List.copyOf(squareListeners)
-            ) {
-
+            for (IntConsumer listener : List.copyOf(squareListeners)) {
                 listener.accept(square);
             }
 
@@ -437,7 +401,7 @@ public class BoardPanel extends JPanel {
     // 기물 이동 처리
     // =========================================
 
-    private void handleMoveClick(Square square) {
+    private void handleMoveClick(int square) {
 
         // 선택된 기물이 없는 경우
         if (selectedSquare == null) {
@@ -448,7 +412,7 @@ public class BoardPanel extends JPanel {
         }
 
         // 같은 칸을 다시 누르면 선택 해제
-        if (selectedSquare.equals(square)) {
+        if (selectedSquare == square) {
 
             selectedSquare = null;
 
@@ -457,36 +421,37 @@ public class BoardPanel extends JPanel {
             return;
         }
 
+        int fromSquare = selectedSquare;
+
         // 선택한 칸에서 이동 가능한 수 검색
-        List<Move> candidates = legalMoves.stream()
-                .filter(move ->
-                        move.from().equals(selectedSquare)
-                                && move.to().equals(square)
-                )
+        List<LegalMoveView> candidates = snapshot.legalMoves().stream()
+                .filter(move -> move.from() == fromSquare && move.to() == square)
                 .toList();
 
         if (!candidates.isEmpty()) {
 
-            Move selectedMove = candidates.get(0);
+            LegalMoveView selectedMove = candidates.get(0);
+            MoveInput moveInput;
 
             // 폰 승진 처리
-            if (selectedMove.isPromotion()) {
+            if (selectedMove.promotion()) {
 
-                selectedMove = choosePromotion(candidates);
+                Optional<PieceKind> promotion = choosePromotion();
 
-                if (selectedMove == null) {
+                if (promotion.isEmpty()) {
 
                     return;
                 }
+
+                moveInput = MoveInput.promote(fromSquare, square, promotion.get());
+            } else {
+
+                moveInput = MoveInput.of(fromSquare, square);
             }
 
             // 이동 이벤트 전달
-            for (
-                    Consumer<Move> listener :
-                    List.copyOf(moveListeners)
-            ) {
-
-                listener.accept(selectedMove);
+            for (Consumer<MoveInput> listener : List.copyOf(moveListeners)) {
+                listener.accept(moveInput);
             }
 
             selectedSquare = null;
@@ -505,12 +470,10 @@ public class BoardPanel extends JPanel {
     // 기물 선택
     // =========================================
 
-    private void selectSquare(Square square) {
+    private void selectSquare(int square) {
 
-        boolean canMove = legalMoves.stream()
-                .anyMatch(move ->
-                        move.from().equals(square)
-                );
+        boolean canMove = snapshot.legalMoves().stream()
+                .anyMatch(move -> move.from() == square);
 
         selectedSquare = canMove ? square : null;
 
@@ -522,16 +485,14 @@ public class BoardPanel extends JPanel {
     // 폰 승진 선택
     // =========================================
 
-    private Move choosePromotion(
-            List<Move> candidates
-    ) {
+    private Optional<PieceKind> choosePromotion() {
 
-        PieceType[] types = {
+        PieceKind[] types = {
 
-                PieceType.QUEEN,
-                PieceType.ROOK,
-                PieceType.BISHOP,
-                PieceType.KNIGHT
+                PieceKind.QUEEN,
+                PieceKind.ROOK,
+                PieceKind.BISHOP,
+                PieceKind.KNIGHT
         };
 
         String[] names = {
@@ -563,17 +524,10 @@ public class BoardPanel extends JPanel {
 
         if (choice < 0) {
 
-            return null;
+            return Optional.empty();
         }
 
-        PieceType selectedType = types[choice];
-
-        return candidates.stream()
-                .filter(move ->
-                        move.promotion() == selectedType
-                )
-                .findFirst()
-                .orElse(null);
+        return Optional.of(types[choice]);
     }
 
         // =========================================
@@ -766,10 +720,10 @@ public class BoardPanel extends JPanel {
 
             for (int col = 0; col < 8; col++) {
 
-                Square square = squareAt(row, col);
+                int square = squareAt(row, col);
 
                 g2.setColor(
-                        square.isLight()
+                        isLightSquare(square)
                                 ? Theme.SQ_LIGHT
                                 : Theme.SQ_DARK
                 );
@@ -797,11 +751,11 @@ public class BoardPanel extends JPanel {
     ) {
 
         for (
-                Map.Entry<Square, EnumSet<Mark>> entry :
+                Map.Entry<Integer, EnumSet<Mark>> entry :
                 marks.entrySet()
         ) {
 
-            Square square = entry.getKey();
+            int square = entry.getKey();
 
             for (Mark mark : entry.getValue()) {
 
@@ -830,8 +784,8 @@ public class BoardPanel extends JPanel {
 
         // 체크 상태는 단색 덮개 대신 중앙이 진하고 가장자리로
         // 자연스럽게 사라지는 붉은 방사형 그라데이션으로 표시한다.
-        if (checkSquare.isPresent()) {
-            fillCheckGradient(g2, x, y, size, checkSquare.get());
+        if (snapshot.checkSquare().isPresent()) {
+            fillCheckGradient(g2, x, y, size, snapshot.checkSquare().getAsInt());
         }
 
         // 오답 칸
@@ -860,7 +814,7 @@ public class BoardPanel extends JPanel {
 
         StrokeState old = new StrokeState(g2);
 
-        for (Map.Entry<Square, EnumSet<Mark>> entry : marks.entrySet()) {
+        for (Map.Entry<Integer, EnumSet<Mark>> entry : marks.entrySet()) {
             if (!entry.getValue().contains(Mark.HINT)) {
                 continue;
             }
@@ -895,7 +849,7 @@ public class BoardPanel extends JPanel {
             int x,
             int y,
             int size,
-            Square square
+            int square
     ) {
 
         Point point = squarePoint(x, y, size, square);
@@ -942,7 +896,7 @@ public class BoardPanel extends JPanel {
             int x,
             int y,
             int size,
-            Square square,
+            int square,
             Color color,
             float alpha
     ) {
@@ -984,25 +938,23 @@ public class BoardPanel extends JPanel {
             int size
     ) {
 
-        if (
-                selectedSquare == null
-                || inputMode.isEmpty()
-                || inputMode.get() != InputMode.MOVE
-        ) {
+        if (selectedSquare == null || inputMode != BoardInputMode.MOVE) {
             return;
         }
 
+        int fromSquare = selectedSquare;
         java.awt.Stroke oldStroke = g2.getStroke();
         Color oldColor = g2.getColor();
+        Set<Integer> drawnTargets = new HashSet<>();
 
-        for (Move move : legalMoves) {
-            if (!move.from().equals(selectedSquare)) {
+        for (LegalMoveView move : snapshot.legalMoves()) {
+            if (move.from() != fromSquare || !drawnTargets.add(move.to())) {
                 continue;
             }
 
             Point center = squareCenter(x, y, size, move.to());
 
-            if (move.isCapture()) {
+            if (move.capture()) {
                 // 잡기 가능한 칸은 기물이 있거나(일반 잡기),
                 // 앙파상처럼 목적지가 비어 있어도 링으로 구분한다.
                 int outerDiameter = (int) (size * 0.72f);
@@ -1065,13 +1017,14 @@ public class BoardPanel extends JPanel {
 
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                Square square = squareAt(row, col);
-                Piece piece = position.at(square);
+                int square = squareAt(row, col);
+                Optional<PieceView> maybePiece = snapshot.pieceAt(square);
 
-                if (piece == null) {
+                if (maybePiece.isEmpty()) {
                     continue;
                 }
 
+                PieceView piece = maybePiece.get();
                 String symbol = pieceSymbol(piece);
                 Point center = squareCenter(x, y, size, square);
                 int textX = center.x - metrics.stringWidth(symbol) / 2;
@@ -1079,10 +1032,10 @@ public class BoardPanel extends JPanel {
                         + (metrics.getAscent() - metrics.getDescent()) / 2;
 
                 // 백 기물은 밝은 채움 + 짙은 외곽선, 흑 기물은 짙은 채움 + 밝은 외곽선.
-                Color fill = piece.side() == Side.WHITE
+                Color fill = piece.side() == SideColor.WHITE
                         ? new Color(0xFFF4E5)
                         : new Color(0x211810);
-                Color outline = piece.side() == Side.WHITE
+                Color outline = piece.side() == SideColor.WHITE
                         ? new Color(0x3A281B)
                         : new Color(0xF4E9D8);
 
@@ -1115,10 +1068,10 @@ public class BoardPanel extends JPanel {
     // 기물 문자 반환
     // =========================================
 
-    private String pieceSymbol(Piece piece) {
+    private String pieceSymbol(PieceView piece) {
 
         // 채워진 체스 기호를 사용하고, 진영별 색상과 외곽선으로 백·흑을 구분한다.
-        return switch (piece.type()) {
+        return switch (piece.kind()) {
             case KING -> "♚";
             case QUEEN -> "♛";
             case ROOK -> "♜";
@@ -1292,13 +1245,31 @@ public class BoardPanel extends JPanel {
     // 보드 좌표 계산
     // =========================================
 
-    private Square squareAt(int row, int col) {
+    private int squareAt(int row, int col) {
 
         int file = flipped ? 7 - col : col;
 
         int rank = flipped ? row : 7 - row;
 
-        return new Square(file, rank);
+        return rank * 8 + file;
+    }
+
+
+    private static boolean isLightSquare(int square) {
+
+        int file = square % 8;
+
+        int rank = square / 8;
+
+        return (file + rank) % 2 != 0;
+    }
+
+
+    private static void checkSquareIndex(int square) {
+
+        if (square < 0 || square >= BoardSnapshot.SQUARE_COUNT) {
+            throw new IllegalArgumentException("Square index must be 0..63: " + square);
+        }
     }
 
 
@@ -1306,16 +1277,20 @@ public class BoardPanel extends JPanel {
             int x,
             int y,
             int size,
-            Square square
+            int square
     ) {
 
+        int file = square % 8;
+
+        int rank = square / 8;
+
         int col = flipped
-                ? 7 - square.file()
-                : square.file();
+                ? 7 - file
+                : file;
 
         int row = flipped
-                ? square.rank()
-                : 7 - square.rank();
+                ? rank
+                : 7 - rank;
 
         return new Point(
                 x + col * size,
@@ -1328,7 +1303,7 @@ public class BoardPanel extends JPanel {
             int x,
             int y,
             int size,
-            Square square
+            int square
     ) {
 
         Point point = squarePoint(
@@ -1349,7 +1324,7 @@ public class BoardPanel extends JPanel {
     // 마우스 좌표 -> 체스판 좌표
     // =========================================
 
-    private Optional<Square> getSquareAt(
+    private OptionalInt getSquareAt(
             int mouseX,
             int mouseY
     ) {
@@ -1371,14 +1346,14 @@ public class BoardPanel extends JPanel {
                         || mouseY >= y + boardSize
         ) {
 
-            return Optional.empty();
+            return OptionalInt.empty();
         }
 
         int col = (mouseX - x) / size;
 
         int row = (mouseY - y) / size;
 
-        return Optional.of(
+        return OptionalInt.of(
                 squareAt(row, col)
         );
     }

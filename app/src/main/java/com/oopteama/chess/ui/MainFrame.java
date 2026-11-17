@@ -5,7 +5,6 @@ import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -20,6 +19,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
+import com.oopteama.chess.api.AppServices;
+import com.oopteama.chess.api.HomeSummaryProvider;
 import com.oopteama.chess.nav.Navigator;
 import com.oopteama.chess.nav.Route;
 
@@ -27,7 +28,7 @@ import com.oopteama.chess.nav.Route;
 public final class MainFrame extends JFrame implements Navigator {
 
     // 공통 서비스
-    private final Services services;
+    private final AppServices services;
 
     // 종료 직전 기록 저장 처리
     private final CloseHandler closeHandler;
@@ -55,21 +56,21 @@ public final class MainFrame extends JFrame implements Navigator {
     @FunctionalInterface
     public interface CloseHandler {
 
-        void save() throws IOException;
+        void save() throws Exception;
     }
 
 
-    // 기존 생성자
-    // 저장 작업이 아직 연결되지 않은 경우 사용
-    public MainFrame(Services services) {
+    // 기본 생성자
+    // AppServices의 종료 콜백을 사용
+    public MainFrame(AppServices services) {
 
-        this(services, () -> {});
+        this(services, services::saveOnClose);
     }
 
 
     // 생성자
     // 기록 저장 작업을 외부에서 전달받을 수 있음
-    public MainFrame(Services services, CloseHandler closeHandler) {
+    public MainFrame(AppServices services, CloseHandler closeHandler) {
 
         this.services = Objects.requireNonNull(services);
 
@@ -98,7 +99,7 @@ public final class MainFrame extends JFrame implements Navigator {
 
                     MainFrame.this.closeHandler.save();
 
-                } catch (IOException exception) {
+                } catch (Exception exception) {
 
                     JOptionPane.showMessageDialog(
                         MainFrame.this,
@@ -265,10 +266,10 @@ public final class MainFrame extends JFrame implements Navigator {
         // 왼쪽 메뉴 선택 상태 변경
         navRail.setActiveRoute(route);
 
-        // 프로필 점수는 현재 서비스가 제공하는 학습 기록에서 읽는다.
-        if (services.progress() != null) {
-            navRail.setScore(services.progress().score());
-        }
+        // 프로필 점수는 홈 요약 제공자가 연결된 경우에만 갱신한다.
+        services.homeSummary()
+                .map(HomeSummaryProvider::current)
+                .ifPresent(summary -> navRail.setScore(summary.userScore()));
     }
 
 

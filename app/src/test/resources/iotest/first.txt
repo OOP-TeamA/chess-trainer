@@ -1,2 +1,0 @@
-@term fork
-ko=포크

@@ -9,7 +9,6 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.GridLayout;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -25,14 +24,14 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.border.EmptyBorder;
 
-import com.oopteama.chess.content.goal.InputMode;
-import com.oopteama.chess.core.GameResult;
-import com.oopteama.chess.core.Move;
-import com.oopteama.chess.core.Position;
-import com.oopteama.chess.core.Side;
-import com.oopteama.chess.core.rules.RuleSet;
-import com.oopteama.chess.game.Game;
-import com.oopteama.chess.game.GameListener;
+import com.oopteama.chess.api.AppServices;
+import com.oopteama.chess.api.BoardInputMode;
+import com.oopteama.chess.api.GameOutcomeView;
+import com.oopteama.chess.api.GameSession;
+import com.oopteama.chess.api.GameState;
+import com.oopteama.chess.api.MoveAttemptResult;
+import com.oopteama.chess.api.MoveInput;
+import com.oopteama.chess.api.SideColor;
 import com.oopteama.chess.nav.Route;
 
 
@@ -40,21 +39,15 @@ import com.oopteama.chess.nav.Route;
  * 사람과 사람이 한 기기에서 번갈아 체스를 두는 화면.
  *
  * BoardScreen을 상속하여 공통 체스판 레이아웃을 사용한다.
- * Game 객체를 통해 대국 상태를 관리한다.
+ * GameSession 인터페이스를 통해 대국 상태를 제어한다.
  */
 public final class LocalGameScreen extends BoardScreen {
 
     // 비활성화된 조작 버튼에 사용할 글자색
     private static final Color DISABLED_BUTTON_TEXT = new Color(0xC6AD8B);
 
-    // 체스 규칙
-    private final RuleSet rules;
-
-    // 현재 대국
-    private Game game;
-
-    // 마지막으로 이동한 수
-    private Move lastMove;
+    // 대국 세션
+    private final GameSession session;
 
     // 리스너 등록 상태
     private boolean attached;
@@ -88,77 +81,29 @@ public final class LocalGameScreen extends BoardScreen {
     // 체스판 이동 이벤트
     // =========================================
 
-    private final Consumer<Move> moveListener =
+    private final Consumer<MoveInput> moveListener =
             this::onMoveSelected;
 
 
     // =========================================
-    // Game 상태 변경 이벤트
+    // GameSession 상태 변경 이벤트
     // =========================================
 
-    private final GameListener gameListener =
-            new GameListener() {
-
-        @Override
-        public void moveMade(
-                Move move,
-                Position after
-        ) {
-
-            lastMove = move;
-
-            refreshView();
-        }
-
-
-        @Override
-        public void moveUndone(
-                Move move,
-                Position after
-        ) {
-
-            List<Move> moves =
-                    game.history().moves();
-
-            if (moves.isEmpty()) {
-
-                lastMove = null;
-
-            } else {
-
-                lastMove = moves.get(
-                        moves.size() - 1
-                );
-            }
-
-            refreshView();
-        }
-
-
-        @Override
-        public void gameEnded(GameResult result) {
-
-            refreshView();
-        }
-    };
+    private final Consumer<GameState> gameListener =
+            this::refreshView;
 
 
     // =========================================
     // 생성자
     // =========================================
 
-    public LocalGameScreen(Services services) {
+    public LocalGameScreen(AppServices services) {
 
-        Objects.requireNonNull(services);
+        Objects.requireNonNull(services, "services");
 
-        this.rules = Objects.requireNonNull(
-                services.standardRules()
-        );
-
-        // 표준 체스의 초기 상태로 대국 생성
-        this.game = new Game(
-                Position.initial(),
-                rules
+        this.session = Objects.requireNonNull(
+                services.createLocalGame(),
+                "createLocalGame() must not return null"
         );
 
         setTitle(
@@ -171,7 +116,7 @@ public final class LocalGameScreen extends BoardScreen {
                 createGameBadge()
         );
 
-        refreshView();
+        refreshView(session.state());
 
         // 하위 화면의 필드와 대국 객체가 초기화된 후
         // 오른쪽 정보 패널과 하단 조작 버튼을 생성한다.
@@ -455,7 +400,7 @@ public final class LocalGameScreen extends BoardScreen {
         panel.add(guideLabel);
 
 
-        refreshSidePanel();
+        refreshSidePanel(session.state());
 
         return panel;
     }
@@ -574,7 +519,7 @@ public final class LocalGameScreen extends BoardScreen {
         panel.add(newGameButton);
 
 
-        refreshSidePanel();
+        refreshSidePanel(session.state());
 
         return panel;
     }
@@ -705,7 +650,7 @@ public final class LocalGameScreen extends BoardScreen {
 
         attachListeners();
 
-        refreshView();
+        refreshView(session.state());
     }
 
 
@@ -727,14 +672,16 @@ public final class LocalGameScreen extends BoardScreen {
     @Override
     public Optional<String> leaveWarning() {
 
+        GameState state = session.state();
+
         // 이미 종료된 대국은 경고하지 않음
-        if (game.result().isPresent()) {
+        if (state.result().isPresent()) {
 
             return Optional.empty();
         }
 
         // 아직 한 수도 두지 않았다면 경고하지 않음
-        if (game.history().moves().isEmpty()) {
+        if (state.sanHistory().isEmpty()) {
 
             return Optional.empty();
         }
@@ -762,7 +709,7 @@ public final class LocalGameScreen extends BoardScreen {
                 moveListener
         );
 
-        game.addListener(
+        session.addListener(
                 gameListener
         );
 
@@ -785,7 +732,7 @@ public final class LocalGameScreen extends BoardScreen {
                 moveListener
         );
 
-        game.removeListener(
+        session.removeListener(
                 gameListener
         );
 
@@ -797,35 +744,32 @@ public final class LocalGameScreen extends BoardScreen {
     // 체스판에서 이동한 경우
     // =========================================
 
-    private void onMoveSelected(Move move) {
+    private void onMoveSelected(MoveInput move) {
 
         // 게임이 종료된 경우 입력을 무시
-        if (game.result().isPresent()) {
+        if (session.state().result().isPresent()) {
 
             return;
         }
 
-        try {
+        MoveAttemptResult attempt = session.playMove(move);
 
-            game.make(move);
-
-        } catch (
-                IllegalArgumentException
-                        | IllegalStateException ex
-        ) {
+        if (!attempt.accepted()) {
 
             JOptionPane.showMessageDialog(
 
                     this,
 
-                    "해당 수를 둘 수 없습니다.",
+                    attempt.message().isBlank()
+                            ? "해당 수를 둘 수 없습니다."
+                            : attempt.message(),
 
                     "수 선택 오류",
 
                     JOptionPane.WARNING_MESSAGE
             );
 
-            refreshView();
+            refreshView(session.state());
         }
     }
 
@@ -836,7 +780,7 @@ public final class LocalGameScreen extends BoardScreen {
 
     private void undoMove() {
 
-        if (game.history().moves().isEmpty()) {
+        if (!session.state().canUndo()) {
 
             return;
         }
@@ -859,15 +803,7 @@ public final class LocalGameScreen extends BoardScreen {
             return;
         }
 
-        try {
-
-            // 마지막 한 수 취소
-            game.undo(1);
-
-        } catch (
-                IllegalArgumentException
-                        | IllegalStateException ex
-        ) {
+        if (!session.undo()) {
 
             JOptionPane.showMessageDialog(
 
@@ -889,15 +825,17 @@ public final class LocalGameScreen extends BoardScreen {
 
     private void resign() {
 
-        if (game.result().isPresent()) {
+        GameState state = session.state();
+
+        if (state.result().isPresent()) {
 
             return;
         }
 
-        Side loser = game.sideToMove();
+        SideColor loser = state.board().turn();
 
         String sideName =
-                loser == Side.WHITE
+                loser == SideColor.WHITE
                         ? "백"
                         : "흑";
 
@@ -920,7 +858,7 @@ public final class LocalGameScreen extends BoardScreen {
             return;
         }
 
-        game.resign(loser);
+        session.resign();
     }
 
 
@@ -930,10 +868,12 @@ public final class LocalGameScreen extends BoardScreen {
 
     private void startNewGame() {
 
+        GameState state = session.state();
+
         // 진행 중인 대국이 있는지 확인
         boolean hasStarted =
-                !game.history().moves().isEmpty()
-                        && game.result().isEmpty();
+                !state.sanHistory().isEmpty()
+                        && state.result().isEmpty();
 
 
         if (hasStarted) {
@@ -958,29 +898,7 @@ public final class LocalGameScreen extends BoardScreen {
             }
         }
 
-
-        // 기존 리스너 등록 상태 기억
-        boolean wasAttached = attached;
-
-        detachListeners();
-
-
-        // 새로운 초기 국면으로 Game 생성
-        game = new Game(
-                Position.initial(),
-                rules
-        );
-
-        lastMove = null;
-
-
-        // 화면이 표시 중이었다면 새 Game에 리스너 등록
-        if (wasAttached) {
-
-            attachListeners();
-        }
-
-        refreshView();
+        session.newGame();
     }
 
 
@@ -988,45 +906,29 @@ public final class LocalGameScreen extends BoardScreen {
     // 체스판과 화면 갱신
     // =========================================
 
-    private void refreshView() {
-
-        Position position = game.snapshot();
-
+    private void refreshView(GameState state) {
 
         // 공통 BoardScreen 메서드로 체스판 반영
-        showPosition(
-
-                position,
-
-                rules,
-
-                Optional.ofNullable(lastMove)
-        );
-
-
-        // Game에서 관리하는 합법 수 전달
-        board.setLegalMoves(
-                game.legalMoves()
-        );
+        showBoard(state.board());
 
 
         // 게임이 끝났으면 입력 잠금
-        if (game.result().isPresent()) {
+        if (state.result().isPresent()) {
 
             board.setInputMode(
-                    Optional.empty()
+                    BoardInputMode.LOCKED
             );
 
         } else {
 
             board.setInputMode(
-                    Optional.of(InputMode.MOVE)
+                    BoardInputMode.MOVE
             );
         }
 
 
         // 오른쪽 정보 갱신
-        refreshSidePanel();
+        refreshSidePanel(state);
     }
 
 
@@ -1034,7 +936,7 @@ public final class LocalGameScreen extends BoardScreen {
     // 오른쪽 정보 패널 갱신
     // =========================================
 
-    private void refreshSidePanel() {
+    private void refreshSidePanel(GameState state) {
 
         // 패널이 아직 생성되지 않았다면 종료
         if (turnLabel == null) {
@@ -1042,10 +944,8 @@ public final class LocalGameScreen extends BoardScreen {
             return;
         }
 
-        Position position = game.snapshot();
-
-        Optional<GameResult> result =
-                game.result();
+        Optional<GameOutcomeView> result =
+                state.result();
 
 
         if (result.isPresent()) {
@@ -1070,10 +970,10 @@ public final class LocalGameScreen extends BoardScreen {
         } else {
 
             // 현재 차례
-            Side side = game.sideToMove();
+            SideColor side = state.board().turn();
 
             String sideName =
-                    side == Side.WHITE
+                    side == SideColor.WHITE
                             ? "백 차례"
                             : "흑 차례";
 
@@ -1081,7 +981,7 @@ public final class LocalGameScreen extends BoardScreen {
 
 
             // 체크 여부
-            if (rules.inCheck(position)) {
+            if (state.inCheck()) {
 
                 statusLabel.setText(
                         "체크 상태입니다!"
@@ -1115,7 +1015,7 @@ public final class LocalGameScreen extends BoardScreen {
 
         // 진행한 수 표시
         moveCountLabel.setText(
-                game.history().moves().size() + "수 진행"
+                state.sanHistory().size() + "수 진행"
         );
 
 
@@ -1125,7 +1025,7 @@ public final class LocalGameScreen extends BoardScreen {
             updateButtonState(
                     undoButton,
                     "한 수 무르기",
-                    !game.history().moves().isEmpty()
+                    state.canUndo()
             );
         }
 
@@ -1217,14 +1117,14 @@ public final class LocalGameScreen extends BoardScreen {
     // 대국 결과 문자열 변환
     // =========================================
 
-    private String resultText(GameResult result) {
+    private String resultText(GameOutcomeView result) {
 
         String outcome;
 
-        switch (result.outcome()) {
+        switch (result.winner()) {
 
-            case WHITE_WINS -> outcome = "백 승리";
-            case BLACK_WINS -> outcome = "흑 승리";
+            case WHITE -> outcome = "백 승리";
+            case BLACK -> outcome = "흑 승리";
             case DRAW -> outcome = "무승부";
 
             default -> outcome = "대국 종료";

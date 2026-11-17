@@ -18,7 +18,6 @@ import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,20 +31,20 @@ import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
-import com.oopteama.chess.content.Lesson;
+import com.oopteama.chess.api.AppServices;
+import com.oopteama.chess.api.HomeSummary;
+import com.oopteama.chess.api.HomeSummaryProvider;
 import com.oopteama.chess.nav.Navigator;
 import com.oopteama.chess.nav.Route;
-import com.oopteama.chess.progress.AttemptStats;
-import com.oopteama.chess.progress.Progress;
 
 
 public final class HomeScreen extends JPanel implements Screen {
 
     private final Navigator navigator;
-    private final Services services;
+    private final AppServices services;
     private final Map<String, JLabel> metricLabels = new HashMap<>();
     private final Map<String, JProgressBar> metricBars = new HashMap<>();
-    private final Runnable progressChangeListener = this::refreshSummary;
+    private final Runnable summaryChangeListener = this::refreshSummary;
 
     private JLabel resumeTitle;
     private JLabel resumeDescription;
@@ -53,13 +52,13 @@ public final class HomeScreen extends JPanel implements Screen {
     private JProgressBar lessonProgressBar;
     private JButton continueButton;
     private Route recommendedRoute = new Route.Lessons();
-    private Progress observedProgress;
+    private HomeSummaryProvider observedProvider;
 
 
-    public HomeScreen(Navigator navigator, Services services) {
+    public HomeScreen(Navigator navigator, AppServices services) {
 
-        this.navigator = Objects.requireNonNull(navigator);
-        this.services = Objects.requireNonNull(services);
+        this.navigator = Objects.requireNonNull(navigator, "navigator");
+        this.services = Objects.requireNonNull(services, "services");
 
         setLayout(new BorderLayout());
         setBackground(Theme.WINDOW);
@@ -81,88 +80,48 @@ public final class HomeScreen extends JPanel implements Screen {
 
 
     private void refreshSummary() {
-        Progress progress = services.progress();
-        List<Lesson> lessons = services.lessons() == null
-                ? List.of()
-                : services.lessons();
+        HomeSummary summary = services.homeSummary()
+                .map(HomeSummaryProvider::current)
+                .orElse(null);
 
-        if (progress == null) {
-            updateMetric("lessons", "기록 연동 대기", 0);
-            updateMetric("quiz", "기록 연동 대기", 0);
-            updateMetric("library", "기록 API 연동 대기", 0);
-            updateMetric("ai", "기록 API 연동 대기", 0);
+        if (summary == null) {
+            updateMetric("lessons", "백엔드 연동 대기", 0);
+            updateMetric("quiz", "백엔드 연동 대기", 0);
+            updateMetric("library", "백엔드 연동 대기", 0);
+            updateMetric("ai", "백엔드 연동 대기", 0);
 
             if (resumeTitle != null) {
-                resumeTitle.setText("학습 기록을 불러올 수 없습니다");
-                resumeDescription.setText("Progress 서비스 연결 후 추천을 표시합니다.");
+                resumeTitle.setText("학습 기능 준비 중");
+                resumeDescription.setText("레슨·퀴즈 백엔드 연결 후 추천을 표시합니다.");
                 lessonProgressBar.setValue(0);
-                lessonProgressText.setText("기록 대기");
+                lessonProgressText.setText("연동 대기");
                 recommendedRoute = new Route.Lessons();
             }
             return;
         }
 
-        int totalLessons = lessons.size();
-        long completedLessons = lessons.stream()
-                .filter(lesson -> progress.lessonsDone().contains(lesson.id()))
-                .count();
-
-        int lessonPercent = totalLessons == 0
-                ? 0
-                : (int)(completedLessons * 100 / totalLessons);
-
-        updateMetric(
-                "lessons",
-                totalLessons == 0
-                        ? "레슨 콘텐츠 없음"
-                        : completedLessons + " / " + totalLessons + " 레슨",
-                lessonPercent
-        );
-
-        AttemptStats quizStats = progress.termQuizAttempts();
-        int attempted = quizStats == null ? 0 : quizStats.attempted();
-        int correct = quizStats == null ? 0 : quizStats.solved();
-        int accuracy = attempted == 0 ? 0 : Math.min(100, correct * 100 / attempted);
-
-        updateMetric(
-                "quiz",
-                attempted == 0
-                        ? "아직 퀴즈 기록 없음"
-                        : attempted + "문제, 정답률 " + accuracy + "%",
-                accuracy
-        );
-
-        // GameLibrary 데이터 접근 API가 Services에 추가되면 실제 기보 수치로 연결합니다.
-        updateMetric("library", "기보 기록 API 연동 대기", 0);
-        // AI 대국 기록은 AI 서비스 계약 통합 후 표시합니다.
-        updateMetric("ai", "AI 기록 API 연동 대기", 0);
+        updateMetric("lessons", summary.lessons().statusText(), summary.lessons().progressPercent());
+        updateMetric("quiz", summary.quiz().statusText(), summary.quiz().progressPercent());
+        updateMetric("library", summary.library().statusText(), summary.library().progressPercent());
+        updateMetric("ai", summary.ai().statusText(), summary.ai().progressPercent());
 
         if (resumeTitle != null) {
-            Lesson nextLesson = lessons.stream()
-                    .filter(lesson -> !progress.lessonsDone().contains(lesson.id()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (nextLesson != null) {
-                resumeTitle.setText("레슨 " + nextLesson.order() + ". " + nextLesson.title());
-                resumeDescription.setText("다음 추천 · 미완료 첫 레슨");
-                recommendedRoute = new Route.Lesson(nextLesson.id(), 0);
-            } else if (!lessons.isEmpty()) {
-                resumeTitle.setText("모든 레슨을 완료했어요");
-                resumeDescription.setText("다른 학습 메뉴에서 계속 연습해 보세요.");
-                recommendedRoute = new Route.Lessons();
-            } else {
-                resumeTitle.setText("레슨 콘텐츠를 기다리고 있어요");
-                resumeDescription.setText("레슨이 추가되면 다음 학습을 추천합니다.");
-                recommendedRoute = new Route.Lessons();
-            }
-
-            lessonProgressBar.setValue(lessonPercent);
-            lessonProgressText.setText(totalLessons == 0
-                    ? "0 / 0 레슨"
-                    : completedLessons + " / " + totalLessons + " 레슨 · "
-                            + lessonPercent + "%");
+            resumeTitle.setText(summary.resumeTitle());
+            resumeDescription.setText(summary.resumeDescription());
+            lessonProgressBar.setValue(summary.resumeProgressPercent());
+            lessonProgressText.setText(summary.resumeProgressText());
+            recommendedRoute = toRoute(summary.continueTarget(), summary.continueId());
         }
+    }
+
+    private static Route toRoute(HomeSummary.ContinueTarget target, String id) {
+        return switch (target) {
+            case LESSONS -> new Route.Lessons();
+            case LESSON_DETAIL -> new Route.Lesson(id, 0);
+            case PUZZLES -> new Route.Puzzles();
+            case AI_GAME -> new Route.AiGame();
+            case LOCAL_GAME -> new Route.LocalGame();
+        };
     }
 
 
@@ -959,17 +918,17 @@ public final class HomeScreen extends JPanel implements Screen {
 
     @Override
     public void onShow(Route route) {
-        Progress current = services.progress();
+        HomeSummaryProvider current = services.homeSummary().orElse(null);
 
-        if (observedProgress != current) {
-            if (observedProgress != null) {
-                observedProgress.removeChangeListener(progressChangeListener);
+        if (observedProvider != current) {
+            if (observedProvider != null) {
+                observedProvider.removeChangeListener(summaryChangeListener);
             }
 
-            observedProgress = current;
+            observedProvider = current;
 
-            if (observedProgress != null) {
-                observedProgress.addChangeListener(progressChangeListener);
+            if (observedProvider != null) {
+                observedProvider.addChangeListener(summaryChangeListener);
             }
         }
 
@@ -979,9 +938,9 @@ public final class HomeScreen extends JPanel implements Screen {
 
     @Override
     public void onHide() {
-        if (observedProgress != null) {
-            observedProgress.removeChangeListener(progressChangeListener);
-            observedProgress = null;
+        if (observedProvider != null) {
+            observedProvider.removeChangeListener(summaryChangeListener);
+            observedProvider = null;
         }
     }
 }

@@ -24,7 +24,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
-import com.oopteama.chess.core.Side;
+import com.oopteama.chess.api.SideColor;
 
 
 /**
@@ -61,7 +61,7 @@ public class MoveListPanel extends JPanel {
 
     private int firstFullmove = 1;
 
-    private Side firstSide = Side.WHITE;
+    private SideColor firstSide = SideColor.WHITE;
 
     // 현재 선택된 수
     // 0이면 선택 없음
@@ -219,7 +219,7 @@ public class MoveListPanel extends JPanel {
     public void setMoves(
             List<String> san,
             int firstFullmove,
-            Side firstSide
+            SideColor firstSide
     ) {
 
         Objects.requireNonNull(san);
@@ -682,7 +682,7 @@ public class MoveListPanel extends JPanel {
         int offset = zeroBasedIndex;
 
         // 첫 수가 흑의 수라면 흰 칸을 건너뛰고 시작
-        if (firstSide == Side.BLACK) {
+        if (firstSide == SideColor.BLACK) {
 
             offset++;
         }
@@ -700,7 +700,7 @@ public class MoveListPanel extends JPanel {
         boolean isFirstPlayer = zeroBasedIndex % 2 == 0;
 
         return isFirstPlayer
-                == (firstSide == Side.WHITE);
+                == (firstSide == SideColor.WHITE);
     }
 
 

@@ -3,9 +3,7 @@ package com.oopteama.chess.ui;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -16,10 +14,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 
-import com.oopteama.chess.core.Move;
-import com.oopteama.chess.core.Position;
-import com.oopteama.chess.core.Square;
-import com.oopteama.chess.core.rules.RuleSet;
+import com.oopteama.chess.api.BoardSnapshot;
 
 
 /**
@@ -369,66 +364,16 @@ public abstract class BoardScreen extends JPanel implements Screen {
     // =========================================
 
     /**
-     * 현재 국면을 체스판에 반영한다.
+     * 백엔드에서 전달받은 국면 스냅샷을 체스판에 반영한다.
      *
-     * 1. 이전 표시 정보 초기화
-     * 2. 체스판 국면 갱신
-     * 3. 체크 상태 확인
-     * 4. 합법 수 전달
-     * 5. 마지막 수 강조
+     * 체크 상태, 합법 수, 직전 수 강조는 모두 스냅샷에 담겨 있어
+     * UI는 규칙 계산 없이 표시만 담당한다.
      */
-    protected void showPosition(
-            Position position,
-            RuleSet rules,
-            Optional<Move> last
-    ) {
+    protected void showBoard(BoardSnapshot snapshot) {
 
-        Objects.requireNonNull(position);
+        Objects.requireNonNull(snapshot, "snapshot");
 
-        Objects.requireNonNull(rules);
-
-        Objects.requireNonNull(last);
-
-
-        // 이전 국면의 표시 정보 초기화
-        board.clearMarks();
-
-        board.setArrows(List.of());
-
-
-        // 현재 국면 설정
-        board.setPosition(position);
-
-
-        // 체크 상태 확인
-        Optional<Square> checkSquare =
-                rules.inCheck(position)
-                        ? position.kingSquare(
-                                position.sideToMove()
-                        )
-                        : Optional.empty();
-
-
-        board.setCheckSquare(checkSquare);
-
-
-        // 현재 국면의 합법 수 전달
-        board.setLegalMoves(
-                rules.legalMoves(position)
-        );
-
-
-        // 마지막 수 강조
-        last.ifPresent(move ->
-
-                board.mark(
-                        List.of(
-                                move.from(),
-                                move.to()
-                        ),
-                        BoardPanel.Mark.LAST_MOVE
-                )
-        );
+        board.setSnapshot(snapshot);
     }
 
     // =========================================
