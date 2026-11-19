@@ -1,7 +1,0 @@
-lesson.done=rook
-puzzle.attempt.p0001=1,1
-puzzle.attempt.p0002=2,0
-quiz.correct.unique=q0001,q0002,q0003
-quiz.attempts=10
-quiz.correct.count=3
-ai.record.intro=0,2,0

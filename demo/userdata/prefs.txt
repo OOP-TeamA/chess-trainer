@@ -1,6 +1,0 @@
-board.theme=walnut
-board.coordinates=true
-board.legalMoves=true
-board.lastMove=true
-ai.blunderAlert=true
-lesson.unlockAll=true

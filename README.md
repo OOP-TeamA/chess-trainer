@@ -1,57 +1,56 @@
-# Chess Trainer
+# ChessMate
 
-Java Swing으로 만드는 체스 학습 프로그램 팀 프로젝트입니다. 레슨, 퀴즈, 명국 기보, AI 대전, 학습 기록을 하나의 체스판과 규칙 엔진 위에서 연결하는 것을 목표로 합니다.
+Java 25 + Swing(FlatLaf) 기반 체스 학습·대전 데스크톱 애플리케이션입니다.  
+**3개 핵심 패키지(`engine`, `model`, `ui`) · 27개 Java 클래스**로 단순하고 직관적인 구조를 유지하며, 외부 체스 엔진이나 DB 없이 순수 Java 체스 규칙·AI 엔진과 평문 `.txt` 저장소로 동작합니다.
 
-## 현재 상태
+## 주요 기능
 
-`:app:run`은 `Main` → `app.ChessApp` 순서로 번들 콘텐츠(`app/src/main/resources/data/`)와 사용자 기록(`~/.chesslearn`)을 읽어 메인 창을 띄웁니다. 아래 명세서의 기능 중 일부만 구현되어 있으며, 명세서의 기능과 패키지 구조는 **개발 목표**이지 구현 완료 목록이 아닙니다.
+| 화면 | 설명 |
+| --- | --- |
+| **홈** | 활성 프로필 요약(총점·레슨·퍼즐·AI 전적), 미완료 학습 자동 추천, 4개 모드 바로가기 |
+| **레슨** | **기본 튜토리얼 8종**(폰~체크메이트·캐슬링·앙파상) + **유명 오프닝 6종**(이탈리안·루이 로페즈·퀸즈 갬빗·런던·시실리안·프렌치) 실습 |
+| **퍼즐** | **자유 메이트 퍼즐**(N수 이내 어떤 수순으로든 체크메이트 + AI 동적 방어 + 무르기) + **전술 퍼즐**(포크·핀·스큐어·디스커버드·프로모션) 총 16문제 |
+| **AI 대전** | 자체 구현 알파-베타·PST AI 4단계(입문/초급/중급/상급), 비동기 탐색, 추천 수 힌트, 2수 무르기, 전적 자동 기록 |
+| **로컬 대전** | 한 화면 2인 대전, 설정 연동 자동 보드 뒤집기, 무르기, 기권, 전체 공식 무승부 규칙 적용 |
+| **프로필** | 다중 프로필 생성·전환·삭제, 종합 점수(`레슨×10 + 퍼즐×5 + AI승×3`), 난이도별 AI 전적표 |
+| **설정** | 보드 테마 3종(월넛·그린·슬레이트), 좌표·합법 수·직전 수·**호버 수 평가 미리보기**·로컬 자동 뒤집기 토글 |
+| **호버 수 평가** | 기물 선택 후 이동 칸에 마우스를 올리면 고스트 기물, 내 공격·포크·체크, 아군 수비선, 방어 이탈 경고, **상대 예상 최선 응수 화살표**, 1줄 판정 바를 실시간 표시 |
 
-- Gradle 모듈: `app` (단일 모듈)
-- 현재 진입점: `app/src/main/java/com/oopteama/chess/Main.java` → `app/ChessApp.java`(객체 조립은 `app/AppContext.java`)
-- 기준 Java 패키지: `com.oopteama.chess`
-- 현재 Gradle toolchain: Java 25 (`app/build.gradle.kts`)
+## 패키지 구조
 
-## 실행
-
-개발, 검증, 배포 기준은 Java 25입니다. Gradle Wrapper는 루트에서 실행합니다.
-
-Windows PowerShell:
-
-```powershell
-.\gradlew.bat :app:run
-.\gradlew.bat :app:test
+```text
+app/src/main/java/com/oopteama/chess/
+├── Main.java        진입점 (AppStore 로드 → FlatLaf 테마 설치 → MainWindow 실행)
+├── engine/ (5)      순수 체스 규칙·SAN/FEN/UCI·AI 탐색·수 평가 (Swing/AWT 비의존)
+├── model/  (8)      레슨/퍼즐/훈련 세션·프로필·설정·단일 파일 저장소 (Swing/AWT 비의존)
+└── ui/    (13)      FlatLaf 3.7.2 기반 단일 창(MainWindow) · 공용 BoardView · 7개 화면
 ```
 
-macOS/Linux:
+```mermaid
+flowchart LR
+    Main["Main.java"] --> UI["ui (13)<br/>FlatLaf Swing 화면 & BoardView"]
+    Main --> Model["model (8)<br/>콘텐츠 · 세션 · AppStore"]
+    UI --> Model
+    UI --> Engine["engine (5)<br/>규칙 엔진 · ChessAI"]
+    Model --> Engine
+```
+
+## 실행 및 테스트
+
+요구 환경: **Java 25** (Gradle Wrapper 포함)
 
 ```sh
-./gradlew :app:run
-./gradlew :app:test
+./gradlew :app:run      # 앱 실행
+./gradlew :app:test     # 전체 단위/UI 스모크 테스트 실행 (14개)
+./gradlew :app:jar      # 단일 실행 JAR 생성 (app/build/libs/chess-trainer.jar)
+java -jar app/build/libs/chess-trainer.jar
 ```
 
-테스트는 `app/src/test/java`에 있으며 `:app:test`로 모두 실행합니다.
+사용자 데이터는 `~/.chessmate/`(`profiles.txt`, `settings.txt`)에 자동 저장되며, `-Dchessmate.home=/원하는/경로`로 변경할 수 있습니다.
 
-## 문서와 개발 순서
+## 구조 문서 (`docs/`)
 
-1. [주간 계획 및 개발 순서](docs/chess-sprint-plan.html): 역할, 의존 관계, 주차별 완료 기준
-2. [기능 명세서](docs/chess-learning-spec.html): 기능 범위, 수용 기준, 파일 형식, 테스트
-3. [인터페이스 명세서](docs/chess-interface-spec.html): 패키지 경계, 클래스 계약, 호출 순서
-4. [7인 파일 흐름도](docs/chess-development-flow.html) · 단계별 작업 파일, 병렬 작업과 선행 의존성
-
-11/13 첫 통합은 [공용 샘플과 시연 검증 절차](docs/chess-learning-spec.html#first-demo)를 사용합니다. 나이트 레슨, 용어 검색, 10문제 응시, 재실행 후 기록 유지까지 같은 입력으로 확인할 수 있습니다.
-
-개발은 공통 계약과 실행 환경을 먼저 맞춘 뒤 체스 규칙·파일 로딩·공통 화면을 병렬로 만들고, 레슨·퀴즈·기록 저장의 작은 완성 흐름을 연결하는 순서로 진행합니다. 이후 AI 대전, 기보, 사용자별 기록과 순위를 단계별로 통합합니다. 각 단계의 구체적인 완료 기준은 주간 계획을 따릅니다.
-
-문서에 있는 `com.oopteama.chess` 아래의 `core`, `notation`, `content`, `exercise`, `replay`, `ai`, `game`, `progress`, `nav`, `ui`, `app` 등은 예정된 하위 패키지입니다. 소스 루트는 `app/src/main/java`이며, 코드가 추가될 때 이 경로를 사용합니다.
-
-## 문서 기준
-
-`docs/` 아래 기능 명세의 요구사항·파일 형식, 인터페이스 명세의 Java 계약, 주간 계획의 단계별 범위·담당을 기준으로 구현합니다. 파일 흐름도는 이 계약을 작업 순서로 보여줍니다. 설계 그림과 최신 코드 계약이 다르면 인터페이스 명세 2~4장을 우선합니다. 범위나 계약을 변경하면 관련 문서와 흐름도를 같은 PR에서 맞춥니다.
-
-AI에 작업을 맡길 때는 대상 요구사항 ID, 흐름도의 단계와 역할, 수정할 파일, 확인할 공용 샘플을 함께 넘깁니다. 두 문서가 충돌하는 항목은 공용 계약을 먼저 맞춘 뒤 병합합니다.
-
-## 제출용 실행 JAR 계약
-
-제출 준비 단계에서 `:app:jar`의 출력 파일명을 `app/build/libs/chess-trainer.jar`로 설정하고 매니페스트에 `Main-Class: com.oopteama.chess.Main`을 추가합니다. 번들 콘텐츠는 JAR에 포함합니다. 배포판은 Java 25 표준 라이브러리로 실행되도록 구성합니다. 사용자 기록은 사용자 홈의 `.chesslearn`을 사용합니다.
-
-제출 검증은 Java 25가 있는 다른 PC 또는 빈 폴더에서 `java -jar chess-trainer.jar`를 실행해 첫 시연을 확인하는 방식입니다. 현행 Gradle 골격의 `:app:jar`는 패키징 준비 단계에서 이 계약에 맞춥니다.
+- [전체 아키텍처 & 시각화](docs/architecture.md) — 계층 의존도, OOP 클래스 다이어그램, 핵심 로직 흐름, 데이터 포맷
+- [Engine 패키지 상세](docs/engine.md) — `Piece`, `Move`, `Board`, `ChessGame`, `ChessAI`의 필드·함수·알고리즘
+- [Model 패키지 상세](docs/model.md) — `Lesson`, `Puzzle`, `TrainingSession`, `Profile`, `Settings`, `AppStore`
+- [UI 패키지 상세](docs/ui.md) — `Theme`, `MainWindow`, `BoardView` 렌더링 파이프라인, 7개 화면 구조
