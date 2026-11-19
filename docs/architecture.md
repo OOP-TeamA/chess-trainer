@@ -1,11 +1,29 @@
-# ChessMate 아키텍처 개요
+# ChessMate 아키텍처 & SOLID 설계
 
-전체 코드는 **단방향 3계층(`ui → model → engine`)**으로 분리되어 있습니다.  
-`engine`과 `model`은 AWT/Swing을 일절 참조하지 않아 JUnit만으로 규칙·AI·학습 세션·파일 저장을 독립 검증할 수 있습니다.
+## 1. 엄격한 Backend / Frontend 분리 원칙
+
+| 경계 규칙 | 보장 방식 |
+| --- | --- |
+| **Backend 순수성** | `backend/**` 전체에서 `java.awt.*`, `javax.swing.*`, `com.formdev.*`, `frontend.*` import **0개** |
+| **Frontend 순수성** | `frontend/**` 전체에서 `com.google.gson.*`, `JsonStorage`, `java.nio.file.*`, `new ChessAI()`, `new MoveAnalyzer()`, `new LessonSession()`, `new PuzzleSession()` **0개** |
+| **단일 진입점 퍼사드** | 모든 프론트엔드 화면은 **`ChessBackend`**를 통해서만 세션 생성, AI 탐색, 수 평가, 프로필/설정 변경 및 저장을 수행 |
+| **단일 조립 루트** | **`Main.java`** 한 곳에서만 `new JsonStorage(...) → new ChessBackend(storage) → new MainWindow(backend)`를 조립 |
 
 ---
 
-## 1. 전체 클래스 구조도 (OOP 관계)
+## 2. SOLID 원칙 준수 요약
+
+| 원칙 | 적용 위치 | 구체적 설계 |
+| --- | --- | --- |
+| **S (SRP)** | `ChessAI` vs `MoveAnalyzer`<br/>`JsonStorage` vs `ChessBackend`<br/>`BoardView` | 대국 탐색·메이트 솔버(`ChessAI`)와 후보 수 평가(`MoveAnalyzer`) 분리 / JSON 직렬화(`JsonStorage`)와 앱 상태 관리(`ChessBackend`) 분리 / `BoardView`는 렌더링·입력만 담당 |
+| **O (OCP)** | `Storage`, `ChessAI.Evaluator`, `TrainingSession`, `Screen` | 저장소 교체, 평가 함수 확장, 신규 훈련 모드·화면 추가 시 기존 조율 코드 수정 불필요 |
+| **L (LSP)** | `LessonSession`/`PuzzleSession` ⊂ `TrainingSession`<br/>`AiGamePanel`/`LocalGamePanel` ⊂ `AbstractGamePanel` | 모든 하위 클래스가 상위 추상 계약(`submitMove`, `showHint`, `reset`, `Screen`)을 예외 없이 대체 가능 |
+| **I (ISP)** | `BoardView(Settings, BiFunction<Board, Move, Evaluation>)`<br/>`Storage`, `Screen` | `BoardView`는 전체 `ChessBackend` 대신 필요한 설정과 수 평가 콜백만 의존 |
+| **D (DIP)** | `ChessBackend(Storage)`<br/>`PuzzleSession(Puzzle, ChessAI)`<br/>`BoardView(..., movePreviewer)` | 상위 정책이 구체 구현(`JsonStorage`, `MoveAnalyzer`) 대신 추상 계약(`Storage`, 함수형 콜백)에 의존 |
+
+---
+
+## 3. 전체 클래스 다이어그램
 
 ```mermaid
 classDiagram
@@ -15,44 +33,23 @@ classDiagram
         +main(args)
     }
 
-    namespace engine {
-        class Piece {
-            <<enum>>
-            +Side side()
-            +Type type()
-            +fromFen(char)
-        }
-        class Move {
-            <<record>>
-            +int from
-            +int to
-            +Type promotion
-            +uci()
-            +fromUci(String)
-        }
+    namespace backend_engine {
+        class Piece { <<enum>> }
+        class Move { <<record>> }
         class Board {
             -Piece[64] squares
-            -Side turn
-            -int castling
-            -int enPassant
-            -boolean sandbox
             +legalMoves()
             +applyMove(Move) Board
             +attackersOf(sq, side)
-            +toFen()
         }
         class ChessGame {
-            -Board startBoard
-            -List~Entry~ history
             +play(Move)
             +undo(int)
             +status()
-            +parseSan(Board, String)
         }
         class ChessAI {
-            +chooseMove(Board, Difficulty)
-            +baselineScore(Board)
-            +evaluateMove(Board, Move, int)
+            +chooseMove(Board, Difficulty, BooleanSupplier)
+            +hint(Board)
             +findMateIn(Board, int)
             +bestDefenseAgainstMate(Board, int)
         }
@@ -60,70 +57,59 @@ classDiagram
             <<interface>>
             +evaluate(Board) int
         }
+        class MoveAnalyzer {
+            +baselineScore(Board) int
+            +evaluate(Board, Move, int) Evaluation
+        }
     }
 
-    namespace model {
-        class AppStore {
-            -List~Lesson~ lessons
-            -List~Puzzle~ puzzles
-            -List~Profile~ profiles
-            -Settings settings
-            +saveAndNotify()
-        }
+    namespace backend_training {
+        class Lesson { <<record>> }
+        class Puzzle { <<record>> }
         class TrainingSession {
             <<abstract>>
-            #Board currentBoard
-            #boolean solved
-            #int wrongCount
-            #Move pendingReply
             +submitMove(Move)*
             +showHint()*
             +reset()*
             +applyPendingReply()
         }
-        class LessonSession {
-            -Lesson lesson
-            -int stepIndex
-            +nextStep()
-            +prevStep()
+        class LessonSession
+        class PuzzleSession
+    }
+
+    namespace backend_service {
+        class Storage {
+            <<interface>>
+            +loadLessons()
+            +loadPuzzles()
+            +loadUserData()
+            +saveUserData(UserData)
         }
-        class PuzzleSession {
-            -Puzzle puzzle
-            -Deque~Snapshot~ undoStack
-            -int movesUsed
-            +undo()
+        class JsonStorage {
+            -Path dataDir
+            -Gson GSON
+        }
+        class ChessBackend {
+            -Storage storage
+            -ChessAI ai
+            -MoveAnalyzer analyzer
+            +startLesson(Lesson)
+            +startPuzzle(Puzzle)
+            +chooseAiMove(...)
+            +evaluateMove(Board, Move)
+            +completeLesson(id)
+            +recordPuzzle(id, solved)
+            +updateSettings(Consumer)
         }
         class Profile
         class Settings
-        class Lesson
-        class Puzzle
     }
 
-    namespace ui {
-        class Screen {
-            <<interface>>
-            +view() JComponent
-            +onShow()
-            +onHide()
-            +onSettingsChanged()
-            +leaveWarning()
-        }
-        class MainWindow {
-            -Map~ScreenId, Screen~ screens
-            +navigate(ScreenId)
-        }
-        class BoardView {
-            -Board board
-            -Map~Move, MoveEvaluation~ evalCache
-            +setBoard(Board)
-        }
-        class AbstractGamePanel {
-            <<abstract>>
-            #ChessGame game
-            #BoardView boardView
-            #initLayout()
-            #refreshBoardUi()
-        }
+    namespace frontend {
+        class Screen { <<interface>> }
+        class MainWindow
+        class BoardView
+        class AbstractGamePanel { <<abstract>> }
         class AiGamePanel
         class LocalGamePanel
         class HomePanel
@@ -133,9 +119,18 @@ classDiagram
         class SettingsPanel
     }
 
-    Main --> AppStore
+    Main --> JsonStorage
+    Main --> ChessBackend
     Main --> MainWindow
-    ChessAI ..> Evaluator : 전략 사용
+
+    Storage <|.. JsonStorage
+    ChessBackend --> Storage : DIP
+    ChessBackend *-- ChessAI
+    ChessBackend *-- MoveAnalyzer
+    ChessBackend *-- Profile
+    ChessBackend *-- Settings
+    ChessAI ..> Evaluator : 전략
+    MoveAnalyzer --> Board
     ChessGame *-- Board
     Board --> Piece
     Board --> Move
@@ -144,13 +139,9 @@ classDiagram
     TrainingSession <|-- PuzzleSession
     LessonSession --> Lesson
     PuzzleSession --> Puzzle
-    PuzzleSession --> ChessAI
-    AppStore *-- Profile
-    AppStore *-- Settings
-    AppStore *-- Lesson
-    AppStore *-- Puzzle
+    PuzzleSession --> ChessAI : DI
 
-    MainWindow o-- Screen : 다형 관리
+    MainWindow o-- Screen
     Screen <|.. HomePanel
     Screen <|.. LessonPanel
     Screen <|.. PuzzlePanel
@@ -162,94 +153,53 @@ classDiagram
     AbstractGamePanel *-- BoardView
     LessonPanel *-- BoardView
     PuzzlePanel *-- BoardView
-    BoardView --> ChessAI : 호버 수 평가
+    MainWindow --> ChessBackend
+    BoardView ..> ChessBackend : "evaluateMove 콜백 주입"
 ```
-
-### OOP 설계 포인트
-
-| 개념 | 적용 위치 | 목적 |
-| --- | --- | --- |
-| **불변 객체 & 캡슐화** | `Board` | 64칸 배열을 외부에 노출하지 않고 착수마다 새 `Board` 반환 → AI 탐색·호버 프리뷰·무르기에서 부작용 원천 차단 |
-| **인터페이스 · 다형성** | `Screen`, `ChessAI.Evaluator` | `MainWindow`가 7개 화면을 `Screen` 계약만으로 전환 / `ChessAI`가 난이도별 평가 전략(`MATERIAL`, `MATERIAL_PST`) 교체 |
-| **상속 · 템플릿 메서드** | `TrainingSession` → `LessonSession` / `PuzzleSession`<br/>`AbstractGamePanel` → `AiGamePanel` / `LocalGamePanel` | 보드 훈련 공통 상태(피드백 사다리·자동 응수)와 대국 공통 UI(보드·기보·잡힌 기물) 중복 제거 |
-| **관찰자 패턴** | `AppStore.addChangeListener(Runnable)` | 프로필 변경·점수 갱신·설정 변경 시 사이드바와 모든 화면에 즉시 전파 |
 
 ---
 
-## 2. 핵심 로직 흐름 시각화
+## 4. 핵심 실행 흐름 시각화
 
-### A. 기물 선택 → 호버 시 수 평가 & 이후 전개 시각화
+### A. 호버 수 평가 & 이후 전개 시각화 (DIP 콜백 경유)
 
 ```mermaid
 sequenceDiagram
     actor User as 사용자
-    participant BV as BoardView
-    participant AI as ChessAI
-    participant B as Board (불변)
+    participant BV as frontend.BoardView
+    participant BE as backend.ChessBackend
+    participant MA as backend.MoveAnalyzer
 
-    User->>BV: 기물 클릭 (mousePressed)
-    BV->>BV: selectedSquare 설정 및 합법 칸 표시
-    User->>BV: 합법 이동 칸 위로 마우스 이동 (mouseMoved)
-    alt 같은 칸에 머무름
-        BV-->>BV: 즉시 반환 (연산 없음)
-    else 새 합법 칸 진입
-        BV->>AI: baselineScore(board) [국면당 최초 1회 캐시]
-        BV->>AI: evaluateMove(board, move, base) [수별 evalCache]
-        AI->>B: applyMove(move) → after 생성
-        AI->>AI: 공격·체크·포크·수비선·방어 이탈 계산
-        AI->>AI: 상대 최선 응수 탐색 (1-ply + 포획 정지 탐색)
-        AI-->>BV: MoveEvaluation(등급, 이유, 상대 응수, 좌표들)
-        BV->>BV: 7단계 오버레이 렌더링 (고스트·공격·수비·상대응수 화살표·평가 HUD)
-    end
+    User->>BV: 기물 클릭 후 합법 이동 칸 위로 마우스 이동
+    BV->>BE: movePreviewer.apply(board, move)
+    BE->>MA: baselineScore(board) [WeakHashMap 캐시]
+    BE->>MA: evaluate(board, move, base)
+    MA-->>BE: Evaluation(Verdict, 공격·수비·방어이탈·상대최선응수·이유)
+    BE-->>BV: Evaluation 반환 (BoardView evalCache 저장)
+    BV->>BV: 7단계 오버레이 렌더링 (고스트·공격·수비·상대응수 화살표·자동회피 HUD)
 ```
 
-### B. 자유 메이트 퍼즐 (`mate=N`) 진행 흐름
+### B. 자유 메이트 퍼즐 (`mate=N`) 흐름
 
 ```mermaid
 flowchart TD
-    Start["사용자 착수 submitMove(move)"] --> Legal{"합법 수인가?"}
-    Legal -- 아니오 --> Wrong["WRONG 반환"]
-    Legal -- 예 --> Apply["after = board.applyMove(move)"]
-    Apply --> Mate{"after.isCheckmate()?"}
-    Mate -- 예 --> Solved["SOLVED (즉시 정답 · 기록 저장)"]
+    Move["사용자 착수"] --> Mate{"체크메이트?"}
+    Mate -- 예 --> Win["SOLVED (즉시 정답 · JSON 저장)"]
     Mate -- 아니오 --> Draw{"스테일메이트 / 기물 부족?"}
-    Draw -- 예 --> RejectDraw["WRONG (무승부 경고 · 국면 유지)"]
+    Draw -- 예 --> Reject["WRONG (무승부 경고 · 국면 유지)"]
     Draw -- 아니오 --> Last{"남은 수 <= 1?"}
-    Last -- 예 --> FailLast["WRONG (국면 유지 · 탈출 수 안내 + 피드백 사다리)"]
-    Last -- 아니오 --> Commit["스냅샷 저장(undoStack) · 착수 확정 · movesUsed++"]
-    Commit --> CheckForce["ChessAI.isForcedMateAfterMove(after, left)"]
-    CheckForce --> Defense["ChessAI.bestDefenseAgainstMate(after, left)<br/>(탈출 우선, 불가 시 최장 지연 응수)"]
-    Defense --> Timer["400ms 후 상대 응수 자동 반영<br/>(언제든 [무르기]로 복귀 가능)"]
-```
-
-### C. AI 대전 비동기 착수 흐름
-
-```mermaid
-sequenceDiagram
-    actor User as 사용자
-    participant Panel as AiGamePanel (EDT)
-    participant Worker as SwingWorker (백그라운드)
-    participant AI as ChessAI
-
-    User->>Panel: 보드에서 착수
-    Panel->>Panel: game.play(move) · 보드 입력 잠금 · "AI 생각 중..."
-    Panel->>Worker: execute() (불변 Board 스냅샷 + AtomicBoolean cancel 전달)
-    Worker->>AI: chooseMove(snapshot, difficulty, cancel::get)
-    Note over AI: 반복 심화 + 알파-베타 + MVV-LVA<br/>(무르기/화면 이탈 시 cancel 플래그로 즉시 중단)
-    AI-->>Worker: Optional<Move>
-    Worker-->>Panel: done() (EDT 복귀)
-    Panel->>Panel: cancel 미설정 시 game.play(reply) · 보드 갱신 · 종료 시 전적 저장
+    Last -- 예 --> Fail["WRONG (탈출 수 SAN 안내 + 피드백 사다리)"]
+    Last -- 아니오 --> Commit["undoStack 저장 · 착수 확정"]
+    Commit --> Reply["ChessAI.bestDefenseAgainstMate()<br/>(탈출 우선, 불가 시 최장 지연 응수)"]
+    Reply --> Apply["400ms 후 상대 응수 자동 반영 (언제든 무르기 가능)"]
 ```
 
 ---
 
-## 3. 데이터 포맷 & 저장 구조
+## 5. JSON 데이터 스키마 (`Gson` 직렬화)
 
-모든 번들 콘텐츠와 사용자 기록은 외부 라이브러리 없는 **UTF-8 평문 `.txt`** (`---` 블록 구분, `key=value`)로 통일했습니다.
-
-| 경로 | 용도 | 포맷 요약 |
+| 파일 | 위치 | 구조 |
 | --- | --- | --- |
-| `app/src/main/resources/data/lessons.txt` | 기본 튜토리얼 8개 + 유명 오프닝 6개 | `id`, `category`, `title`, `summary`, `side`, `setup`, `step=fen\|mode\|goal\|hints\|prompt\|success[\|reply]` |
-| `app/src/main/resources/data/puzzles.txt` | 자유 메이트 10개 + 전술 퍼즐 6개 | `id`, `theme`, `mate`, `title`, `fen`, `solution`, `explain` |
-| `~/.chessmate/profiles.txt` | 다중 프로필 및 학습/AI 기록 | `active=<id>` + 프로필별 `id`, `name`, `lessons`, `puzzle.<id>=시도,해결`, `ai.<난이도>=승,무,패` |
-| `~/.chessmate/settings.txt` | 보드 테마 및 표시 옵션 | `boardTheme`, `showCoords`, `showLegalMoves`, `highlightLastMove`, `showMovePreview`, `autoFlipLocal` |
+| `lessons.json` | `app/src/main/resources/data/` | `[{ id, category, title, summary, side, setup?, steps: [{ fen, sandbox, goal, hints[], prompt, success, reply? }] }]` |
+| `puzzles.json` | `app/src/main/resources/data/` | `[{ id, theme, mate, title, fen, solution[], explain }]` |
+| `userdata.json` | `~/.chessmate/` (`-Dchessmate.home`) | `{ activeProfileId, settings: { boardTheme, showCoords, showLegalMoves, highlightLastMove, showMovePreview, autoFlipLocal }, profiles: [{ id, name, completedLessons[], puzzleStats{}, aiRecords{} }] }` |

@@ -1,13 +1,15 @@
 package com.oopteama.chess;
 
-import com.oopteama.chess.model.AppStore;
-import com.oopteama.chess.ui.MainWindow;
-import com.oopteama.chess.ui.Theme;
+import com.oopteama.chess.backend.service.ChessBackend;
+import com.oopteama.chess.backend.service.JsonStorage;
+import com.oopteama.chess.backend.service.Storage;
+import com.oopteama.chess.frontend.MainWindow;
+import com.oopteama.chess.frontend.Theme;
 
 import javax.swing.SwingUtilities;
 
 /**
- * ChessMate 애플리케이션 진입점입니다.
+ * 조립 루트(Composition Root): 저장소(JsonStorage) → 백엔드(ChessBackend) → 프론트엔드(MainWindow)를 연결합니다.
  */
 public final class Main {
 
@@ -19,10 +21,12 @@ public final class Main {
         System.setProperty("apple.awt.application.name", "ChessMate");
         System.setProperty("flatlaf.useWindowDecorations", "true");
 
-        AppStore store = new AppStore(AppStore.defaultDataDir());
+        Storage storage = new JsonStorage(JsonStorage.defaultDataDir());
+        ChessBackend backend = new ChessBackend(storage);
+
         SwingUtilities.invokeLater(() -> {
             Theme.install();
-            new MainWindow(store).setVisible(true);
+            new MainWindow(backend).setVisible(true);
         });
     }
 }

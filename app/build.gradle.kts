@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     implementation(libs.flatlaf)
+    implementation(libs.gson)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

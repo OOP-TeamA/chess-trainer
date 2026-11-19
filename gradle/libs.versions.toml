@@ -1,7 +1,9 @@
 [versions]
 flatlaf = "3.7.2"
+gson = "2.13.1"
 junit-jupiter = "6.0.1"
 
 [libraries]
 flatlaf = { module = "com.formdev:flatlaf", version.ref = "flatlaf" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
