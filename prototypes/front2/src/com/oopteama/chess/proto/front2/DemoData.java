@@ -20,6 +20,7 @@ public final class DemoData {
             this.title=title; this.hint=hint; this.explanation=explanation; this.board=board; this.from=from; this.to=to;
         }
     }
+    static final int ROOK_LESSON_INDEX = 1;
     public static final Lesson[] LESSONS = {
         new Lesson("체스판과 좌표", "64칸의 보드와 위치를 읽어 봅니다.",
             "체스판은 8×8로, 총 64개의 밝고 어두운 칸이 번갈아 있습니다.", "세로줄은 a부터 h까지 파일(file), 가로줄은 1부터 8까지 랭크(rank)입니다.", "백의 오른쪽 아래 칸은 밝은색(h1)입니다. 예: e4는 e파일과 4랭크의 교차점입니다."),

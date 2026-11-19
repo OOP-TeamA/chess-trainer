@@ -3,17 +3,23 @@ package com.oopteama.chess.proto.front2;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class BoardView extends JPanel {
     private final char[][] pieces = new char[8][8];
     private String selected;
+    private boolean preview;
+    private Set<String> previewTargets = Set.of();
+    private String previewBlocker;
+    private String previewBlockedTarget;
     private BiConsumer<String,String> moveHandler;
     private String highlightFrom, highlightTo;
     private final Color light = new Color(222, 208, 175), dark = new Color(129, 104, 79);
     public BoardView() {
         setOpaque(false); setPreferredSize(new Dimension(460,460));
         addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) {
+            if (preview) return;
             int size=Math.min(getWidth(), getHeight())-28; int x0=(getWidth()-size)/2; int y0=(getHeight()-size)/2;
             if(e.getX()<x0 || e.getY()<y0 || e.getX()>=x0+size || e.getY()>=y0+size) return;
             int col=(e.getX()-x0)*8/size, row=(e.getY()-y0)*8/size;
@@ -41,6 +47,15 @@ public class BoardView extends JPanel {
         }
         selected=null; highlightFrom=highlightTo=null; repaint();
     }
+    public void showPreview(String from, Set<String> targets, String blocker, String blockedTarget) {
+        preview = true;
+        selected = from;
+        previewTargets = Set.copyOf(targets);
+        previewBlocker = blocker;
+        previewBlockedTarget = blockedTarget;
+        repaint();
+    }
+
     public void setMoveHandler(BiConsumer<String,String> handler) { moveHandler=handler; }
     public void clearSelection() { selected=null; repaint(); }
     public void showMove(String from,String to) { highlightFrom=from; highlightTo=to; repaint(); }
@@ -68,6 +83,22 @@ public class BoardView extends JPanel {
             if(coord.equals(highlightFrom)||coord.equals(highlightTo)) { g.setColor(new Color(123,205,145,125)); g.fillRect(x1,y1,w,h); }
             if(c==0) { g.setColor((r+c)%2==0?dark:light); g.setFont(DemoTheme.font(Math.max(11,size/48),true)); g.drawString(""+(8-r),x1+4,y1+15); }
             if(r==7) { g.setColor((r+c)%2==0?dark:light); g.setFont(DemoTheme.font(Math.max(11,size/48),true)); g.drawString(""+(char)('a'+c),x2-14,y2-5); }
+            if (previewTargets.contains(coord)) {
+                int dot = Math.max(6, w / 5);
+                g.setColor(new Color(35, 94, 58));
+                g.fillOval(x1 + (w - dot) / 2, y1 + (h - dot) / 2, dot, dot);
+            }
+            if (coord.equals(previewBlocker) || coord.equals(previewBlockedTarget)) {
+                g.setColor(new Color(143, 49, 44));
+                g.setStroke(new BasicStroke(3));
+                g.drawRect(x1 + 3, y1 + 3, w - 7, h - 7);
+            }
+            if (coord.equals(previewBlockedTarget)) {
+                g.setFont(DemoTheme.font(Math.max(14, w / 2), true));
+                FontMetrics metrics = g.getFontMetrics();
+                g.drawString("×", x1 + (w - metrics.stringWidth("×")) / 2,
+                        y1 + (h - metrics.getHeight()) / 2 + metrics.getAscent());
+            }
             char p=pieces[r][c];
             if(p!=' ') {
                 String text=symbol(p);
