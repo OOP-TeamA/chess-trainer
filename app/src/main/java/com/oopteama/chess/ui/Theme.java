@@ -1,328 +1,316 @@
 package com.oopteama.chess.ui;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
-import java.awt.Insets;
-import java.io.IOException;
-import java.io.InputStream;
+import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLaf;
 
 import javax.swing.BorderFactory;
-import javax.swing.SwingUtilities;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-import javax.swing.plaf.ColorUIResource;
-import javax.swing.plaf.FontUIResource;
-import javax.swing.plaf.metal.DefaultMetalTheme;
-import javax.swing.plaf.metal.MetalLookAndFeel;
+import javax.swing.border.EmptyBorder;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.InputStream;
+import java.util.Map;
 
 /**
- * Chess Learner의 공통 색상과 글꼴을 관리한다.
- * 화면 구성 요소에서는 이 클래스의 색상과 글꼴을 사용해 디자인을 통일한다.
- * 화면 구성 예시 PDF(17페이지)의 다크 브라운 + 골드 테마를 기준으로 한다.
+ * FlatLaf 기반 모던 다크 슬레이트 + 에메랄드 테마와 공통 컴포넌트 팩토리입니다.
  */
 public final class Theme {
 
-    public static final int FONT_12 = 12;
-    public static final int FONT_14 = 14;
-    public static final int FONT_16 = 16;
-    public static final int FONT_21 = 21;
-    public static final int FONT_28 = 28;
-    public static final int FONT_36 = 36;
+    public static final Color BG = new Color(0x131720);
+    public static final Color SIDEBAR = new Color(0x0E1118);
+    public static final Color SURFACE = new Color(0x1B212E);
+    public static final Color SURFACE_ALT = new Color(0x242C3D);
+    public static final Color SURFACE_HOVER = new Color(0x2A3447);
+    public static final Color BORDER = new Color(0x2D3748);
 
-    private Theme() {
-        // 인스턴스 생성 방지
-    }
+    public static final Color ACCENT = new Color(0x2EB872);
+    public static final Color ACCENT_HOVER = new Color(0x259B5F);
+    public static final Color ACCENT_PRESSED = new Color(0x1E824F);
+    public static final Color ACCENT_SOFT = new Color(0x18352A);
 
-    // 기본 화면과 사이드바
-    public static final Color WINDOW = new Color(0x1E1915);
-    public static final Color SIDEBAR = WINDOW;
+    public static final Color TEXT = new Color(0xF1F5F9);
+    public static final Color MUTED = new Color(0x94A3B8);
+    public static final Color SUCCESS = new Color(0x34D399);
+    public static final Color WARNING = new Color(0xFBBF24);
+    public static final Color DANGER = new Color(0xF87171);
+    public static final Color DANGER_BG = new Color(0x452228);
+    public static final Color DANGER_HOVER = new Color(0x5E2B33);
+    public static final Color INFO = new Color(0x60A5FA);
 
-    // 카드와 패널
-    public static final Color PANEL = new Color(0x26201A);
-    public static final Color RAISED = new Color(0x30281F);
-    public static final Color LINE = new Color(0x42372C);
-
-    // 글자 색상
-    public static final Color TEXT = new Color(0xEFE6D6);
-    public static final Color MUTED = new Color(0xAE9F88);
-
-    // 체스판 색상
-    public static final Color SQ_LIGHT = new Color(0xE8D3A9);
-    public static final Color SQ_DARK = new Color(0xA3714A);
-
-    // 강조 및 상태 색상
-    public static final Color ACCENT = new Color(0xD9AE57);
-    public static final Color OK = new Color(0x8FB98A);
-    public static final Color BAD = new Color(0xE08A7C);
-    public static final Color INFO = new Color(0x93A8BF);
-
-    // 글꼴 리소스 경로
-    private static final String BODY_FONT_RESOURCE =
-            "/fonts/Pretendard-Regular.ttf";
-
-    private static final String BODY_BOLD_FONT_RESOURCE =
-            "/fonts/Pretendard-Bold.ttf";
-
-    private static final String TITLE_FONT_RESOURCE =
-            "/fonts/NotoSerifKR-Bold.ttf";
-
-    // 본문 일반 글꼴
-    private static final Font BODY_FONT = loadFont(
-            BODY_FONT_RESOURCE,
-            new Font(Font.DIALOG, Font.PLAIN, FONT_14)
-    );
-
-    // 본문 굵은 글꼴
-    private static final Font BODY_BOLD_FONT = loadFont(
-            BODY_BOLD_FONT_RESOURCE,
-            new Font(Font.DIALOG, Font.BOLD, FONT_14)
-    );
-
-    // 제목 글꼴
-    private static final Font TITLE_FONT = loadFont(
-            TITLE_FONT_RESOURCE,
-            new Font(Font.DIALOG, Font.BOLD, FONT_21)
-    );
+    private static final Font REGULAR = loadFont("/fonts/Pretendard-Regular.ttf", new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+    private static final Font BOLD = loadFont("/fonts/Pretendard-Bold.ttf", new Font(Font.SANS_SERIF, Font.BOLD, 14));
 
     private static boolean installed;
 
-    private static final class ChessMetalTheme extends DefaultMetalTheme {
-
-        @Override
-        public String getName() {
-            return "Chess Trainer";
-        }
-
-        @Override
-        protected ColorUIResource getPrimary1() {
-            return new ColorUIResource(LINE);
-        }
-
-        @Override
-        protected ColorUIResource getPrimary2() {
-            return new ColorUIResource(SQ_DARK);
-        }
-
-        @Override
-        protected ColorUIResource getPrimary3() {
-            return new ColorUIResource(ACCENT);
-        }
-
-        @Override
-        protected ColorUIResource getSecondary1() {
-            return new ColorUIResource(WINDOW);
-        }
-
-        @Override
-        protected ColorUIResource getSecondary2() {
-            return new ColorUIResource(PANEL);
-        }
-
-        @Override
-        protected ColorUIResource getSecondary3() {
-            return new ColorUIResource(RAISED);
-        }
-
-        @Override
-        protected ColorUIResource getWhite() {
-            return new ColorUIResource(TEXT);
-        }
-
-        @Override
-        protected ColorUIResource getBlack() {
-            return new ColorUIResource(WINDOW);
-        }
+    private Theme() {
     }
 
-    /**
-     * 본문 글꼴을 반환한다.
-     *
-     * weight가 400이면 Pretendard Regular,
-     * weight가 500이면 Pretendard Regular,
-     * weight가 600 이상이면 Pretendard Bold를 사용한다.
-     */
-    public static Font body(int size, int weight) {
-
-        int safeSize = Math.max(1, size);
-
-        // 요청된 굵기에 따라 실제 폰트 파일을 선택한다.
-        Font baseFont = (weight >= 600)
-                ? BODY_BOLD_FONT
-                : BODY_FONT;
-
-        return baseFont.deriveFont((float) safeSize);
+    public static Font font(float size) {
+        return REGULAR.deriveFont(size);
     }
 
-    /**
-     * 제목 글꼴을 반환한다.
-     * Noto Serif KR Bold를 사용한다.
-     */
-    public static Font title(int size) {
-
-        return TITLE_FONT.deriveFont(
-                (float) Math.max(1, size)
-        );
+    public static Font bold(float size) {
+        return BOLD.deriveFont(size);
     }
 
-    /**
-     * Swing 기본 Look and Feel과 컴포넌트 기본값을 프로젝트 테마로 설정한다.
-     * 컴포넌트를 만들기 전에 EDT에서 한 번 호출한다.
-     */
+    public static String hex(Color c) {
+        return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
+    }
+
     public static void install() {
-
-        if (!SwingUtilities.isEventDispatchThread()) {
-            throw new IllegalStateException(
-                    "Theme.install() must be called on the Swing EDT."
-            );
-        }
-
         if (installed) {
             return;
         }
+        FlatLaf.setGlobalExtraDefaults(Map.of(
+                "@accentColor", hex(ACCENT),
+                "@background", hex(BG),
+                "@foreground", hex(TEXT)
+        ));
+        FlatDarkLaf.setup();
 
-        try {
-            MetalLookAndFeel.setCurrentTheme(new ChessMetalTheme());
-            UIManager.setLookAndFeel(new MetalLookAndFeel());
+        UIManager.put("defaultFont", font(14));
+        UIManager.put("Panel.background", BG);
+        UIManager.put("Panel.foreground", TEXT);
+        UIManager.put("Label.foreground", TEXT);
 
-        } catch (UnsupportedLookAndFeelException e) {
-            // Metal을 사용할 수 없으면 기본 Look and Feel을 유지한다.
-        }
+        // 둥근 모서리 & 깔끔한 포커스 링
+        UIManager.put("Component.arc", 10);
+        UIManager.put("Button.arc", 10);
+        UIManager.put("TextComponent.arc", 10);
+        UIManager.put("CheckBox.arc", 6);
+        UIManager.put("ProgressBar.arc", 999);
+        UIManager.put("Component.borderColor", BORDER);
+        UIManager.put("Component.focusedBorderColor", ACCENT);
+        UIManager.put("Component.focusWidth", 1);
+        UIManager.put("Component.innerFocusWidth", 0);
 
-        applyUiDefaults();
+        // 입력 컴포넌트 & 콤보박스
+        UIManager.put("TextField.background", SURFACE_ALT);
+        UIManager.put("TextField.foreground", TEXT);
+        UIManager.put("TextField.caretForeground", TEXT);
+        UIManager.put("TextField.placeholderForeground", new Color(0x64748B));
+        UIManager.put("TextArea.background", SURFACE);
+        UIManager.put("TextArea.foreground", TEXT);
+        UIManager.put("ComboBox.background", SURFACE_ALT);
+        UIManager.put("ComboBox.foreground", TEXT);
+        UIManager.put("ComboBox.buttonBackground", SURFACE_ALT);
+        UIManager.put("ComboBox.popupBackground", SURFACE);
+        UIManager.put("ComboBox.selectionBackground", ACCENT);
+        UIManager.put("ComboBox.selectionForeground", Color.WHITE);
+        UIManager.put("ComboBox.padding", new Insets(5, 10, 5, 10));
+
+        // 슬림 모던 스크롤바
+        UIManager.put("ScrollBar.width", 10);
+        UIManager.put("ScrollBar.thumbArc", 999);
+        UIManager.put("ScrollBar.trackArc", 999);
+        UIManager.put("ScrollBar.thumbInsets", new Insets(2, 2, 2, 2));
+        UIManager.put("ScrollBar.thumb", new Color(0x334155));
+        UIManager.put("ScrollBar.hoverThumbColor", new Color(0x475569));
+        UIManager.put("ScrollBar.pressedThumbColor", new Color(0x64748B));
+        UIManager.put("ScrollBar.track", BG);
+        UIManager.put("ScrollBar.showButtons", false);
+
+        // 타이틀바 & 다이얼로그
+        UIManager.put("TitlePane.background", SIDEBAR);
+        UIManager.put("TitlePane.foreground", TEXT);
+        UIManager.put("TitlePane.unifiedBackground", false);
+        UIManager.put("OptionPane.background", SURFACE);
+        UIManager.put("OptionPane.messageForeground", TEXT);
+        UIManager.put("ProgressBar.background", SURFACE_ALT);
+        UIManager.put("ProgressBar.foreground", ACCENT);
+        UIManager.put("CheckBox.icon.selectedBackground", ACCENT);
+        UIManager.put("CheckBox.icon.checkmarkColor", Color.WHITE);
+        UIManager.put("CheckBox.icon.borderColor", BORDER);
 
         installed = true;
     }
 
-    /** Swing 컴포넌트의 기본 색상과 글꼴을 설정한다. */
-    private static void applyUiDefaults() {
+    public static JPanel card() {
+        return card(16);
+    }
 
-        ColorUIResource window = new ColorUIResource(WINDOW);
-        ColorUIResource panel = new ColorUIResource(PANEL);
-        ColorUIResource raised = new ColorUIResource(RAISED);
-        ColorUIResource line = new ColorUIResource(LINE);
-        ColorUIResource text = new ColorUIResource(TEXT);
-        ColorUIResource muted = new ColorUIResource(MUTED);
-        ColorUIResource accent = new ColorUIResource(ACCENT);
+    public static JPanel card(int pad) {
+        JPanel panel = new RoundedPanel(SURFACE, BORDER, 14);
+        panel.setLayout(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(pad, pad, pad, pad));
+        return panel;
+    }
 
-        // 명세의 글꼴 굵기 기준 사용
-        FontUIResource normalFont =
-                new FontUIResource(body(FONT_14, 400));
+    public static JPanel hoverCard(int pad, Color hoverBorder) {
+        RoundedPanel panel = new RoundedPanel(SURFACE, BORDER, 14, SURFACE_ALT, hoverBorder);
+        panel.setLayout(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(pad, pad, pad, pad));
+        panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return panel;
+    }
 
-        FontUIResource boldFont =
-                new FontUIResource(body(FONT_14, 600));
+    public static JLabel title(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(bold(22));
+        label.setForeground(TEXT);
+        return label;
+    }
 
-        // 전체 컴포넌트 기본값
-        UIManager.put("control", panel);
-        UIManager.put("Panel.background", window);
-        UIManager.put("Panel.foreground", text);
-        UIManager.put("Label.foreground", text);
-        UIManager.put("Label.font", normalFont);
+    public static JLabel sectionTitle(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(bold(16));
+        label.setForeground(TEXT);
+        return label;
+    }
 
-        // 버튼
-        UIManager.put("Button.background", raised);
-        UIManager.put("Button.foreground", text);
-        UIManager.put("Button.font", boldFont);
-        UIManager.put("Button.focus", accent);
-        UIManager.put("Button.select", line);
-        UIManager.put("Button.margin", new Insets(8, 14, 8, 14));
+    public static JLabel muted(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(font(13));
+        label.setForeground(MUTED);
+        return label;
+    }
 
-        UIManager.put(
-                "Button.border",
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(LINE),
-                        BorderFactory.createEmptyBorder(7, 13, 7, 13)
-                )
-        );
+    public static JLabel badge(String text, Color accent) {
+        JLabel label = new JLabel(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        label.setFont(bold(12));
+        label.setForeground(accent);
+        label.setOpaque(false);
+        label.setBorder(new EmptyBorder(4, 11, 4, 11));
+        return label;
+    }
 
-        // 입력 컴포넌트
-        UIManager.put("TextField.background", panel);
-        UIManager.put("TextField.foreground", text);
-        UIManager.put("TextField.caretForeground", text);
-        UIManager.put("TextField.selectionBackground", accent);
-        UIManager.put("TextField.selectionForeground", window);
-        UIManager.put("TextField.font", normalFont);
+    public static JButton primaryButton(String text) {
+        return styledButton(text, ACCENT, ACCENT_HOVER, Color.WHITE);
+    }
 
-        UIManager.put("TextArea.background", panel);
-        UIManager.put("TextArea.foreground", text);
-        UIManager.put("TextArea.caretForeground", text);
-        UIManager.put("TextArea.selectionBackground", accent);
-        UIManager.put("TextArea.selectionForeground", window);
-        UIManager.put("TextArea.font", normalFont);
+    public static JButton secondaryButton(String text) {
+        return styledButton(text, SURFACE_ALT, SURFACE_HOVER, TEXT);
+    }
 
-        UIManager.put("ComboBox.background", raised);
-        UIManager.put("ComboBox.foreground", text);
-        UIManager.put("ComboBox.font", normalFont);
+    public static JButton dangerButton(String text) {
+        return styledButton(text, DANGER_BG, DANGER_HOVER, DANGER);
+    }
 
-        // 목록
-        UIManager.put("List.background", panel);
-        UIManager.put("List.foreground", text);
-        UIManager.put("List.selectionBackground", accent);
-        UIManager.put("List.selectionForeground", window);
-
-        // 메뉴
-        UIManager.put("Menu.background", SIDEBAR);
-        UIManager.put("Menu.foreground", text);
-        UIManager.put("Menu.font", normalFont);
-
-        UIManager.put("MenuItem.background", SIDEBAR);
-        UIManager.put("MenuItem.foreground", text);
-        UIManager.put("MenuItem.font", normalFont);
-
-        // 스크롤 영역
-        UIManager.put("ScrollPane.background", window);
-        UIManager.put("Viewport.background", window);
-
-        UIManager.put("ScrollBar.background", panel);
-        UIManager.put("ScrollBar.thumb", raised);
-        UIManager.put("ScrollBar.track", window);
-
-        // 기타 상태 표시
-        UIManager.put("OptionPane.background", panel);
-        UIManager.put("OptionPane.messageForeground", text);
-        UIManager.put("OptionPane.messageFont", normalFont);
-
-        UIManager.put("ProgressBar.background", line);
-        UIManager.put("ProgressBar.foreground", accent);
-        UIManager.put("ProgressBar.font", boldFont);
-
-        UIManager.put("ToolTip.background", raised);
-        UIManager.put("ToolTip.foreground", text);
-        UIManager.put("ToolTip.font", normalFont);
-
-        UIManager.put("Separator.foreground", line);
-        UIManager.put("Separator.background", line);
-
-        UIManager.put("TitledBorder.titleColor", muted);
+    public static JButton styledButton(String text, Color normal, Color hover, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setFont(bold(13));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        applyButtonStyle(btn, normal, hover, fg, null);
+        return btn;
     }
 
     /**
-     * 리소스 폴더에서 글꼴을 불러온다.
-     * 글꼴 파일이 없거나 읽을 수 없으면 기본 글꼴을 사용한다.
+     * FlatLaf 네이티브 스타일 속성으로 버튼의 배경·호버·눌림·테두리 상태를 적용합니다.
      */
-    private static Font loadFont(
-            String resourcePath,
-            Font fallback
-    ) {
+    public static void applyButtonStyle(JButton btn, Color normal, Color hover, Color fg, Color border) {
+        StringBuilder style = new StringBuilder();
+        style.append("arc: 10; focusWidth: 0; margin: 8,14,8,14; ");
+        style.append("background: ").append(hex(normal)).append("; ");
+        style.append("hoverBackground: ").append(hex(hover)).append("; ");
+        style.append("pressedBackground: ").append(hex(hover.darker())).append("; ");
+        style.append("disabledBackground: ").append(hex(SURFACE)).append("; ");
+        style.append("foreground: ").append(hex(fg)).append("; ");
+        style.append("disabledText: ").append(hex(new Color(0x475569))).append("; ");
+        if (border != null) {
+            style.append("borderWidth: 1; borderColor: ").append(hex(border)).append("; ");
+            style.append("hoverBorderColor: ").append(hex(border)).append(";");
+        } else {
+            style.append("borderWidth: 0;");
+        }
+        btn.putClientProperty(FlatClientProperties.STYLE, style.toString());
+        btn.setForeground(fg);
+    }
 
-        try (InputStream input =
-                     Theme.class.getResourceAsStream(resourcePath)) {
+    public static JScrollPane scrollPane(JComponent view) {
+        JScrollPane sp = new JScrollPane(view);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getViewport().setBackground(view.getBackground());
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        return sp;
+    }
 
-            if (input == null) {
+    public static class RoundedPanel extends JPanel {
+        private final Color fill;
+        private final Color stroke;
+        private final Color hoverFill;
+        private final Color hoverStroke;
+        private final int radius;
+        private boolean hovered;
+
+        public RoundedPanel(Color fill, Color stroke, int radius) {
+            this(fill, stroke, radius, null, null);
+        }
+
+        public RoundedPanel(Color fill, Color stroke, int radius, Color hoverFill, Color hoverStroke) {
+            this.fill = fill;
+            this.stroke = stroke;
+            this.radius = radius;
+            this.hoverFill = hoverFill;
+            this.hoverStroke = hoverStroke;
+            setOpaque(false);
+            if (hoverFill != null || hoverStroke != null) {
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        hovered = true;
+                        repaint();
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        hovered = false;
+                        repaint();
+                    }
+                });
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Color bg = (hovered && hoverFill != null) ? hoverFill : fill;
+            Color bd = (hovered && hoverStroke != null) ? hoverStroke : stroke;
+            g2.setColor(bg);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+            if (bd != null) {
+                g2.setColor(bd);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
+            }
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    private static Font loadFont(String path, Font fallback) {
+        try (InputStream in = Theme.class.getResourceAsStream(path)) {
+            if (in == null) {
                 return fallback;
             }
-
-            Font loaded = Font.createFont(
-                    Font.TRUETYPE_FONT,
-                    input
-            );
-
-            GraphicsEnvironment.getLocalGraphicsEnvironment()
-                    .registerFont(loaded);
-
+            Font loaded = Font.createFont(Font.TRUETYPE_FONT, in);
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(loaded);
             return loaded;
-
-        } catch (IOException | java.awt.FontFormatException e) {
+        } catch (Exception e) {
             return fallback;
         }
     }

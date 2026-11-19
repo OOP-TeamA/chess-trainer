@@ -1,0 +1,336 @@
+package com.oopteama.chess.ui;
+
+import com.oopteama.chess.engine.Move;
+import com.oopteama.chess.engine.Piece.Side;
+import com.oopteama.chess.model.AppStore;
+import com.oopteama.chess.model.Lesson;
+import com.oopteama.chess.model.Lesson.Category;
+import com.oopteama.chess.model.LessonSession;
+import com.oopteama.chess.model.TrainingSession;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTextArea;
+import javax.swing.Timer;
+import javax.swing.border.EmptyBorder;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.util.List;
+
+/**
+ * 레슨 화면: [기본 튜토리얼 | 유명 오프닝] 탭 전환, 인터랙티브 보드 실습, 단계별 안내와 피드백을 제공합니다.
+ */
+public final class LessonPanel extends JPanel implements Screen {
+
+    private final AppStore store;
+    private final BoardView boardView;
+    private final JPanel listContainer = new JPanel();
+    private final JButton tutorialTab = Theme.primaryButton("기본 튜토리얼");
+    private final JButton openingTab = Theme.secondaryButton("유명 오프닝");
+
+    private final JLabel lessonTitle = Theme.sectionTitle("");
+    private final JLabel stepCounter = Theme.muted("");
+    private final JProgressBar stepBar = new JProgressBar();
+    private final JTextArea promptArea = createTextArea();
+    private final JLabel feedbackLabel = new JLabel();
+    private final JButton hintBtn = Theme.secondaryButton("힌트");
+    private final JButton resetBtn = Theme.secondaryButton("다시 놓기");
+    private final JButton prevBtn = Theme.secondaryButton("이전");
+    private final JButton nextBtn = Theme.primaryButton("다음 단계");
+
+    private Category activeCategory = Category.TUTORIAL;
+    private LessonSession session;
+    private Timer replyTimer;
+
+    public LessonPanel(AppStore store) {
+        this.store = store;
+        this.boardView = new BoardView(store.settings());
+        this.boardView.setMoveHandler(this::onUserMove);
+
+        setLayout(new BorderLayout(18, 0));
+        setBackground(Theme.BG);
+        setBorder(new EmptyBorder(20, 22, 20, 22));
+
+        add(buildLeftList(), BorderLayout.WEST);
+        add(boardView, BorderLayout.CENTER);
+        add(buildRightGuide(), BorderLayout.EAST);
+
+        switchCategory(Category.TUTORIAL);
+    }
+
+    private JPanel buildLeftList() {
+        JPanel side = Theme.card(14);
+        side.setPreferredSize(new Dimension(250, 0));
+
+        JPanel tabs = new JPanel(new GridLayout(1, 2, 6, 0));
+        tabs.setOpaque(false);
+        tutorialTab.addActionListener(e -> switchCategory(Category.TUTORIAL));
+        openingTab.addActionListener(e -> switchCategory(Category.OPENING));
+        tabs.add(tutorialTab);
+        tabs.add(openingTab);
+
+        listContainer.setLayout(new BoxLayout(listContainer, BoxLayout.Y_AXIS));
+        listContainer.setBackground(Theme.SURFACE);
+
+        side.add(tabs, BorderLayout.NORTH);
+        side.add(Theme.scrollPane(listContainer), BorderLayout.CENTER);
+        return side;
+    }
+
+    private JPanel buildRightGuide() {
+        JPanel guide = Theme.card(18);
+        guide.setPreferredSize(new Dimension(300, 0));
+
+        JPanel top = new JPanel();
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+        top.setOpaque(false);
+        lessonTitle.setAlignmentX(LEFT_ALIGNMENT);
+        stepCounter.setAlignmentX(LEFT_ALIGNMENT);
+        stepBar.setPreferredSize(new Dimension(260, 8));
+        stepBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 8));
+        stepBar.setAlignmentX(LEFT_ALIGNMENT);
+
+        top.add(lessonTitle);
+        top.add(Box.createVerticalStrut(6));
+        top.add(stepCounter);
+        top.add(Box.createVerticalStrut(8));
+        top.add(stepBar);
+
+        JPanel center = new JPanel(new BorderLayout(0, 12));
+        center.setOpaque(false);
+        center.setBorder(new EmptyBorder(14, 0, 14, 0));
+        center.add(Theme.scrollPane(promptArea), BorderLayout.CENTER);
+
+        feedbackLabel.setFont(Theme.bold(13));
+        feedbackLabel.setBorder(new EmptyBorder(10, 12, 10, 12));
+        feedbackLabel.setOpaque(false);
+        JPanel feedbackBox = new Theme.RoundedPanel(Theme.SURFACE_ALT, Theme.BORDER, 10);
+        feedbackBox.setLayout(new BorderLayout());
+        feedbackBox.add(feedbackLabel, BorderLayout.CENTER);
+        center.add(feedbackBox, BorderLayout.SOUTH);
+
+        JPanel buttons = new JPanel(new GridLayout(2, 2, 8, 8));
+        buttons.setOpaque(false);
+        hintBtn.addActionListener(e -> {
+            if (session != null) {
+                session.showHint();
+                syncView();
+            }
+        });
+        resetBtn.addActionListener(e -> {
+            stopTimer();
+            if (session != null) {
+                session.reset();
+                syncView();
+            }
+        });
+        prevBtn.addActionListener(e -> {
+            stopTimer();
+            if (session != null && session.hasPrevStep()) {
+                session.prevStep();
+                syncView();
+            }
+        });
+        nextBtn.addActionListener(e -> advanceOrNextLesson());
+
+        buttons.add(hintBtn);
+        buttons.add(resetBtn);
+        buttons.add(prevBtn);
+        buttons.add(nextBtn);
+
+        guide.add(top, BorderLayout.NORTH);
+        guide.add(center, BorderLayout.CENTER);
+        guide.add(buttons, BorderLayout.SOUTH);
+        return guide;
+    }
+
+    private static JTextArea createTextArea() {
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(Theme.font(14));
+        area.setForeground(Theme.TEXT);
+        area.setBackground(Theme.SURFACE);
+        area.setBorder(new EmptyBorder(4, 2, 4, 2));
+        return area;
+    }
+
+    private void switchCategory(Category category) {
+        stopTimer();
+        this.activeCategory = category;
+        styleTab(tutorialTab, category == Category.TUTORIAL);
+        styleTab(openingTab, category == Category.OPENING);
+
+        List<Lesson> list = store.lessons(category);
+        if (!list.isEmpty()) {
+            // 미완료 첫 레슨 또는 첫 번째 레슨 선택
+            Lesson target = list.stream()
+                    .filter(l -> !store.activeProfile().isLessonCompleted(l.id()))
+                    .findFirst()
+                    .orElse(list.getFirst());
+            selectLesson(target);
+        }
+        rebuildList();
+    }
+
+    private static void styleTab(JButton btn, boolean active) {
+        if (active) {
+            Theme.applyButtonStyle(btn, Theme.ACCENT, Theme.ACCENT_HOVER, Color.WHITE, null);
+        } else {
+            Theme.applyButtonStyle(btn, Theme.SURFACE_ALT, Theme.SURFACE_HOVER, Theme.MUTED, null);
+        }
+    }
+
+    private void selectLesson(Lesson lesson) {
+        stopTimer();
+        this.session = new LessonSession(lesson);
+        rebuildList();
+        syncView();
+    }
+
+    private void rebuildList() {
+        listContainer.removeAll();
+        List<Lesson> list = store.lessons(activeCategory);
+        String currentId = session == null ? "" : session.lesson().id();
+
+        for (Lesson lesson : list) {
+            boolean done = store.activeProfile().isLessonCompleted(lesson.id());
+            boolean selected = lesson.id().equals(currentId);
+            String prefix = done ? "✓ " : "○ ";
+            Color bg = selected ? Theme.ACCENT_SOFT : Theme.SURFACE;
+            Color hover = selected ? Theme.ACCENT_SOFT : Theme.SURFACE_ALT;
+            Color fg = selected ? Theme.SUCCESS : (done ? Theme.TEXT : Theme.MUTED);
+
+            JButton item = Theme.styledButton(prefix + lesson.title(), bg, hover, fg);
+            if (selected) {
+                Theme.applyButtonStyle(item, bg, hover, fg, Theme.ACCENT);
+            }
+            item.setHorizontalAlignment(JButton.LEFT);
+            item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            item.addActionListener(e -> selectLesson(lesson));
+
+            listContainer.add(item);
+            listContainer.add(Box.createVerticalStrut(4));
+        }
+        listContainer.revalidate();
+        listContainer.repaint();
+    }
+
+    private void onUserMove(Move move) {
+        if (session == null) {
+            return;
+        }
+        TrainingSession.AttemptResult result = session.submitMove(move);
+        if (result.outcome() == TrainingSession.Outcome.WRONG) {
+            boardView.flashWrong(move.to());
+            syncView();
+            return;
+        }
+
+        if (session.isAllCompleted() && !store.activeProfile().isLessonCompleted(session.lesson().id())) {
+            store.activeProfile().markLessonCompleted(session.lesson().id());
+            store.saveAndNotify();
+            rebuildList();
+        }
+        syncView();
+
+        if (result.autoReply() != null) {
+            boardView.setInteractive(false);
+            stopTimer();
+            replyTimer = new Timer(420, e -> {
+                session.applyPendingReply();
+                syncView();
+            });
+            replyTimer.setRepeats(false);
+            replyTimer.start();
+        }
+    }
+
+    private void advanceOrNextLesson() {
+        stopTimer();
+        if (session == null) {
+            return;
+        }
+        if (session.hasNextStep()) {
+            session.nextStep();
+            syncView();
+            return;
+        }
+        // 다음 레슨으로 자동 이동
+        List<Lesson> list = store.lessons(activeCategory);
+        int idx = list.indexOf(session.lesson());
+        if (idx >= 0 && idx + 1 < list.size()) {
+            selectLesson(list.get(idx + 1));
+        }
+    }
+
+    private void syncView() {
+        if (session == null) {
+            return;
+        }
+        Lesson lesson = session.lesson();
+        Lesson.Step step = session.currentStep();
+
+        lessonTitle.setText(lesson.title());
+        stepCounter.setText("단계 " + (session.stepIndex() + 1) + " / " + session.stepCount());
+        stepBar.setMaximum(session.stepCount());
+        stepBar.setValue(session.stepIndex() + (session.isSolved() ? 1 : 0));
+        promptArea.setText(step.prompt());
+
+        String fb = session.feedback();
+        if (fb.isEmpty()) {
+            feedbackLabel.setText("<html>보드에서 직접 기물을 움직여 보세요.</html>");
+            feedbackLabel.setForeground(Theme.MUTED);
+        } else {
+            feedbackLabel.setText("<html>" + fb + "</html>");
+            feedbackLabel.setForeground(session.isFeedbackPositive() ? Theme.SUCCESS : Theme.WARNING);
+        }
+
+        prevBtn.setEnabled(session.hasPrevStep());
+        nextBtn.setEnabled(session.isSolved() && !session.hasPendingReply());
+        nextBtn.setText(session.hasNextStep() ? "다음 단계 →" : "다음 레슨 →");
+
+        boardView.setFlipped(session.orientation() == Side.BLACK);
+        boardView.setBoard(session.board());
+        boardView.setLastMove(session.lastMove());
+        boardView.setHighlightSquares(session.highlightSquares());
+        boardView.setArrow(session.hintArrow(), Theme.ACCENT);
+        boardView.setInteractive(!session.isSolved() && !session.hasPendingReply());
+    }
+
+    private void stopTimer() {
+        if (replyTimer != null) {
+            replyTimer.stop();
+            replyTimer = null;
+        }
+    }
+
+    @Override
+    public JComponent view() {
+        return this;
+    }
+
+    @Override
+    public void onShow() {
+        rebuildList();
+        syncView();
+    }
+
+    @Override
+    public void onHide() {
+        stopTimer();
+    }
+
+    @Override
+    public void onSettingsChanged() {
+        boardView.repaint();
+    }
+}

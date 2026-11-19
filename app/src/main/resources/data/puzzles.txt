@@ -1,63 +1,125 @@
-# 퍼즐 (시연용 더미 데이터) — 기능 명세 6장 data/puzzles.txt 형식
-# solution은 UCI, 공백 구분, 상대 응수 포함. 사용자 수로 끝난다.
-# 주제는 Puzzle.THEMES의 8개를 모두 한 번 이상 쓴다.
+# ChessMate 퍼즐 데이터 (--- 로 퍼즐 구분)
+# mate=N: N수 안에 어떤 수순으로든 체크메이트하면 성공하는 자유 메이트 퍼즐 (AI 동적 방어)
+# solution: 대표 정답 수열(UCI 공백 구분) 또는 전술 퍼즐의 정답 수순
 
-@puzzle p0001
-theme=메이트인1,백랭크
+id=p01
+theme=메이트인1
+mate=1
+title=백랭크 메이트
 fen=6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1
 solution=d1d8
-explain=흑 킹 앞의 폰 세 개가 오히려 탈출로를 막고 있다. [[백랭크 메이트]]의 전형.
-
-@puzzle p0002
+explain=흑 킹 앞의 폰 세 개가 탈출로를 막고 있습니다. 룩이 d8로 올라가면 체크메이트입니다.
+---
+id=p02
 theme=메이트인1
+mate=1
+title=스콜라즈 메이트
 fen=r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4
 solution=h5f7
-explain=퀸과 c4의 비숍이 함께 f7을 노린다. f7은 킹 혼자 지키고 있어 퀸이 잡는 순간 [[체크메이트]]다.
-
-@puzzle p0003
-theme=메이트인2
-fen=7k/8/8/8/8/8/1R6/R5K1 w - - 0 1
-solution=b2b7 h8g8 a1a8
-explain=먼저 b7의 룩으로 7랭크를 막아 킹을 8랭크에 가둔다. 킹이 g8로 가면 a파일의 룩이 a8로 올라가 메이트한다.
-
-@puzzle p0004
-theme=메이트인1,백랭크
-fen=3r2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1
-solution=d8d1
-explain=흑 차례. 백 킹 앞의 폰이 탈출로를 막고 있어 룩이 1랭크로 내려가면 [[백랭크 메이트]]다.
-
-@puzzle p0005
-theme=포크
-fen=r3k3/ppp2ppp/8/3N4/8/8/PPP2PPP/4K3 w - - 0 1
-solution=d5c7 e8d7 c7a8
-explain=나이트가 c7의 폰을 잡으며 킹과 a8의 룩을 동시에 공격한다([[포크]]). 킹이 피하면 룩을 잡는다.
-
-@puzzle p0006
-theme=핀
-fen=6k1/6pp/8/3q4/8/8/5PPP/2R2BK1 w - - 0 1
-solution=f1c4 d5c4 c1c4
-explain=비숍을 c4로 옮기면 d5의 퀸이 g8의 킹 앞에 묶인다([[핀]]). 퀸이 비숍을 잡아도 룩으로 되잡아 퀸을 얻는다.
-
-@puzzle p0007
-theme=스큐어
-fen=6q1/8/8/3k4/8/8/7K/3B4 w - - 0 1
-solution=d1b3 d5e5 b3g8
-explain=비숍 체크로 킹을 대각선에서 비켜나게 한 뒤 뒤에 있던 퀸을 잡는다. 앞에 선 기물이 더 소중한 [[스큐어]]다.
-
-@puzzle p0008
-theme=디스커버드어택
-fen=3q2k1/pp3pp1/8/8/8/3B4/5PPP/3R2K1 w - - 0 1
-solution=d3h7 g8h7 d1d8
-explain=d3의 비숍이 h7로 체크하며 비켜나면 d1 룩의 길이 열려 d8의 퀸이 공격받는다([[디스커버드 어택]]). 비숍을 내줘도 퀸을 얻는다.
-
-@puzzle p0009
-theme=프로모션
-fen=8/1P3k2/8/8/8/8/8/6K1 w - - 0 1
-solution=b7b8q
-explain=b7의 폰이 b8에 도착하면 [[승진]]한다. 가장 강한 퀸으로 바꾸자.
-
-@puzzle p0010
+explain=c4 비숍의 엄호를 받아 퀸이 f7을 잡으면 e7 탈출로까지 막아 체크메이트입니다.
+---
+id=p03
 theme=메이트인1
+mate=1
+title=스모더드 메이트
 fen=6rk/6pp/8/6N1/8/8/8/6K1 w - - 0 1
 solution=g5f7
-explain=나이트가 f7로 뛰어 체크하면 킹은 자기 룩과 폰에 갇혀 움직일 수 없다. 이런 메이트를 스모더드 메이트라고 부른다.
+explain=나이트가 f7로 체크하면 흑 킹은 자기 룩과 폰에 둘러싸여 움직일 수 없습니다.
+---
+id=p04
+theme=메이트인1
+mate=1
+title=흑 차례 백랭크 메이트
+fen=3r2k1/5ppp/8/8/8/8/5PPP/6K1 b - - 0 1
+solution=d8d1
+explain=흑 차례입니다. 백 킹 앞의 폰이 탈출로를 막고 있어 룩이 d1로 내려가면 메이트입니다.
+---
+id=p05
+theme=메이트인2
+mate=2
+title=쌍룩 사다리 메이트
+fen=7k/8/8/8/8/8/1R6/R5K1 w - - 0 1
+solution=b2b7 h8g8 a1a8
+explain=한 룩으로 7랭크를 차단해 킹을 8랭크에 가둔 뒤(Rb7 또는 Ra7), 다른 룩이 8랭크로 올라가 메이트합니다.
+---
+id=p06
+theme=메이트인2
+mate=2
+title=퀸 희생 백랭크 메이트
+fen=r5k1/5ppp/8/4Q3/8/8/5PPP/4R1K1 w - - 0 1
+solution=e5e8 a8e8 e1e8
+explain=퀸을 e8에 희생해 흑 룩을 끌어들인 뒤, 뒤에 대기하던 e1 룩으로 되잡으면 백랭크 체크메이트입니다.
+---
+id=p07
+theme=메이트인2
+mate=2
+title=퀸과 킹의 구석 메이트
+fen=7k/8/5K2/8/8/8/5Q2/8 w - - 0 1
+solution=f2g2 h8h7 g2g7
+explain=백 킹이 탈출로를 막아 주고 있으므로 퀸을 g열이나 7랭크로 배치해(Qg2, Qa7 등) 다음 수에 체크메이트합니다.
+---
+id=p08
+theme=메이트인3
+mate=3
+title=쌍룩 3수 사다리 메이트
+fen=8/2k5/8/8/8/8/6R1/1K5R w - - 0 1
+solution=g2g6 c7d7 h1h7 d7e8 g6g8
+explain=두 룩을 번갈아 한 줄씩 올려 6랭크→7랭크→8랭크 순으로 흑 킹을 몰아붙이면 자유롭게 3수 안에 메이트할 수 있습니다.
+---
+id=p09
+theme=메이트인3
+mate=3
+title=퀸+룩 자유 3수 메이트
+fen=8/5k2/8/8/8/8/1Q6/R5K1 w - - 0 1
+solution=a1a6 f7e7 b2b7 e7e8 a6a8
+explain=퀸과 룩이 번갈아 랭크나 파일을 차단하면 다양한 경로로 3수 안에 체크메이트를 완성할 수 있습니다.
+---
+id=p10
+theme=메이트인3
+mate=3
+title=퀸과 킹 3수 체크메이트
+fen=3k4/8/4K3/8/8/8/Q7/8 w - - 0 1
+solution=a2a7 d8c8 e6d6 c8d8 a7a8
+explain=퀸으로 킹을 구석으로 가두고 백 킹이 대각선으로 합류하면 여러 경로(Qa8#, Qd7#, Qb8# 등)로 메이트할 수 있습니다.
+---
+id=p11
+theme=포크
+title=로열 포크 (킹 + 룩)
+fen=r3k3/ppp2ppp/8/3N4/8/8/PPP2PPP/4K3 w - - 0 1
+solution=d5c7 e8d7 c7a8
+explain=나이트가 c7 폰을 잡으며 킹과 a8 룩을 동시에 공격합니다. 킹이 피하면 룩을 얻습니다.
+---
+id=p12
+theme=포크
+title=퀸 체크 이중 공격
+fen=6k1/5pp1/7p/r7/8/8/5PPP/3Q2K1 w - - 0 1
+solution=d1d8 g8h7 d8a5
+explain=퀸이 d8로 올라가 흑 킹에 체크를 걸면서 대각선 위의 a5 룩을 동시에 노립니다. 킹이 피하면 룩을 공짜로 잡습니다.
+---
+id=p13
+theme=핀
+title=절대 핀으로 퀸 획득
+fen=6k1/6pp/8/3q4/8/8/5PPP/2R2BK1 w - - 0 1
+solution=f1c4 d5c4 c1c4
+explain=비숍을 c4에 두면 d5 퀸이 킹 앞에 묶입니다. 퀸이 비숍을 잡아도 룩으로 되잡아 승리합니다.
+---
+id=p14
+theme=스큐어
+title=킹 뒤의 퀸 꿰뚫기
+fen=6q1/8/8/3k4/8/8/7K/3B4 w - - 0 1
+solution=d1b3 d5e5 b3g8
+explain=비숍 체크로 킹을 비켜나게 한 뒤, 대각선 뒤에 있던 퀸을 공짜로 잡습니다.
+---
+id=p15
+theme=디스커버드
+title=디스커버드 체크로 퀸 획득
+fen=3q2k1/pp3pp1/8/8/8/3B4/5PPP/3R2K1 w - - 0 1
+solution=d3h7 g8h7 d1d8
+explain=d3 비숍이 h7 체크로 비켜나면 d1 룩의 길이 열려 d8 퀸을 잡을 수 있습니다.
+---
+id=p16
+theme=프로모션
+title=승진으로 승리 확정
+fen=8/1P3k2/8/8/8/8/8/6K1 w - - 0 1
+solution=b7b8q
+explain=b7 폰을 b8로 올려 퀸으로 승진시키면 압도적인 기물 우위를 얻습니다.

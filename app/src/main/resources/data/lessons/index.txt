@@ -1,3 +1,0 @@
-03_rook.txt
-07_knight.txt
-12_castling.txt

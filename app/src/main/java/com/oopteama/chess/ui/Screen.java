@@ -1,22 +1,27 @@
 package com.oopteama.chess.ui;
 
-import java.util.Optional;
-
 import javax.swing.JComponent;
 
-import com.oopteama.chess.nav.Route;
-
+/**
+ * MainWindow가 모든 화면을 다형적으로 관리하기 위한 공통 계약입니다.
+ */
 public interface Screen {
 
-    String cardName();
+    JComponent view();
 
-    JComponent component();
+    default void onShow() {
+    }
 
-    void onShow(Route route);
+    default void onHide() {
+    }
 
-    void onHide();
+    default void onSettingsChanged() {
+    }
 
-    default Optional<String> leaveWarning() {
-        return Optional.empty();
+    /**
+     * 화면을 떠나기 전 확인 메시지가 필요하면 반환하고, 없으면 null을 반환합니다.
+     */
+    default String leaveWarning() {
+        return null;
     }
 }
