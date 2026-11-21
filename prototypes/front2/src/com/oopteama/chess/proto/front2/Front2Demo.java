@@ -41,7 +41,19 @@ public class Front2Demo {
         sidebar.add(footer,BorderLayout.SOUTH);root.add(sidebar,BorderLayout.WEST);
         JPanel main=new JPanel(new BorderLayout());main.setBackground(DemoTheme.BG);
         JPanel header=new JPanel(new BorderLayout());header.setBackground(DemoTheme.BG);DemoTheme.inset(header,25,30,15,30);
-        header.add(DemoTheme.label("배우고 · 풀고 · 다시 익히는 체스",19,DemoTheme.CREAM,true),BorderLayout.WEST);
+        JButton menuToggle = DemoTheme.button("☰ 메뉴 열기", false);
+        menuToggle.setFocusPainted(true);
+        menuToggle.addActionListener(event -> {
+            boolean open = !sidebar.isVisible();
+            sidebar.setVisible(open);
+            menuToggle.setText(open ? "☰ 메뉴 닫기" : "☰ 메뉴 열기");
+            root.revalidate();
+            root.repaint();
+        });
+        JPanel headerStart = DemoTheme.transparent(new BorderLayout(14, 0));
+        headerStart.add(menuToggle, BorderLayout.WEST);
+        headerStart.add(DemoTheme.label("배우고 · 풀고 · 다시 익히는 체스",19,DemoTheme.CREAM,true), BorderLayout.CENTER);
+        header.add(headerStart, BorderLayout.WEST);
         header.add(DemoTheme.label("FRONTEND PREVIEW  v1.0",12,DemoTheme.GOLD,true),BorderLayout.EAST);
         main.add(header,BorderLayout.NORTH);
         content.setBackground(DemoTheme.BG);content.add(new LessonScreen(state,this::refresh),keys[0]);
