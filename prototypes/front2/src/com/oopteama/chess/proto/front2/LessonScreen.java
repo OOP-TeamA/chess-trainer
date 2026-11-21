@@ -13,7 +13,7 @@ public class LessonScreen extends JPanel {
     private final JPanel example = DemoTheme.transparent(new BorderLayout(0, 6));
     private final JPanel middle = DemoTheme.transparent(new BorderLayout(12, 12));
     private final JPanel info = DemoTheme.card(new BorderLayout(0, 16));
-    private final JTextArea feedback = new JTextArea();
+    private final JScrollPane explanation;
     private final JLabel stepIndex=DemoTheme.label("",13,DemoTheme.GOLD,true);
     private final JButton back=DemoTheme.button("이전 단계",false);
     private final JButton next=DemoTheme.button("다음 단계",true);
@@ -26,7 +26,7 @@ public class LessonScreen extends JPanel {
         setLayout(new BorderLayout(20,0));setOpaque(false);DemoTheme.inset(this,24,28,28,28);
         JPanel left=DemoTheme.transparent(new BorderLayout(0,16)); left.setPreferredSize(new Dimension(152,500));
         left.add(DemoTheme.label("학습 커리큘럼",18,DemoTheme.CREAM,true),BorderLayout.NORTH);
-        left.add(lessonButtons,BorderLayout.NORTH);add(left,BorderLayout.WEST);
+        left.add(lessonButtons,BorderLayout.CENTER);add(left,BorderLayout.WEST);
         JPanel detail=DemoTheme.card(new BorderLayout(0,12));
         JPanel top=DemoTheme.transparent(new BorderLayout(0, 4));
         top.add(heading, BorderLayout.NORTH);
@@ -38,15 +38,25 @@ public class LessonScreen extends JPanel {
                 "d1", "d2", "d3", "d5"), "d6", "d7");
         board.getAccessibleContext().setAccessibleName("룩 이동 예시. d4의 백 룩, d6의 아군 폰, 이동할 수 없는 d7.");
         example.add(board, BorderLayout.CENTER);
-        example.add(DemoTheme.label("● 이동 가능    × 이동 불가", 14, DemoTheme.CREAM, true), BorderLayout.SOUTH);
+        JPanel legend = DemoTheme.transparent(new FlowLayout(FlowLayout.LEADING, 8, 0));
+        legend.add(DemoTheme.label("● 이동 가능", 13, DemoTheme.GREEN, true));
+        legend.add(DemoTheme.label("× 이동 불가", 13, DemoTheme.RED, true));
+        JPanel boardFooter = DemoTheme.transparent(new BorderLayout(0, 6));
+        boardFooter.add(legend, BorderLayout.NORTH);
+        JButton replay = DemoTheme.button("이동 예시 다시 보기", false);
+        replay.addActionListener(event -> board.replayPreview());
+        boardFooter.add(replay, BorderLayout.SOUTH);
+        example.add(boardFooter, BorderLayout.SOUTH);
 
         info.setBackground(DemoTheme.PANEL2);
         styleText(lessonBody, 20, DemoTheme.CREAM);
-        styleText(feedback, 17, DemoTheme.CREAM);
-        feedback.setRows(5);
-        feedback.setText("d5까지 갈 수 있어요. d6의 아군 폰이 길을 막아서 d7로는 갈 수 없어요.");
-        info.add(lessonBody, BorderLayout.CENTER);
-        info.add(feedback, BorderLayout.SOUTH);
+        explanation = new JScrollPane(lessonBody,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        explanation.setBorder(null);
+        explanation.setOpaque(false);
+        explanation.getViewport().setOpaque(false);
+        explanation.getVerticalScrollBar().setUnitIncrement(16);
+        info.add(explanation, BorderLayout.CENTER);
 
         middle.add(stepIndex, BorderLayout.SOUTH);
         detail.add(middle, BorderLayout.CENTER);
@@ -84,7 +94,7 @@ public class LessonScreen extends JPanel {
         DemoData.Lesson l=DemoData.LESSONS[selected];
         heading.setText(l.title);tag.setText(l.tagline);
         boolean showRook = selected == DemoData.ROOK_LESSON_INDEX && step == 0;
-        feedback.setVisible(showRook);
+        lessonBody.setFont(DemoTheme.font(showRook ? 17 : 20, false));
         info.setPreferredSize(showRook ? new Dimension(210, 0) : null);
         middle.remove(info);
         middle.remove(example);
@@ -93,8 +103,18 @@ public class LessonScreen extends JPanel {
             middle.add(example, BorderLayout.CENTER);
         }
         lessonBody.setText(showRook
-                ? "룩은 가로와 세로로 움직여요. 초록 점은 d4의 룩이 갈 수 있는 칸이에요."
+                ? """
+                  룩의 이동 방향
+                  룩은 가로와 세로로 움직여요.
+
+                  갈 수 있는 칸
+                  d4의 룩은 위로 d5까지 갈 수 있어요.
+
+                  d7은 왜 못 갈까요?
+                  d6의 아군 폰이 길을 막고 있어요. 룩은 기물을 뛰어넘을 수 없어요.
+                  """.strip()
                 : l.steps[step]);
+        lessonBody.setCaretPosition(0);
         stepIndex.setText("학습 단계  "+(step+1)+" / "+l.steps.length);
         status.setText(state.doneLessons[selected]?"✓ 학습 완료":"다음 단계에서 계속");
         back.setEnabled(step>0);next.setText(step==l.steps.length-1?"레슨 완료 처리":"다음 단계  →");

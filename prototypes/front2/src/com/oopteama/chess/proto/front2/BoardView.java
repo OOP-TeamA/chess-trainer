@@ -11,12 +11,27 @@ public class BoardView extends JPanel {
     private String selected;
     private boolean preview;
     private Set<String> previewTargets = Set.of();
+    private int previewFrame = 5;
+    private final Timer previewTimer = new Timer(130, event -> {
+        previewFrame++;
+        if (previewFrame == 5) ((Timer) event.getSource()).stop();
+        repaint();
+    });
     private String previewBlocker;
     private String previewBlockedTarget;
     private BiConsumer<String,String> moveHandler;
     private String highlightFrom, highlightTo;
     private final Color light = new Color(222, 208, 175), dark = new Color(129, 104, 79);
     public BoardView() {
+        addHierarchyListener(event -> {
+            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) == 0 || !preview) return;
+            if (isShowing()) {
+                replayPreview();
+            } else {
+                previewTimer.stop();
+                previewFrame = 5;
+            }
+        });
         setOpaque(false); setPreferredSize(new Dimension(460,460));
         addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) {
             if (preview) return;
@@ -45,7 +60,13 @@ public class BoardView extends JPanel {
             }
             if(c!=8) throw new IllegalArgumentException("각 랭크는 8칸이어야 합니다");
         }
-        selected=null; highlightFrom=highlightTo=null; repaint();
+        selected=null; highlightFrom=highlightTo=null;
+        preview = false;
+        previewTimer.stop();
+        previewFrame = 5;
+        previewTargets = Set.of();
+        previewBlocker = previewBlockedTarget = null;
+        repaint();
     }
     public void showPreview(String from, Set<String> targets, String blocker, String blockedTarget) {
         preview = true;
@@ -54,6 +75,18 @@ public class BoardView extends JPanel {
         previewBlocker = blocker;
         previewBlockedTarget = blockedTarget;
         repaint();
+    }
+
+    void replayPreview() {
+        previewFrame = 0;
+        previewTimer.restart();
+        repaint();
+    }
+
+    private boolean isPreviewTargetVisible(String square) {
+        return previewTargets.contains(square)
+                && Math.abs(square.charAt(0) - selected.charAt(0))
+                + Math.abs(square.charAt(1) - selected.charAt(1)) <= previewFrame;
     }
 
     public void setMoveHandler(BiConsumer<String,String> handler) { moveHandler=handler; }
@@ -83,17 +116,19 @@ public class BoardView extends JPanel {
             if(coord.equals(highlightFrom)||coord.equals(highlightTo)) { g.setColor(new Color(123,205,145,125)); g.fillRect(x1,y1,w,h); }
             if(c==0) { g.setColor((r+c)%2==0?dark:light); g.setFont(DemoTheme.font(Math.max(11,size/48),true)); g.drawString(""+(8-r),x1+4,y1+15); }
             if(r==7) { g.setColor((r+c)%2==0?dark:light); g.setFont(DemoTheme.font(Math.max(11,size/48),true)); g.drawString(""+(char)('a'+c),x2-14,y2-5); }
-            if (previewTargets.contains(coord)) {
+            if (selected != null && isPreviewTargetVisible(coord)) {
                 int dot = Math.max(6, w / 5);
+                g.setColor(new Color(76, 183, 113, 100));
+                g.fillRect(x1, y1, w, h);
                 g.setColor(new Color(35, 94, 58));
                 g.fillOval(x1 + (w - dot) / 2, y1 + (h - dot) / 2, dot, dot);
             }
-            if (coord.equals(previewBlocker) || coord.equals(previewBlockedTarget)) {
+            if (previewFrame >= 5 && (coord.equals(previewBlocker) || coord.equals(previewBlockedTarget))) {
                 g.setColor(new Color(143, 49, 44));
                 g.setStroke(new BasicStroke(3));
                 g.drawRect(x1 + 3, y1 + 3, w - 7, h - 7);
             }
-            if (coord.equals(previewBlockedTarget)) {
+            if (previewFrame >= 5 && coord.equals(previewBlockedTarget)) {
                 g.setFont(DemoTheme.font(Math.max(14, w / 2), true));
                 FontMetrics metrics = g.getFontMetrics();
                 g.drawString("×", x1 + (w - metrics.stringWidth("×")) / 2,
