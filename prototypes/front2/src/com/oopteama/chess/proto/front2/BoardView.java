@@ -21,6 +21,12 @@ public class BoardView extends JPanel {
     private String previewBlockedTarget;
     private BiConsumer<String,String> moveHandler;
     private String highlightFrom, highlightTo;
+    private long moveStarted;
+    private static final int MOVE_DURATION_MS = 340;
+    private final Timer moveTimer = new Timer(16, event -> {
+        if (moveProgress() >= 1) ((Timer) event.getSource()).stop();
+        repaint();
+    });
     private final Color light = new Color(222, 208, 175), dark = new Color(129, 104, 79);
     public BoardView() {
         addHierarchyListener(event -> {
@@ -34,7 +40,7 @@ public class BoardView extends JPanel {
         });
         setOpaque(false); setPreferredSize(new Dimension(460,460));
         addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) {
-            if (preview) return;
+            if (preview || !isEnabled()) return;
             int size=Math.min(getWidth(), getHeight())-28; int x0=(getWidth()-size)/2; int y0=(getHeight()-size)/2;
             if(e.getX()<x0 || e.getY()<y0 || e.getX()>=x0+size || e.getY()>=y0+size) return;
             int col=(e.getX()-x0)*8/size, row=(e.getY()-y0)*8/size;
@@ -63,6 +69,7 @@ public class BoardView extends JPanel {
         selected=null; highlightFrom=highlightTo=null;
         preview = false;
         previewTimer.stop();
+        moveTimer.stop();
         previewFrame = 5;
         previewTargets = Set.of();
         previewBlocker = previewBlockedTarget = null;
@@ -92,6 +99,29 @@ public class BoardView extends JPanel {
     public void setMoveHandler(BiConsumer<String,String> handler) { moveHandler=handler; }
     public void clearSelection() { selected=null; repaint(); }
     public void showMove(String from,String to) { highlightFrom=from; highlightTo=to; repaint(); }
+    void animateMove(String from, String to) {
+        int fromRow = '8' - from.charAt(1);
+        int fromCol = from.charAt(0) - 'a';
+        pieces['8' - to.charAt(1)][to.charAt(0) - 'a'] = pieces[fromRow][fromCol];
+        pieces[fromRow][fromCol] = ' ';
+        showMove(from, to);
+        moveStarted = System.nanoTime();
+        moveTimer.restart();
+    }
+
+    private double moveProgress() {
+        return Math.min(1, (System.nanoTime() - moveStarted) / (MOVE_DURATION_MS * 1_000_000.0));
+    }
+
+    private static void paintPiece(Graphics2D g, char piece, int x, int y, int w, int h) {
+        String text = symbol(piece);
+        g.setFont(new Font("Segoe UI Symbol", Font.PLAIN, Math.max(23, (int) (w * 0.77))));
+        FontMetrics metrics = g.getFontMetrics();
+        g.setColor(Character.isUpperCase(piece) ? new Color(255,247,218) : new Color(32,31,36));
+        g.drawString(text, x + (w - metrics.stringWidth(text)) / 2,
+                y + (h - metrics.getHeight()) / 2 + metrics.getAscent());
+    }
+
     private static String symbol(char ch) {
         switch (ch) {
             case 'K': return "♔"; case 'Q': return "♕"; case 'R': return "♖";
@@ -134,15 +164,19 @@ public class BoardView extends JPanel {
                 g.drawString("×", x1 + (w - metrics.stringWidth("×")) / 2,
                         y1 + (h - metrics.getHeight()) / 2 + metrics.getAscent());
             }
-            char p=pieces[r][c];
-            if(p!=' ') {
-                String text=symbol(p);
-                int fontSize=Math.max(23,(int)(w*0.77));
-                g.setFont(new Font("Segoe UI Symbol", Font.PLAIN,fontSize));
-                FontMetrics fm=g.getFontMetrics(); int tx=x1+(w-fm.stringWidth(text))/2,ty=y1+(h-fm.getHeight())/2+fm.getAscent();
-                g.setColor(Character.isUpperCase(p)?new Color(255,247,218):new Color(32,31,36));
-                g.drawString(text,tx,ty);
+            char piece = pieces[r][c];
+            if (piece != ' ' && !(moveTimer.isRunning() && coord.equals(highlightTo))) {
+                paintPiece(g, piece, x1, y1, w, h);
             }
+        }
+        if (moveTimer.isRunning()) {
+            int row = '8' - highlightTo.charAt(1);
+            int col = highlightTo.charAt(0) - 'a';
+            double progress = 1 - Math.pow(1 - moveProgress(), 3);
+            double x = highlightFrom.charAt(0) - 'a' + (highlightTo.charAt(0) - highlightFrom.charAt(0)) * progress;
+            double y = '8' - highlightFrom.charAt(1) + (highlightFrom.charAt(1) - highlightTo.charAt(1)) * progress;
+            paintPiece(g, pieces[row][col], x0 + (int) (x * size / 8), y0 + (int) (y * size / 8),
+                    size / 8, size / 8);
         }
         g.dispose();
     }
