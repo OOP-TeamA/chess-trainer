@@ -13,7 +13,7 @@
 | [`Theme.java`](../app/src/main/java/com/oopteama/chess/frontend/Theme.java) | FlatLaf 테마 | `FlatDarkLaf.setup()`, Pretendard 폰트, 다크 슬레이트+에메랄드 팔레트, 슬림 스크롤바, `applyButtonStyle`, `card`, `hoverCard`, `badge`, `RoundedPanel` |
 | [`Screen.java`](../app/src/main/java/com/oopteama/chess/frontend/Screen.java) | 화면 계약 | `Screen.Id` enum(7개 화면) + `view()`, `onShow()`, `onHide()`, `onSettingsChanged()`, `leaveWarning()` |
 | [`MainWindow.java`](../app/src/main/java/com/oopteama/chess/frontend/MainWindow.java) | 단일 창 | 다크 타이틀바, 좌측 사이드바, `CardLayout` + `Map<Screen.Id, Screen>`, 이탈 경고, 종료 시 `backend.save()` |
-| [`BoardView.java`](../app/src/main/java/com/oopteama/chess/frontend/BoardView.java) | 공용 체스판 | 생성자 `(Settings, BiFunction<Board, Move, Evaluation>)` — 클릭/드래그, 벡터 기물, 승진 창, 캐슬링 룩 편의, 호버 수 평가 시각화 |
+| [`BoardView.java`](../app/src/main/java/com/oopteama/chess/frontend/BoardView.java) | 공용 체스판 | 생성자 `(Settings, BiFunction<Board, Move, Evaluation>)` — 클릭/드래그, 벡터 기물, 기물 이동 애니메이션, 승진 창, 캐슬링 룩 편의, 호버 수 평가 시각화 |
 | [`HomePanel.java`](../app/src/main/java/com/oopteama/chess/frontend/HomePanel.java) | 홈 대시보드 | 프로필 요약 3카드, 미완료 레슨→퍼즐→AI 자동 추천 배너, 호버 반응 2×2 바로가기 |
 | [`LessonPanel.java`](../app/src/main/java/com/oopteama/chess/frontend/LessonPanel.java) | 레슨 화면 | `[기본 튜토리얼 \| 유명 오프닝]` 탭, `backend.startLesson`/`completeLesson`, 420ms 오프닝 응수 타이머 |
 | [`PuzzlePanel.java`](../app/src/main/java/com/oopteama/chess/frontend/PuzzlePanel.java) | 퍼즐 화면 | 테마 필터, 자유 메이트 남은 수 표시, `힌트`/`무르기`/`다시 풀기`/`다음 퍼즐`, `backend.startPuzzle`/`recordPuzzle` |
@@ -32,11 +32,16 @@ flowchart LR
     L1["1. 64칸 배경<br/>테마색·직전수·강조·선택·체크·오답"] -->
     L2["2. 좌표<br/>a-h / 1-8"] -->
     L3["3. 합법 수<br/>점 / 포획 링"] -->
-    L4["4. 벡터 기물<br/>0..100 Staunton"] -->
+    L4["4. 벡터 기물<br/>0..100 Staunton · 이동 애니메이션"] -->
     L5["5. 호버 수 평가<br/>고스트·공격·수비·상대응수·HUD"] -->
     L6["6. 힌트 화살표"] -->
     L7["7. 드래그 기물"]
 ```
+
+- **기물 이동 애니메이션**: `setBoard`로 받은 국면이 직전 국면에서 합법 수 한 개로 도달한 국면이면, 그 수의 기물을 250ms 동안 ease-out으로 미끄러지게 그립니다. 화면 코드는 바꿀 필요가 없습니다.
+  - 캐슬링은 킹과 룩이 함께 움직이고, 잡힌 기물(앙파상 포함)은 제자리에서 서서히 사라집니다.
+  - 드래그로 놓은 수는 이미 도착 칸에 있으므로 다시 미끄러지지 않습니다. 무르기·새 대국·다음 퍼즐처럼 한 수로 설명되지 않는 변화는 바로 표시합니다.
+  - 내 수가 끝나기 전에 AI 응수가 도착하면 이어서 재생합니다.
 
 - **호버 프리뷰 레이어 (`drawHoverPreview`)**:
   1. 출발→도착 판정색 점선 궤적 & 반투명 고스트 기물(캐슬링 룩·승진 퀸 포함)

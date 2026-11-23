@@ -28,7 +28,9 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,9 +40,32 @@ import java.util.function.Consumer;
 
 /**
  * 모든 화면(레슨·퍼즐·AI 대전·로컬 대전)이 공용으로 사용하는 체스판 컴포넌트입니다.
- * 클릭 이동, 드래그 앤 드롭, 벡터 기물 렌더링, 합법 수 표시, 힌트 화살표, 프로모션 선택을 지원합니다.
+ * 클릭 이동, 드래그 앤 드롭, 벡터 기물 렌더링, 합법 수 표시, 힌트 화살표, 프로모션 선택,
+ * 기물 이동 애니메이션을 지원합니다.
  */
 public final class BoardView extends JPanel {
+
+    /** 기물이 출발 칸에서 도착 칸까지 미끄러지는 시간(ms). */
+    private static final int MOVE_ANIMATION_MS = 250;
+
+    /** 애니메이션 중 미끄러지는 기물 하나 (캐슬링은 킹과 룩 두 개). */
+    private record Slide(Piece piece, int from, int to) {
+    }
+
+    /**
+     * 한 수의 이동 애니메이션. 재생 중에는 수를 둔 뒤 국면(after)을 그리되 미끄러지는 기물의
+     * 도착 칸은 비워 두고, 잡힌 기물은 제자리에서 서서히 사라지게 합니다.
+     */
+    private record MoveAnimation(Move move, Board after, List<Slide> slides, Piece captured, int capturedSquare) {
+        boolean hides(int sq) {
+            for (Slide slide : slides) {
+                if (slide.to() == sq) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 
     private final Settings settings;
     private final BiFunction<Board, Move, MoveAnalyzer.Evaluation> movePreviewer;
@@ -66,6 +91,12 @@ public final class BoardView extends JPanel {
     private Point dragPoint;
     private boolean dragging;
     private Consumer<Move> moveHandler;
+
+    // 맨 앞이 재생 중인 수, 그 뒤는 대기 중인 수 (예: 내 수가 끝나기 전에 도착한 AI 응수)
+    private final Deque<MoveAnimation> animations = new ArrayDeque<>();
+    private final Timer animationTimer = new Timer(15, e -> onAnimationTick());
+    private long animationStartNanos;
+    private Move droppedMove; // 드래그로 놓은 수는 이미 도착 칸에 있으므로 다시 미끄러지지 않음
 
     public BoardView(Settings settings, BiFunction<Board, Move, MoveAnalyzer.Evaluation> movePreviewer) {
         this.settings = Objects.requireNonNull(settings, "settings");
@@ -116,7 +147,13 @@ public final class BoardView extends JPanel {
 
     // ---- 공개 API ----
 
+    /**
+     * 표시할 국면을 바꿉니다. 직전 국면에서 합법 수 한 개로 도달한 국면이면 그 수를 애니메이션으로 보여 주고,
+     * 무르기·새 대국·다음 퍼즐처럼 한 수로 설명되지 않는 변화는 바로 보여 줍니다.
+     */
     public void setBoard(Board board) {
+        Board previous = this.board;
+        List<Move> previousLegalMoves = this.legalMoves;
         this.board = Objects.requireNonNull(board, "board");
         this.legalMoves = board.legalMoves();
         this.selectedSquare = -1;
@@ -124,6 +161,7 @@ public final class BoardView extends JPanel {
         this.dragging = false;
         this.evalCache.clear();
         clearHover();
+        queueMoveAnimation(previous, previousLegalMoves, board);
         repaint();
     }
 
@@ -238,7 +276,7 @@ public final class BoardView extends JPanel {
             repaint();
             return;
         }
-        if (selectedSquare >= 0 && tryExecuteMove(selectedSquare, sq)) {
+        if (selectedSquare >= 0 && tryExecuteMove(selectedSquare, sq, false)) {
             return;
         }
         if (hasLegalMovesFrom(sq)) {
@@ -264,12 +302,12 @@ public final class BoardView extends JPanel {
         dragging = false;
         int to = squareAt(p);
         if (to >= 0 && to != from) {
-            tryExecuteMove(from, to);
+            tryExecuteMove(from, to, true);
         }
         repaint();
     }
 
-    private boolean tryExecuteMove(int from, int to) {
+    private boolean tryExecuteMove(int from, int to, boolean dropped) {
         List<Move> candidates = findMatchingMoves(from, to);
         if (candidates.isEmpty()) {
             return false;
@@ -290,7 +328,12 @@ public final class BoardView extends JPanel {
                     .orElse(candidates.getFirst());
         }
         selectedSquare = -1;
-        moveHandler.accept(chosen);
+        droppedMove = dropped ? chosen : null;
+        try {
+            moveHandler.accept(chosen);
+        } finally {
+            droppedMove = null;
+        }
         return true;
     }
 
@@ -336,6 +379,109 @@ public final class BoardView extends JPanel {
                 labels[0]
         );
         return choice >= 0 && choice < options.length ? options[choice] : null;
+    }
+
+    // ---- 기물 이동 애니메이션 ----
+
+    private void queueMoveAnimation(Board previous, List<Move> previousLegalMoves, Board next) {
+        // 같은 국면을 다시 그리는 경우(힌트 표시·화면 갱신 등)에는 재생 중인 애니메이션을 그대로 둠
+        if (previous == next || previous.toFen().equals(next.toFen())) {
+            return;
+        }
+        Move move = findMoveBetween(previous, previousLegalMoves, next);
+        if (move == null || move.equals(droppedMove)) {
+            stopAnimations();
+            return;
+        }
+        if (animations.size() >= 2) {
+            // 수가 연달아 밀려 들어오면 대기 중인 애니메이션은 건너뛰고 마지막 수만 보여 줌
+            animations.clear();
+        }
+        animations.addLast(buildAnimation(previous, move, next));
+        if (animations.size() == 1) {
+            animationStartNanos = System.nanoTime();
+            animationTimer.start();
+        }
+    }
+
+    /**
+     * before 국면의 합법 수 중 after 국면을 만드는 수를 찾습니다. 한 수로 설명되지 않으면 null입니다.
+     */
+    private static Move findMoveBetween(Board before, List<Move> beforeLegalMoves, Board after) {
+        String afterFen = null;
+        for (Move move : beforeLegalMoves) {
+            Piece mover = before.pieceAt(move.from());
+            Piece landed = move.promotion() == null ? mover : Piece.of(mover.side(), move.promotion());
+            if (after.pieceAt(move.to()) != landed || !after.pieceAt(move.from()).isEmpty()) {
+                continue;
+            }
+            if (afterFen == null) {
+                afterFen = after.toFen();
+            }
+            if (before.applyMove(move).toFen().equals(afterFen)) {
+                return move;
+            }
+        }
+        return null;
+    }
+
+    private static MoveAnimation buildAnimation(Board before, Move move, Board after) {
+        List<Slide> slides = new ArrayList<>(2);
+        // 승진은 폰이 미끄러진 뒤 도착 칸에서 승진한 기물로 바뀜
+        slides.add(new Slide(before.pieceAt(move.from()), move.from(), move.to()));
+        Piece captured = Piece.EMPTY;
+        int capturedSquare = -1;
+        switch (before.classifyMove(move)) {
+            case CASTLE_SHORT -> addRookSlide(slides, before, move.from() + 3, move.from() + 1);
+            case CASTLE_LONG -> addRookSlide(slides, before, move.from() - 4, move.from() - 1);
+            case CAPTURE -> {
+                capturedSquare = move.to();
+                captured = before.pieceAt(capturedSquare);
+            }
+            case EN_PASSANT -> {
+                capturedSquare = move.to() + (before.turn() == Side.WHITE ? -8 : 8);
+                captured = before.pieceAt(capturedSquare);
+            }
+            default -> {
+            }
+        }
+        return new MoveAnimation(move, after, List.copyOf(slides), captured, capturedSquare);
+    }
+
+    private static void addRookSlide(List<Slide> slides, Board before, int rookFrom, int rookTo) {
+        Piece rook = before.pieceAt(rookFrom);
+        if (!rook.isEmpty()) {
+            slides.add(new Slide(rook, rookFrom, rookTo));
+        }
+    }
+
+    private void onAnimationTick() {
+        if (!animations.isEmpty()
+                && System.nanoTime() - animationStartNanos >= MOVE_ANIMATION_MS * 1_000_000L) {
+            animations.removeFirst();
+            animationStartNanos = System.nanoTime(); // 대기 중이던 다음 수를 이어서 재생
+        }
+        if (animations.isEmpty()) {
+            animationTimer.stop();
+        }
+        repaint();
+    }
+
+    private void stopAnimations() {
+        animations.clear();
+        animationTimer.stop();
+    }
+
+    /** 재생 진행도 0..1 (ease-out cubic: 빠르게 출발해 도착 칸에서 부드럽게 멈춤). */
+    private double animationProgress() {
+        double t = Math.min(1.0, (System.nanoTime() - animationStartNanos) / (MOVE_ANIMATION_MS * 1_000_000.0));
+        double rest = 1.0 - t;
+        return 1.0 - rest * rest * rest;
+    }
+
+    /** 재생 중인 수와 대기 중인 수 (재생 순서). */
+    List<Move> pendingAnimationMoves() {
+        return animations.stream().map(MoveAnimation::move).toList();
     }
 
     // ---- 좌표 변환 ----
@@ -390,7 +536,12 @@ public final class BoardView extends JPanel {
 
         Color light = new Color(settings.boardTheme().lightRgb());
         Color dark = new Color(settings.boardTheme().darkRgb());
-        int checkedKingSq = board.isInCheck() ? board.findKing(board.turn()) : -1;
+
+        // 이동 애니메이션 중에는 재생 중인 수 기준으로 그림 (뒤에 대기 중인 수가 먼저 보이지 않도록)
+        MoveAnimation animation = animations.peekFirst();
+        Board shown = animation != null ? animation.after() : board;
+        Move shownLastMove = animation != null ? animation.move() : lastMove;
+        int checkedKingSq = shown.isInCheck() ? shown.findKing(shown.turn()) : -1;
 
         // 1. 64칸 배경 + 강조 오버레이
         for (int sq = 0; sq < 64; sq++) {
@@ -400,8 +551,8 @@ public final class BoardView extends JPanel {
             g2.setColor(isLight ? light : dark);
             g2.fillRect(x, y, cell, cell);
 
-            if (settings.highlightLastMove() && lastMove != null
-                    && (sq == lastMove.from() || sq == lastMove.to())) {
+            if (settings.highlightLastMove() && shownLastMove != null
+                    && (sq == shownLastMove.from() || sq == shownLastMove.to())) {
                 g2.setColor(new Color(245, 200, 66, 105));
                 g2.fillRect(x, y, cell, cell);
             }
@@ -486,10 +637,10 @@ public final class BoardView extends JPanel {
             }
         }
         for (int sq = 0; sq < 64; sq++) {
-            if (dragging && sq == dragSquare) {
+            if ((dragging && sq == dragSquare) || (animation != null && animation.hides(sq))) {
                 continue;
             }
-            Piece piece = board.pieceAt(sq);
+            Piece piece = shown.pieceAt(sq);
             if (!piece.isEmpty()) {
                 int x = x0 + visualCol(sq) * cell;
                 int y = y0 + visualRow(sq) * cell;
@@ -503,6 +654,9 @@ public final class BoardView extends JPanel {
                 }
                 drawPiece(g2, piece, x, y, cell, alpha);
             }
+        }
+        if (animation != null) {
+            drawMoveAnimation(g2, animation, x0, y0, cell);
         }
 
         // 5. 호버 프리뷰 (고스트 · 내 공격 · 아군 수비 · 방어 이탈 · 상대 예상 최선 응수 · 평가 바)
@@ -524,6 +678,22 @@ public final class BoardView extends JPanel {
         }
 
         g2.dispose();
+    }
+
+    private void drawMoveAnimation(Graphics2D g2, MoveAnimation animation, int x0, int y0, int cell) {
+        double t = animationProgress();
+        // 잡힌 기물은 제자리에서 서서히 사라짐 (앙파상은 도착 칸이 아닌 옆 칸의 폰)
+        if (!animation.captured().isEmpty() && t < 1.0) {
+            int sq = animation.capturedSquare();
+            drawPiece(g2, animation.captured(), x0 + visualCol(sq) * cell, y0 + visualRow(sq) * cell,
+                    cell, (float) (1.0 - t));
+        }
+        for (Slide slide : animation.slides()) {
+            double col = visualCol(slide.from()) + (visualCol(slide.to()) - visualCol(slide.from())) * t;
+            double row = visualRow(slide.from()) + (visualRow(slide.to()) - visualRow(slide.from())) * t;
+            drawPiece(g2, slide.piece(), x0 + (int) Math.round(col * cell), y0 + (int) Math.round(row * cell),
+                    cell, 1.0f);
+        }
     }
 
     private void drawHoverPreview(
