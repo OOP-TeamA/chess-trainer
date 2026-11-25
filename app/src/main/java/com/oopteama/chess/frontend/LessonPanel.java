@@ -23,6 +23,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.util.List;
+import java.util.Locale;
+import java.text.BreakIterator;
 
 /**
  * 레슨 화면: [기본 튜토리얼 | 유명 오프닝] 탭 전환, 보드 실습, 단계별 안내와 피드백을 제공합니다.
@@ -39,12 +41,16 @@ public final class LessonPanel extends JPanel implements Screen {
     private final JLabel stepCounter = Theme.muted("");
     private final JProgressBar stepBar = new JProgressBar();
     private final JTextArea promptArea = createTextArea();
-    private final JLabel feedbackLabel = new JLabel();
+    private final JTextArea feedbackLabel = createTextArea();
+    private final JPanel guide = Theme.card(18);
+    private int guideWidth;
     private final JButton hintBtn = Theme.secondaryButton("힌트");
     private final JButton resetBtn = Theme.secondaryButton("다시 놓기");
     private final JButton prevBtn = Theme.secondaryButton("이전");
     private final JButton nextBtn = Theme.primaryButton("다음 단계");
 
+    private final CollapsibleList lessonList;
+    private boolean lessonFinished;
     private Category activeCategory = Category.TUTORIAL;
     private LessonSession session;
     private Timer replyTimer;
@@ -53,12 +59,14 @@ public final class LessonPanel extends JPanel implements Screen {
         this.backend = backend;
         this.boardView = new BoardView(backend.settings(), backend::evaluateMove);
         this.boardView.setMoveHandler(this::onUserMove);
+        this.boardView.setIllegalMoveHandler(this::onIllegalMove);
 
         setLayout(new BorderLayout(18, 0));
         setBackground(Theme.BG);
         setBorder(new EmptyBorder(20, 22, 20, 22));
 
-        add(buildLeftList(), BorderLayout.WEST);
+        lessonList = new CollapsibleList(buildLeftList(), "레슨 목록");
+        add(lessonList, BorderLayout.WEST);
         add(boardView, BorderLayout.CENTER);
         add(buildRightGuide(), BorderLayout.EAST);
 
@@ -85,7 +93,6 @@ public final class LessonPanel extends JPanel implements Screen {
     }
 
     private JPanel buildRightGuide() {
-        JPanel guide = Theme.card(18);
         guide.setPreferredSize(new Dimension(300, 0));
 
         JPanel top = new JPanel();
@@ -127,6 +134,7 @@ public final class LessonPanel extends JPanel implements Screen {
         resetBtn.addActionListener(e -> {
             stopTimer();
             if (session != null) {
+                lessonFinished = false;
                 session.reset();
                 syncView();
             }
@@ -151,12 +159,57 @@ public final class LessonPanel extends JPanel implements Screen {
         return guide;
     }
 
+    @Override
+    public void doLayout() {
+        int width = Math.max(282, Math.min(430, Math.round(getWidth() * 0.315f)));
+        if (guideWidth != width) {
+            guideWidth = width;
+            guide.setPreferredSize(new Dimension(width, 0));
+            float scale = (width - 60) / 260f;
+            promptArea.setFont(Theme.font(18 * scale));
+            feedbackLabel.setFont(Theme.bold(16 * scale));
+            stepCounter.setFont(Theme.font(15 * scale));
+            resizeGuideTitle();
+        }
+        super.doLayout();
+    }
+
+    private void resizeGuideTitle() {
+        if (guideWidth == 0) return;
+        float size = 22 * (guideWidth - 60) / 260f;
+        var font = Theme.bold(size);
+        int available = guideWidth - 36;
+        int textWidth = lessonTitle.getFontMetrics(font).stringWidth(lessonTitle.getText());
+        if (textWidth > available) font = font.deriveFont(size * available / textWidth);
+        lessonTitle.setFont(font);
+    }
+
+    static String fixedGuideLines(String text, java.awt.FontMetrics metrics, int width) {
+        StringBuilder result = new StringBuilder();
+        String[] paragraphs = text.split("\\R", -1);
+        for (int index = 0; index < paragraphs.length; index++) {
+            if (index > 0) result.append('\n');
+            String paragraph = paragraphs[index];
+            BreakIterator lines = BreakIterator.getLineInstance(Locale.KOREAN);
+            lines.setText(paragraph);
+            int start = 0;
+            int previous = 0;
+            for (int end = lines.next(); end != BreakIterator.DONE; end = lines.next()) {
+                if (previous > start && metrics.stringWidth(paragraph.substring(start, end).stripTrailing()) > width) {
+                    result.append(paragraph.substring(start, previous).strip()).append('\n');
+                    start = previous;
+                }
+                previous = end;
+            }
+            result.append(paragraph.substring(start).strip());
+        }
+        return result.toString();
+    }
+
     private static JTextArea createTextArea() {
         JTextArea area = new JTextArea();
         area.setEditable(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setFont(Theme.font(14));
+        area.setFont(Theme.font(18));
         area.setForeground(Theme.TEXT);
         area.setBackground(Theme.SURFACE);
         area.setBorder(new EmptyBorder(4, 2, 4, 2));
@@ -189,6 +242,7 @@ public final class LessonPanel extends JPanel implements Screen {
     }
 
     private void selectLesson(Lesson lesson) {
+        lessonFinished = false;
         stopTimer();
         this.session = backend.startLesson(lesson);
         rebuildList();
@@ -223,12 +277,19 @@ public final class LessonPanel extends JPanel implements Screen {
         listContainer.repaint();
     }
 
+    private void onIllegalMove(int from, int to) {
+        if (session == null) return;
+        boardView.flashWrong(to);
+        RetryCard.show(boardView, "이 칸으로는 이동할 수 없어요.", RetryCard.illegalMoveReason(session.board(), from, to));
+    }
+
     private void onUserMove(Move move) {
         if (session == null) return;
         TrainingSession.AttemptResult result = session.submitMove(move);
         if (result.outcome() == TrainingSession.Outcome.WRONG) {
             boardView.flashWrong(move.to());
             syncView();
+            RetryCard.show(boardView, "레슨 목표와 다른 수예요.", result.message());
             return;
         }
 
@@ -258,11 +319,9 @@ public final class LessonPanel extends JPanel implements Screen {
             syncView();
             return;
         }
-        List<Lesson> list = backend.lessons(activeCategory);
-        int idx = list.indexOf(session.lesson());
-        if (idx >= 0 && idx + 1 < list.size()) {
-            selectLesson(list.get(idx + 1));
-        }
+        lessonFinished = true;
+        lessonList.openAndFocus();
+        syncView();
     }
 
     private void syncView() {
@@ -271,23 +330,26 @@ public final class LessonPanel extends JPanel implements Screen {
         Lesson.Step step = session.currentStep();
 
         lessonTitle.setText(lesson.title());
+        resizeGuideTitle();
         stepCounter.setText("단계 " + (session.stepIndex() + 1) + " / " + session.stepCount());
         stepBar.setMaximum(session.stepCount());
         stepBar.setValue(session.stepIndex() + (session.isSolved() ? 1 : 0));
-        promptArea.setText(step.prompt());
+        promptArea.setText(fixedGuideLines(step.prompt(), promptArea.getFontMetrics(Theme.font(18)), 245));
+        promptArea.setCaretPosition(0);
 
-        String fb = session.feedback();
+        if (session.hasNextStep() || !session.isSolved()) lessonFinished = false;
+        String fb = lessonFinished ? "레슨 완료! 목록에서 다른 레슨을 고를 수 있어요." : session.feedback();
         if (fb.isEmpty()) {
-            feedbackLabel.setText("<html>보드에서 직접 기물을 움직여 보세요.</html>");
+            feedbackLabel.setText("보드에서 직접 기물을 움직여 보세요.");
             feedbackLabel.setForeground(Theme.MUTED);
         } else {
-            feedbackLabel.setText("<html>" + fb + "</html>");
+            feedbackLabel.setText(fixedGuideLines(fb, feedbackLabel.getFontMetrics(Theme.bold(16)), 245));
             feedbackLabel.setForeground(session.isFeedbackPositive() ? Theme.SUCCESS : Theme.WARNING);
         }
 
         prevBtn.setEnabled(session.hasPrevStep());
-        nextBtn.setEnabled(session.isSolved() && !session.hasPendingReply());
-        nextBtn.setText(session.hasNextStep() ? "다음 단계 →" : "다음 레슨 →");
+        nextBtn.setEnabled(!lessonFinished && session.isSolved() && !session.hasPendingReply());
+        nextBtn.setText(session.hasNextStep() ? "다음 단계 →" : lessonFinished ? "완료됨" : "레슨 완료");
 
         boardView.setFlipped(session.orientation() == Side.BLACK);
         boardView.setBoard(session.board());

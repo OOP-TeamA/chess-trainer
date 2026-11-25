@@ -27,30 +27,30 @@ import java.io.InputStream;
 import java.util.Map;
 
 /**
- * FlatLaf 기반 모던 다크 슬레이트 + 에메랄드 테마와 공통 컴포넌트 팩토리입니다.
+ * FlatLaf 기반 초기 프2 브라운 + 골드 테마와 공통 컴포넌트 팩토리입니다.
  */
 public final class Theme {
 
-    public static final Color BG = new Color(0x131720);
-    public static final Color SIDEBAR = new Color(0x0E1118);
-    public static final Color SURFACE = new Color(0x1B212E);
-    public static final Color SURFACE_ALT = new Color(0x242C3D);
-    public static final Color SURFACE_HOVER = new Color(0x2A3447);
-    public static final Color BORDER = new Color(0x2D3748);
+    public static final Color BG = new Color(0x1A1817);
+    public static final Color SIDEBAR = new Color(0x241F1C);
+    public static final Color SURFACE = new Color(0x2F2924);
+    public static final Color SURFACE_ALT = new Color(0x3A322B);
+    public static final Color SURFACE_HOVER = new Color(0x4A3D30);
+    public static final Color BORDER = new Color(0x56493B);
 
-    public static final Color ACCENT = new Color(0x2EB872);
-    public static final Color ACCENT_HOVER = new Color(0x259B5F);
-    public static final Color ACCENT_PRESSED = new Color(0x1E824F);
-    public static final Color ACCENT_SOFT = new Color(0x18352A);
+    public static final Color ACCENT = new Color(0xE0B669);
+    public static final Color ACCENT_HOVER = new Color(0xEAC785);
+    public static final Color ACCENT_PRESSED = new Color(0xC99C50);
+    public static final Color ACCENT_SOFT = new Color(0x423526);
 
-    public static final Color TEXT = new Color(0xF1F5F9);
-    public static final Color MUTED = new Color(0x94A3B8);
-    public static final Color SUCCESS = new Color(0x34D399);
+    public static final Color TEXT = new Color(0xF6EAD4);
+    public static final Color MUTED = new Color(0xB8AA96);
+    public static final Color SUCCESS = new Color(0x7DBD8F);
     public static final Color WARNING = new Color(0xFBBF24);
     public static final Color DANGER = new Color(0xF87171);
     public static final Color DANGER_BG = new Color(0x452228);
     public static final Color DANGER_HOVER = new Color(0x5E2B33);
-    public static final Color INFO = new Color(0x60A5FA);
+    public static final Color INFO = new Color(0xDFBC85);
 
     private static final Font REGULAR = loadFont("/fonts/Pretendard-Regular.ttf", new Font(Font.SANS_SERIF, Font.PLAIN, 14));
     private static final Font BOLD = loadFont("/fonts/Pretendard-Bold.ttf", new Font(Font.SANS_SERIF, Font.BOLD, 14));
@@ -111,7 +111,7 @@ public final class Theme {
         UIManager.put("ComboBox.buttonBackground", SURFACE_ALT);
         UIManager.put("ComboBox.popupBackground", SURFACE);
         UIManager.put("ComboBox.selectionBackground", ACCENT);
-        UIManager.put("ComboBox.selectionForeground", Color.WHITE);
+        UIManager.put("ComboBox.selectionForeground", BG);
         UIManager.put("ComboBox.padding", new Insets(5, 10, 5, 10));
 
         // 슬림 모던 스크롤바
@@ -200,7 +200,7 @@ public final class Theme {
     }
 
     public static JButton primaryButton(String text) {
-        return styledButton(text, ACCENT, ACCENT_HOVER, Color.WHITE);
+        return styledButton(text, ACCENT, ACCENT_HOVER, BG);
     }
 
     public static JButton secondaryButton(String text) {

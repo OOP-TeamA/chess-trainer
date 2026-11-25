@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * 모든 화면(레슨·퍼즐·AI 대전·로컬 대전)이 공용으로 사용하는 체스판 컴포넌트입니다.
@@ -91,6 +92,7 @@ public final class BoardView extends JPanel {
     private Point dragPoint;
     private boolean dragging;
     private Consumer<Move> moveHandler;
+    private BiConsumer<Integer, Integer> illegalMoveHandler;
 
     // 맨 앞이 재생 중인 수, 그 뒤는 대기 중인 수 (예: 내 수가 끝나기 전에 도착한 AI 응수)
     private final Deque<MoveAnimation> animations = new ArrayDeque<>();
@@ -209,6 +211,10 @@ public final class BoardView extends JPanel {
         this.moveHandler = moveHandler;
     }
 
+    void setIllegalMoveHandler(BiConsumer<Integer, Integer> handler) {
+        illegalMoveHandler = handler;
+    }
+
     public void flashWrong(int square) {
         this.wrongSquare = square;
         repaint();
@@ -310,6 +316,13 @@ public final class BoardView extends JPanel {
     private boolean tryExecuteMove(int from, int to, boolean dropped) {
         List<Move> candidates = findMatchingMoves(from, to);
         if (candidates.isEmpty()) {
+            if (illegalMoveHandler != null && from != to
+                    && (dropped || !hasLegalMovesFrom(to))) {
+                selectedSquare = -1;
+                dragSquare = -1;
+                illegalMoveHandler.accept(from, to);
+                return true;
+            }
             return false;
         }
         Move chosen;

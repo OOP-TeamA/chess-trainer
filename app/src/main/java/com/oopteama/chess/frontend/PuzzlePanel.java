@@ -29,7 +29,9 @@ import java.util.List;
  */
 public final class PuzzlePanel extends JPanel implements Screen {
 
-    private static final String ALL_THEMES = "전체 테마";
+    private static final String ALL_THEMES = "전체 퍼즐";
+    private static final String MATE_PUZZLES = "체크메이트";
+    private static final String TACTICAL_PUZZLES = "전술 문제";
 
     private final ChessBackend backend;
     private final BoardView boardView;
@@ -55,19 +57,19 @@ public final class PuzzlePanel extends JPanel implements Screen {
         this.backend = backend;
         this.boardView = new BoardView(backend.settings(), backend::evaluateMove);
         this.boardView.setMoveHandler(this::onUserMove);
+        this.boardView.setIllegalMoveHandler(this::onIllegalMove);
 
         setLayout(new BorderLayout(18, 0));
         setBackground(Theme.BG);
         setBorder(new EmptyBorder(20, 22, 20, 22));
 
-        add(buildLeftPanel(), BorderLayout.WEST);
+        add(new CollapsibleList(buildLeftPanel(), "퍼즐 목록"), BorderLayout.WEST);
         add(boardView, BorderLayout.CENTER);
         add(buildRightPanel(), BorderLayout.EAST);
 
         themeFilter.addItem(ALL_THEMES);
-        for (String t : backend.puzzleThemes()) {
-            themeFilter.addItem(t);
-        }
+        themeFilter.addItem(MATE_PUZZLES);
+        themeFilter.addItem(TACTICAL_PUZZLES);
         themeFilter.addActionListener(e -> applyFilter());
         applyFilter();
     }
@@ -84,7 +86,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
 
     private JPanel buildRightPanel() {
         JPanel right = Theme.card(18);
-        right.setPreferredSize(new Dimension(300, 0));
+        right.setPreferredSize(new Dimension(320, 0));
 
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
@@ -104,7 +106,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
         center.setBorder(new EmptyBorder(14, 0, 14, 0));
         center.add(Theme.scrollPane(explainArea), BorderLayout.CENTER);
 
-        feedbackLabel.setFont(Theme.bold(13));
+        feedbackLabel.setFont(Theme.bold(15));
         feedbackLabel.setOpaque(false);
         feedbackLabel.setBorder(new EmptyBorder(10, 12, 10, 12));
         JPanel feedbackBox = new Theme.RoundedPanel(Theme.SURFACE_ALT, Theme.BORDER, 10);
@@ -112,10 +114,11 @@ public final class PuzzlePanel extends JPanel implements Screen {
         feedbackBox.add(feedbackLabel, BorderLayout.CENTER);
         center.add(feedbackBox, BorderLayout.SOUTH);
 
-        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 8));
+        JPanel buttons = new JPanel(new GridLayout(2, 2, 8, 8));
         buttons.setOpaque(false);
-        JPanel topRow = new JPanel(new GridLayout(1, 3, 6, 0));
-        topRow.setOpaque(false);
+        hintBtn.setToolTipText("힌트 · 다음 수를 둘 칸을 확인해요.");
+        resetBtn.setToolTipText("다시 풀기 · 이 퍼즐의 시작 국면으로 돌아가요.");
+        nextBtn.setToolTipText("다음 퍼즐 · 목록의 다음 문제를 열어요.");
         hintBtn.addActionListener(e -> {
             if (session != null) {
                 session.showHint();
@@ -123,8 +126,8 @@ public final class PuzzlePanel extends JPanel implements Screen {
             }
         });
         undoBtn.addActionListener(e -> {
-            stopTimer();
-            if (session != null && session.undo()) {
+            if (session != null && !session.hasPendingReply() && session.undo()) {
+                stopTimer();
                 syncView();
             }
         });
@@ -137,10 +140,9 @@ public final class PuzzlePanel extends JPanel implements Screen {
             }
         });
         nextBtn.addActionListener(e -> selectNextPuzzle());
-        topRow.add(hintBtn);
-        topRow.add(undoBtn);
-        topRow.add(resetBtn);
-        buttons.add(topRow);
+        buttons.add(hintBtn);
+        buttons.add(undoBtn);
+        buttons.add(resetBtn);
         buttons.add(nextBtn);
 
         right.add(top, BorderLayout.NORTH);
@@ -154,17 +156,24 @@ public final class PuzzlePanel extends JPanel implements Screen {
         area.setEditable(false);
         area.setLineWrap(true);
         area.setWrapStyleWord(true);
-        area.setFont(Theme.font(14));
+        area.setFont(Theme.font(20));
         area.setForeground(Theme.TEXT);
         area.setBackground(Theme.SURFACE);
+        area.setBorder(new EmptyBorder(15, 16, 15, 16));
         return area;
+    }
+
+    static String neutralTitle(List<Puzzle> puzzles, Puzzle puzzle) {
+        int number = puzzles.indexOf(puzzle) + 1;
+        String goal = puzzle.isMatePuzzle() ? puzzle.mateIn() + "수 안에 체크메이트" : "최선의 수 찾기";
+        return "%02d. %s".formatted(number, goal);
     }
 
     private void applyFilter() {
         String selected = (String) themeFilter.getSelectedItem();
         visiblePuzzles = new ArrayList<>();
         for (Puzzle p : backend.puzzles()) {
-            if (ALL_THEMES.equals(selected) || p.theme().equals(selected)) {
+            if (ALL_THEMES.equals(selected) || p.isMatePuzzle() == MATE_PUZZLES.equals(selected)) {
                 visiblePuzzles.add(p);
             }
         }
@@ -199,7 +208,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
         for (Puzzle puzzle : visiblePuzzles) {
             boolean solved = backend.activeProfile().isPuzzleSolved(puzzle.id());
             boolean selected = puzzle.id().equals(currentId);
-            String label = (solved ? "✓ " : "○ ") + puzzle.title();
+            String label = (solved ? "✓ " : "○ ") + neutralTitle(backend.puzzles(), puzzle);
 
             Color bg = selected ? Theme.ACCENT_SOFT : Theme.SURFACE;
             Color hover = selected ? Theme.ACCENT_SOFT : Theme.SURFACE_ALT;
@@ -220,6 +229,13 @@ public final class PuzzlePanel extends JPanel implements Screen {
         listContainer.repaint();
     }
 
+    private void onIllegalMove(int from, int to) {
+        if (session == null) return;
+        boardView.flashWrong(to);
+        RetryCard.show(boardView, "이 칸으로는 이동할 수 없어요.",
+                RetryCard.illegalMoveReason(session.board(), from, to));
+    }
+
     private void onUserMove(Move move) {
         if (session == null) return;
         TrainingSession.AttemptResult result = session.submitMove(move);
@@ -230,6 +246,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
             }
             boardView.flashWrong(move.to());
             syncView();
+            RetryCard.show(boardView, "퍼즐 목표와 다른 수예요.", result.message());
             return;
         }
 
@@ -255,8 +272,9 @@ public final class PuzzlePanel extends JPanel implements Screen {
     private void syncView() {
         if (session == null) return;
         Puzzle p = session.puzzle();
-        themeBadge.setText(p.isMatePuzzle() ? (p.mateIn() + "수 메이트 · 자유 풀이") : p.theme());
-        titleLabel.setText(p.title());
+        themeBadge.setText(p.isMatePuzzle() ? (p.mateIn() + "수 메이트 · 자유 풀이") : TACTICAL_PUZZLES);
+        titleLabel.setText(neutralTitle(backend.puzzles(), p));
+        explainArea.setToolTipText(null);
         if (p.isMatePuzzle()) {
             turnLabel.setText(p.startBoard().turn().label() + " 차례 · 남은 수 "
                     + session.remainingMoves() + " / " + p.mateIn());
@@ -265,16 +283,22 @@ public final class PuzzlePanel extends JPanel implements Screen {
                     + session.currentUserMoveNumber() + "/" + session.totalUserMoves());
         }
 
+        boolean canUndo = session.canUndo() && !session.hasPendingReply();
         if (session.isSolved()) {
-            explainArea.setText("해설\n\n" + p.explanation());
+            explainArea.setText("해설 · " + p.title() + "\n\n" + p.explanation());
+            explainArea.setToolTipText("<html><div style='width: 240px'>" +
+                    p.explanation().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                    .replace("\n", "<br>") + "</div></html>");
         } else if (p.isMatePuzzle()) {
             explainArea.setText(p.startBoard().turn().label() + " 차례입니다.\n\n"
-                    + p.mateIn() + "수 안에 어떤 수순으로든 체크메이트하면 성공합니다! "
-                    + "상대(AI)는 최선으로 방어하며, 다른 아이디어를 시도하고 싶으면 [무르기]를 사용할 수 있습니다.");
+                    + p.mateIn() + "수 안에 체크메이트해 보세요. 어떤 수순이든 괜찮아요."
+                    + (canUndo ? "\n\n이전 차례로 돌아가려면 [무르기]를 눌러 주세요."
+                    : "\n\n오답인 수는 보드에 반영되지 않아요. 현재 국면에서 다른 수를 둘 수 있어요."));
         } else {
             explainArea.setText(p.startBoard().turn().label() + "의 최선의 전술 수를 찾아 보드에서 직접 두어 보세요.");
         }
 
+        explainArea.setCaretPosition(0);
         String fb = session.feedback();
         if (fb.isEmpty()) {
             feedbackLabel.setText("<html>문제를 풀면 해설이 공개됩니다.</html>");
@@ -284,7 +308,10 @@ public final class PuzzlePanel extends JPanel implements Screen {
             feedbackLabel.setForeground(session.isFeedbackPositive() ? Theme.SUCCESS : Theme.WARNING);
         }
 
-        undoBtn.setEnabled(session.canUndo() && !session.hasPendingReply());
+        undoBtn.setEnabled(canUndo);
+        undoBtn.setToolTipText(canUndo ? "무르기 · 직전 차례로 돌아가요."
+                : session.hasPendingReply() ? "상대의 응수를 기다리는 중이에요."
+                : "현재 무를 수 있는 수가 없어요.");
         boardView.setFlipped(session.orientation() == Side.BLACK);
         boardView.setBoard(session.board());
         boardView.setLastMove(session.lastMove());
