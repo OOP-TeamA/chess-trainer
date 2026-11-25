@@ -19,7 +19,9 @@ final class CollapsibleList extends JPanel {
         this.name = name;
         toggle = Theme.secondaryButton("<");
         toggle.setPreferredSize(new Dimension(36, 30));
-        toggle.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "arc: 8; margin: 0,0,0,0");
+        // secondaryButton이 넣어 둔 색·테두리 스타일 뒤에 덧붙임 (같은 키는 뒤의 값이 적용됨)
+        Object baseStyle = toggle.getClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE);
+        toggle.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, baseStyle + " arc: 8; margin: 0,0,0,0;");
         updateToggle(toggle, name, true);
         JPanel header = new JPanel(new FlowLayout(FlowLayout.TRAILING, 0, 0));
         header.setOpaque(false);

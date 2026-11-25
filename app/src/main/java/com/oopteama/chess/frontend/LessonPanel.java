@@ -235,7 +235,7 @@ public final class LessonPanel extends JPanel implements Screen {
 
     private static void styleTab(JButton btn, boolean active) {
         if (active) {
-            Theme.applyButtonStyle(btn, Theme.ACCENT, Theme.ACCENT_HOVER, Color.WHITE, null);
+            Theme.applyButtonStyle(btn, Theme.ACCENT, Theme.ACCENT_HOVER, Theme.BG, null);
         } else {
             Theme.applyButtonStyle(btn, Theme.SURFACE_ALT, Theme.SURFACE_HOVER, Theme.MUTED, null);
         }
@@ -280,7 +280,8 @@ public final class LessonPanel extends JPanel implements Screen {
     private void onIllegalMove(int from, int to) {
         if (session == null) return;
         boardView.flashWrong(to);
-        RetryCard.show(boardView, "이 칸으로는 이동할 수 없어요.", RetryCard.illegalMoveReason(session.board(), from, to));
+        RetryCard.show(boardView, "이 칸으로는 이동할 수 없어요.",
+                RetryCard.illegalMoveReason(session.board(), from, to, backend.settings().showLegalMoves()));
     }
 
     private void onUserMove(Move move) {
@@ -300,15 +301,20 @@ public final class LessonPanel extends JPanel implements Screen {
         syncView();
 
         if (result.autoReply() != null) {
-            boardView.setInteractive(false);
-            stopTimer();
-            replyTimer = new Timer(420, e -> {
-                session.applyPendingReply();
-                syncView();
-            });
-            replyTimer.setRepeats(false);
-            replyTimer.start();
+            scheduleReply();
         }
+    }
+
+    /** 예약된 상대 응수를 잠시 뒤 보드에 반영합니다. */
+    private void scheduleReply() {
+        boardView.setInteractive(false);
+        stopTimer();
+        replyTimer = new Timer(420, e -> {
+            session.applyPendingReply();
+            syncView();
+        });
+        replyTimer.setRepeats(false);
+        replyTimer.start();
     }
 
     private void advanceOrNextLesson() {
@@ -355,7 +361,7 @@ public final class LessonPanel extends JPanel implements Screen {
         boardView.setBoard(session.board());
         boardView.setLastMove(session.lastMove());
         boardView.setHighlightSquares(session.highlightSquares());
-        boardView.setArrow(session.hintArrow(), Theme.ACCENT);
+        boardView.setArrow(session.hintArrow(), Theme.BOARD_ACCENT);
         boardView.setInteractive(!session.isSolved() && !session.hasPendingReply());
     }
 
@@ -375,6 +381,10 @@ public final class LessonPanel extends JPanel implements Screen {
     public void onShow() {
         rebuildList();
         syncView();
+        // 응수를 기다리는 중에 화면을 떠났다면 onHide에서 멈춘 응수를 다시 예약
+        if (session != null && session.hasPendingReply()) {
+            scheduleReply();
+        }
     }
 
     @Override

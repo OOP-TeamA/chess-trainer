@@ -20,7 +20,12 @@ import java.awt.BorderLayout;
 final class RetryCard {
     private RetryCard() {}
 
-    static String illegalMoveReason(Board board, int from, int to) {
+    /**
+     * 규칙상 둘 수 없는 이동의 이유를 설명합니다.
+     *
+     * @param legalMovesShown 보드에 이동 가능 칸 점이 표시되는지 (설정에서 끌 수 있음)
+     */
+    static String illegalMoveReason(Board board, int from, int to, boolean legalMovesShown) {
         if (board.pieceAt(to).side() == board.turn()) {
             return Board.formatSquare(to) + "에 아군 기물이 있어요.";
         }
@@ -41,8 +46,14 @@ final class RetryCard {
                 }
             }
         }
-        return Board.formatSquare(from) + "에서 " + Board.formatSquare(to)
-                + "로는 이 국면에서 이동할 수 없어요. 표시된 이동 가능 칸을 확인해 보세요.";
+        return Board.formatSquare(from) + "에서 " + toward(to) + "는 이 국면에서 이동할 수 없어요. "
+                + (legalMovesShown ? "점으로 표시된 이동 가능 칸 중에서 골라 보세요." : "이 기물이 갈 수 있는 다른 칸을 찾아보세요.");
+    }
+
+    /** 칸 이름에 '(으)로'를 붙입니다. 숫자를 한국어로 읽으면 3(삼)·6(육)만 받침이 있어 '으로'가 됩니다. */
+    static String toward(int square) {
+        int rank = Board.rank(square) + 1;
+        return Board.formatSquare(square) + (rank == 3 || rank == 6 ? "으로" : "로");
     }
 
     static void show(JComponent boardView, String title, String reason) {
@@ -58,7 +69,7 @@ final class RetryCard {
                 new EmptyBorder(22, 24, 18, 24)));
         JLabel heading = Theme.sectionTitle(title);
         heading.setFont(Theme.bold(19));
-        heading.setForeground(Theme.SUCCESS);
+        heading.setForeground(Theme.WARNING);
         card.add(heading, BorderLayout.NORTH);
 
         JTextArea message = new JTextArea(reason, 0, 26);

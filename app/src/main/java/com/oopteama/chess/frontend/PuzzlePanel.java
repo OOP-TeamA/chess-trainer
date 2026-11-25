@@ -233,7 +233,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
         if (session == null) return;
         boardView.flashWrong(to);
         RetryCard.show(boardView, "이 칸으로는 이동할 수 없어요.",
-                RetryCard.illegalMoveReason(session.board(), from, to));
+                RetryCard.illegalMoveReason(session.board(), from, to, backend.settings().showLegalMoves()));
     }
 
     private void onUserMove(Move move) {
@@ -258,15 +258,20 @@ public final class PuzzlePanel extends JPanel implements Screen {
         syncView();
 
         if (result.autoReply() != null) {
-            boardView.setInteractive(false);
-            stopTimer();
-            replyTimer = new Timer(400, e -> {
-                session.applyPendingReply();
-                syncView();
-            });
-            replyTimer.setRepeats(false);
-            replyTimer.start();
+            scheduleReply();
         }
+    }
+
+    /** 예약된 상대 응수를 잠시 뒤 보드에 반영합니다. */
+    private void scheduleReply() {
+        boardView.setInteractive(false);
+        stopTimer();
+        replyTimer = new Timer(400, e -> {
+            session.applyPendingReply();
+            syncView();
+        });
+        replyTimer.setRepeats(false);
+        replyTimer.start();
     }
 
     private void syncView() {
@@ -290,10 +295,11 @@ public final class PuzzlePanel extends JPanel implements Screen {
                     p.explanation().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                     .replace("\n", "<br>") + "</div></html>");
         } else if (p.isMatePuzzle()) {
+            String nextAction = session.hasPendingReply() ? "\n\n상대의 응수를 기다리는 중이에요. 응수가 끝나면 다음 수를 두세요."
+                    : canUndo ? "\n\n이전 차례로 돌아가려면 [무르기]를 눌러 주세요."
+                    : "\n\n오답인 수는 보드에 반영되지 않아요. 현재 국면에서 다른 수를 둘 수 있어요.";
             explainArea.setText(p.startBoard().turn().label() + " 차례입니다.\n\n"
-                    + p.mateIn() + "수 안에 체크메이트해 보세요. 어떤 수순이든 괜찮아요."
-                    + (canUndo ? "\n\n이전 차례로 돌아가려면 [무르기]를 눌러 주세요."
-                    : "\n\n오답인 수는 보드에 반영되지 않아요. 현재 국면에서 다른 수를 둘 수 있어요."));
+                    + p.mateIn() + "수 안에 체크메이트해 보세요. 어떤 수순이든 괜찮아요." + nextAction);
         } else {
             explainArea.setText(p.startBoard().turn().label() + "의 최선의 전술 수를 찾아 보드에서 직접 두어 보세요.");
         }
@@ -316,7 +322,7 @@ public final class PuzzlePanel extends JPanel implements Screen {
         boardView.setBoard(session.board());
         boardView.setLastMove(session.lastMove());
         boardView.setHighlightSquares(session.highlightSquares());
-        boardView.setArrow(session.hintArrow(), Theme.INFO);
+        boardView.setArrow(session.hintArrow(), Theme.BOARD_INFO);
         boardView.setInteractive(!session.isSolved() && !session.hasPendingReply());
     }
 
@@ -336,6 +342,10 @@ public final class PuzzlePanel extends JPanel implements Screen {
     public void onShow() {
         rebuildList();
         syncView();
+        // 응수를 기다리는 중에 화면을 떠났다면 onHide에서 멈춘 응수를 다시 예약
+        if (session != null && session.hasPendingReply()) {
+            scheduleReply();
+        }
     }
 
     @Override

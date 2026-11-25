@@ -52,6 +52,10 @@ public final class Theme {
     public static final Color DANGER_HOVER = new Color(0x5E2B33);
     public static final Color INFO = new Color(0xDFBC85);
 
+    /** 보드 위 화살표·수 평가 표시 색. 브라운 계열 보드 칸과 금색 강조색에 묻히지 않도록 UI 색과 따로 둡니다. */
+    public static final Color BOARD_ACCENT = new Color(0x2EB872);
+    public static final Color BOARD_INFO = new Color(0x60A5FA);
+
     private static final Font REGULAR = loadFont("/fonts/Pretendard-Regular.ttf", new Font(Font.SANS_SERIF, Font.PLAIN, 14));
     private static final Font BOLD = loadFont("/fonts/Pretendard-Bold.ttf", new Font(Font.SANS_SERIF, Font.BOLD, 14));
 
@@ -134,7 +138,7 @@ public final class Theme {
         UIManager.put("ProgressBar.background", SURFACE_ALT);
         UIManager.put("ProgressBar.foreground", ACCENT);
         UIManager.put("CheckBox.icon.selectedBackground", ACCENT);
-        UIManager.put("CheckBox.icon.checkmarkColor", Color.WHITE);
+        UIManager.put("CheckBox.icon.checkmarkColor", BG);
         UIManager.put("CheckBox.icon.borderColor", BORDER);
 
         installed = true;
