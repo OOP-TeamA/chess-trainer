@@ -1,48 +1,493 @@
-# Backend 패키지 상세 (`com.oopteama.chess.backend`)
+# 백엔드: model · ai · training · data · service
 
-백엔드는 AWT/Swing에 완전히 독립된 **16개 Java 클래스**로 구성되며 3개 하위 패키지로 역할을 엄격히 나눕니다.
+화면(Swing)과 상관없는 프로그램의 핵심입니다. 파일 저장을 맡은 `data`를 빼면 모두 `java.util`만 쓰기 때문에 화면 없이 테스트할 수 있습니다.
+전체 그림은 [전체 구조](architecture.md)에 있습니다.
 
----
+## 1. `model.piece`: 기물 클래스 계층
 
-## 1. `backend.engine` — 체스 규칙 · 탐색 · 수 평가 (6개)
+```mermaid
+classDiagram
+    direction TB
+    class Piece {
+        <<abstract>>
+        -Side side
+        +side() Side
+        +name()* String
+        +symbol()* char
+        +value()* int
+        +attackedSquares(Board, Position)* List~Position~
+        +movableSquares(Board, Position) List~Position~
+        +attacks(Board, Position, Position) boolean
+        +fenChar() char
+        +create(char, Side)$ Piece
+    }
+    class SlidingPiece {
+        <<abstract>>
+        #directions()* int[][]
+        +attackedSquares(Board, Position) List~Position~
+    }
+    class StepPiece {
+        <<abstract>>
+        #offsets()* int[][]
+        +attackedSquares(Board, Position) List~Position~
+    }
+    class Pawn {
+        +attackedSquares(Board, Position) List~Position~
+        +movableSquares(Board, Position) List~Position~
+    }
+    class Queen {
+        #directions() int[][]
+    }
+    class Rook {
+        #directions() int[][]
+    }
+    class Bishop {
+        #directions() int[][]
+    }
+    class King {
+        #offsets() int[][]
+    }
+    class Knight {
+        #offsets() int[][]
+    }
+    Piece <|-- SlidingPiece
+    Piece <|-- StepPiece
+    Piece <|-- Pawn
+    SlidingPiece <|-- Queen
+    SlidingPiece <|-- Rook
+    SlidingPiece <|-- Bishop
+    StepPiece <|-- King
+    StepPiece <|-- Knight
+```
 
-| 파일 | 종류 | 핵심 책임 |
+| 클래스 | 부모 | 움직이는 방법 | 가치 (AI 점수) |
+| --- | --- | --- | --- |
+| `Queen` | `SlidingPiece` | 가로·세로·대각선 8방향으로 막힐 때까지 | 900 |
+| `Rook` | `SlidingPiece` | 가로·세로 4방향으로 막힐 때까지 | 500 |
+| `Bishop` | `SlidingPiece` | 대각선 4방향으로 막힐 때까지 | 330 |
+| `Knight` | `StepPiece` | L자 8칸 (다른 기물을 뛰어넘음) | 320 |
+| `King` | `StepPiece` | 주변 8칸 (캐슬링은 `Rules`가 따로 추가) | 20,000 |
+| `Pawn` | `Piece` | 앞으로 1칸(처음 자리에서는 2칸), 대각선 앞의 상대 잡기, 앙파상 | 100 |
+
+**메서드 두 개를 나눈 이유**
+
+- `attackedSquares()`: 이 기물이 **공격하는 칸**입니다. 킹이 공격받는지(체크) 판단할 때 씁니다.
+- `movableSquares()`: 이 기물이 **갈 수 있는 칸**입니다. 부모 `Piece`의 기본 구현은 "공격하는 칸 중 아군이 없는 칸"입니다.
+- 폰만 두 가지가 다릅니다(앞으로 가지만 대각선으로 잡음). 그래서 `Pawn`만 `movableSquares()`를 다시 정의(오버라이딩)합니다.
+
+**하위 클래스가 얼마나 짧은지** — 룩은 방향 4개만 알려 주면 되고, 실제로 미끄러지며 칸을 모으는 코드는 부모 `SlidingPiece`에 한 번만 있습니다.
+
+```java
+public class Rook extends SlidingPiece {
+
+    private static final int[][] DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    public Rook(Side side) {
+        super(side);
+    }
+
+    @Override
+    protected int[][] directions() {
+        return DIRECTIONS;
+    }
+
+    @Override
+    public String name() {
+        return "룩";
+    }
+
+    @Override
+    public char symbol() {
+        return 'R';
+    }
+
+    @Override
+    public int value() {
+        return 500;
+    }
+}
+```
+
+`Piece.create('Q', Side.WHITE)`는 기호를 보고 알맞은 하위 클래스 객체를 만들어 주는 정적 팩토리 메서드입니다. 폰 승진과 FEN 읽기에서 씁니다.
+
+## 2. `model`: 체스판과 규칙
+
+```mermaid
+classDiagram
+    direction LR
+    class Side {
+        <<enumeration>>
+        WHITE
+        BLACK
+        +opposite() Side
+        +forward() int
+        +homeRow() int
+    }
+    class Position {
+        <<record>>
+        +int col
+        +int row
+        +of(String)$ Position
+        +offset(int, int) Position
+    }
+    class Move {
+        <<record>>
+        +Position from
+        +Position to
+        +char promotion
+        +of(String)$ Move
+        +isPromotion() boolean
+    }
+    class CastlingRights {
+        <<record>>
+        +kingSide(Side) boolean
+        +queenSide(Side) boolean
+        +without(Position) CastlingRights
+    }
+    class Board {
+        -Piece[][] grid
+        -Side turn
+        -CastlingRights castling
+        -Position enPassant
+        -int halfmoveClock
+        -int fullmoveNumber
+        +initial()$ Board
+        +fromFen(String)$ Board
+        +pieceAt(Position) Piece
+        +findKing(Side) Position
+        +apply(Move) Board
+        +toFen() String
+    }
+    class Rules {
+        <<utility>>
+        +legalMoves(Board)$ List~Move~
+        +legalMovesFrom(Board, Position)$ List~Move~
+        +isInCheck(Board)$ boolean
+        +isCheckmate(Board)$ boolean
+        +isStalemate(Board)$ boolean
+        +isInsufficientMaterial(Board)$ boolean
+    }
+    class Game {
+        -List~PlayedMove~ moves
+        -List~Board~ boards
+        +play(Move) PlayedMove
+        +undo(int) int
+        +resign(Side)
+        +status() Status
+        +statusText() String
+    }
+    class Fen {
+        <<utility>>
+        +parse(String)$ Board
+        +format(Board)$ String
+    }
+    class Notation {
+        <<utility>>
+        +toSan(Board, Move)$ String
+    }
+    Board o-- Piece : 8×8 칸
+    Board --> Side
+    Board --> CastlingRights
+    Move --> Position
+    Game o-- Board : 둔 수마다 국면 저장
+    Game ..> Rules
+    Game ..> Notation
+    Rules ..> Board
+    Fen ..> Board
+```
+
+| 클래스 | 종류 | 하는 일 |
 | --- | --- | --- |
-| [`Piece.java`](../app/src/main/java/com/oopteama/chess/backend/engine/Piece.java) | `enum` | `Side`(WHITE/BLACK), `Type`(PAWN~KING 가치·기호), `Piece`(EMPTY, WP..BK) |
-| [`Move.java`](../app/src/main/java/com/oopteama/chess/backend/engine/Move.java) | `record` | `Move(from, to, promotion)`, `Kind`, `Record(move, kind, moved, captured, check, checkmate, san)`, UCI 변환 |
-| [`Board.java`](../app/src/main/java/com/oopteama/chess/backend/engine/Board.java) | `final class` | 불변 64칸 국면(`0=a1..63=h8`), FEN 표준/샌드박스 파싱·직렬화, 합법 수, 특수 규칙, `attackersOf`, `attackedEnemySquaresFrom` |
-| [`ChessGame.java`](../app/src/main/java/com/oopteama/chess/backend/engine/ChessGame.java) | `final class` | 대국 세션(`startBoard`, `history`, `resignedSide`), `play`/`playUci`/`playSan`, `undo(n)`, 3회 반복·50수·기물 부족 판정, SAN 생성/파싱 |
-| [`ChessAI.java`](../app/src/main/java/com/oopteama/chess/backend/engine/ChessAI.java) | `final class` | `Difficulty`(4단계), `Evaluator` 전략(`MATERIAL`/`MATERIAL_PST`), 알파-베타·반복 심화 탐색(`chooseMove`/`hint`), N수 강제 메이트 솔버(`findMateIn`/`isForcedMateAfterMove`/`bestDefenseAgainstMate`) |
-| [`MoveAnalyzer.java`](../app/src/main/java/com/oopteama/chess/backend/engine/MoveAnalyzer.java) | `final class` | 후보 수 평가 전용 (`Verdict`, `Evaluation`, `baselineScore`, `evaluate`, 포획 정지 탐색 `quiescence`, `findNewlyExposedAllies` 방어 이탈 탐지, 한국어 이유 생성) |
+| `Side` | enum | 백·흑. `opposite()`(상대), `forward()`(폰 전진 방향 +1/−1), `homeRow()`(첫 줄) |
+| `Position` | record | 칸 하나. `col` 0~7 = a~h, `row` 0~7 = 1~8. `Position.of("e4")`, `offset(열, 행)`(판 밖이면 `null`) |
+| `Move` | record | 수 하나: 출발 칸, 도착 칸, 승진 기물. `Move.of("e2e4")`, `Move.of("b7b8q")` |
+| `CastlingRights` | record | 백·흑의 킹 쪽·퀸 쪽 캐슬링 가능 여부 4개 |
+| `Board` | 불변 클래스 | 8×8 칸, 차례, 캐슬링 권리, 앙파상 칸, 50수 카운터, 수 번호. `apply(move)`는 **새 `Board`** 를 돌려줌 |
+| `Fen` | 유틸리티 | FEN 문자열 ↔ `Board`. 킹 개수, 1·8랭크의 폰 같은 잘못된 국면을 검사 |
+| `Rules` | 유틸리티 | 합법 수, 체크·체크메이트·스테일메이트·기물 부족, 캐슬링·앙파상 판별 |
+| `Notation` | 유틸리티 | 기보 표기(SAN): `Nf3`, `exd6`, `O-O`, `b8=Q+`, `Qxf7#` |
+| `Game` | 클래스 | 대국 기록: 둔 수(`PlayedMove`)와 국면 목록, 무르기, 기권, 결과(`Status`) 판정, 잡은 기물 |
 
-### 핵심 알고리즘 요약
-- **`Board` 불변성 & 공격 탐색**: `applyMove(move)`는 `squares.clone()` 위에 캐슬링·앙파상·승진·`cornerRight` 비트 제거를 적용해 새 인스턴스를 반환합니다. `isSquareAttacked` / `attackersOf`는 대상 칸 기준 역방향 탐색으로 O(1) 상한 내에 동작합니다.
-- **`ChessAI` 대국 탐색 & 메이트 솔버**:
-  - 대국 탐색: Negamax + Alpha-Beta + MVV-LVA 수 정렬 + 반복 심화 + `BooleanSupplier cancelled` 즉시 중단.
-  - 메이트 솔버: AND-OR 트리(`canAttackerForceMate` ↔ `isForcedMateForOpponentToMove`) + 체크 우선 정렬 + 리프 `hasImmediateMate`로 3수 메이트를 밀리초 단위로 증명합니다.
-- **`MoveAnalyzer` 수 평가**:
-  - `baselineScore(before)`와 동일한 깊이(1-ply + 체크 회피 포함 3-ply 포획 정지 탐색)로 `evaluate(before, move, base)`를 계산해, 퀸 희생 메이트인2는 `GOOD`으로, 메이트 놓침(`Bxf7+`)은 `RISKY + Ke7 탈출`로, 공짜 기물 헌납·방어 이탈은 `BLUNDER`로 정확히 분류합니다.
+### 합법 수를 구하는 3단계 (`Rules.legalMoves`)
 
----
+1. **기물 규칙**: 차례인 쪽의 기물마다 `piece.movableSquares(board, from)`를 부릅니다. 기물 종류는 신경 쓰지 않습니다(다형성).
+2. **판 전체 규칙**: 끝 줄에 닿은 폰은 퀸·룩·비숍·나이트 승진 4가지 수로 늘리고, 킹에는 캐슬링 수를 더합니다. 킹을 잡는 수는 뺍니다.
+3. **자기 킹 안전 검사**: 그 수를 둔 판(`board.apply(move)`)에서 내 킹이 공격받으면 버립니다.
 
-## 2. `backend.training` — 레슨 · 퍼즐 · 훈련 세션 (5개)
+```java
+public static List<Move> legalMoves(Board board) {
+    List<Move> legal = new ArrayList<>();
+    for (Move move : candidateMoves(board)) {   // 1~2단계
+        if (keepsKingSafe(board, move)) {         // 3단계
+            legal.add(move);
+        }
+    }
+    return legal;
+}
+```
 
-| 파일 | 종류 | 핵심 책임 |
+"일단 둬 보고 킹이 위험하면 버린다"는 단순한 방식이지만, 핀(pin)이나 체크 회피 같은 어려운 경우가 저절로 처리됩니다. `ChessRulesTest`가 표준 퍼프트 값(시작 국면 3수 = 8,902개, Kiwipete 2수 = 2,039개)과 같은 수를 만드는지 확인합니다.
+
+### `Board.apply(move)`: 새 판 만들기
+
+1. 2차원 배열을 복사합니다. 원래 판은 바뀌지 않습니다(불변 객체라서 무르기·AI 탐색에서 안전).
+2. 기물을 옮깁니다. 승진이면 `Piece.create(승진 기호, 차례)`로 새 기물을 놓습니다.
+3. 앙파상이면 옆의 상대 폰을 지우고, 캐슬링(킹이 두 칸 이동)이면 룩도 옮깁니다(h→f, a→d).
+4. 캐슬링 권리(킹·룩이 움직이거나 룩이 잡히면 사라짐), 앙파상 칸(폰이 두 칸 갔을 때), 50수 카운터(폰 이동·잡기 때 0), 차례와 수 번호를 바꿉니다.
+
+### 대국 결과 판정 (`Game.status`)
+
+위에서부터 처음 맞는 것이 결과입니다: 기권 → 둘 수 있는 수가 없음(체크 중이면 **체크메이트**, 아니면 **스테일메이트**) → 기물 부족 무승부 → 50수 규칙(`halfmoveClock ≥ 100`) → 같은 국면 3회 반복 → 체크 → 진행 중.
+
+## 3. `ai`: 컴퓨터 상대
+
+| 클래스 | 종류 | 하는 일 |
 | --- | --- | --- |
-| [`Lesson.java`](../app/src/main/java/com/oopteama/chess/backend/training/Lesson.java) | `record` | `Category`(TUTORIAL/OPENING), `Step(startBoard, goalSpec, hintSquares, prompt, successText, opponentReply)` 및 목표 매칭(`matches`/`primarySolution`) |
-| [`Puzzle.java`](../app/src/main/java/com/oopteama/chess/backend/training/Puzzle.java) | `record` | `Puzzle(id, theme, title, startBoard, solution, mateIn, explanation)`, `isMatePuzzle()` |
-| [`TrainingSession.java`](../app/src/main/java/com/oopteama/chess/backend/training/TrainingSession.java) | `abstract class` | 공통 상태(`currentBoard`, `solved`, `wrongCount`, `feedback`, `hintArrow`, `pendingReply`), 3단계 피드백 사다리, `applyPendingReply()` |
-| [`LessonSession.java`](../app/src/main/java/com/oopteama/chess/backend/training/LessonSession.java) | `final class` | 단계 이동(`nextStep`/`prevStep`), `stepDone[]` 완료 추적, 오프닝 자동 응수 예약 |
-| [`PuzzleSession.java`](../app/src/main/java/com/oopteama/chess/backend/training/PuzzleSession.java) | `final class` | DI로 `ChessAI` 주입. 자유 메이트(`mateIn > 0`) 자율 풀이 + AI 동적 방어 + `undoStack` 무르기 + 실시간 메이트 힌트 |
+| `Difficulty` | enum | 입문(1)·초급(2)·중급(3)·상급(4): 이름과 탐색 깊이(몇 수 앞까지 볼지) |
+| `Evaluator` | 유틸리티 | 국면 점수 = (백 기물 가치 + 위치 보너스) − (흑 기물 가치 + 위치 보너스) |
+| `ComputerPlayer` | 클래스 | 미니맥스 + 알파-베타 가지치기로 수를 고름, 힌트 |
+| `MateSolver` | 클래스 | N수 메이트 퍼즐: 메이트로 가는 수 찾기, 강제 메이트 판정, 상대의 최선 방어 |
 
----
+### 국면 점수 (`Evaluator`)
 
-## 3. `backend.service` — 상태 · JSON 영속화 · 단일 퍼사드 (5개)
+- 점수는 항상 **백 기준**입니다. 양수면 백이, 음수면 흑이 유리합니다.
+- 위치 보너스: 나이트·비숍은 가운데에 있을수록, 폰은 앞으로 나갈수록 조금 더 높게 봅니다. 킹은 가운데로 나오면 위험하므로 조금 깎습니다.
 
-| 파일 | 종류 | 핵심 책임 |
+### 미니맥스와 알파-베타 가지치기 (`ComputerPlayer`)
+
+백은 점수가 **가장 큰** 수를, 흑은 **가장 작은** 수를 고른다고 보고, 난이도의 깊이만큼 번갈아 두는 모든 경우를 계산합니다.
+
+```mermaid
+flowchart TD
+    Root["백 차례: 가장 큰 값 = 3"] --> A["수 A 다음 흑 차례: 가장 작은 값 = 3"]
+    Root --> B["수 B 다음 흑 차례: 이미 -2 이하"]
+    A --> A1["+5"]
+    A --> A2["+3"]
+    B --> B1["-2"]
+    B --> B2["계산하지 않음 (가지치기)"]
+```
+
+백은 수 A로 이미 3점을 확보했습니다. 수 B에서는 흑이 −2로 가는 응수가 있으니 B는 3점보다 나쁩니다. 그래서 B의 나머지 응수는 계산하지 않아도 됩니다. 이것이 **알파-베타 가지치기**이며, 결과는 미니맥스와 같고 계산만 줄어듭니다.
+
+```java
+private int minimax(Board board, int depth, int alpha, int beta, int ply, BooleanSupplier cancelled) {
+    if (depth == 0) return Evaluator.evaluate(board);     // (실제 코드는 메이트·취소도 처리)
+    if (board.turn() == Side.WHITE) {                      // 백: 최댓값
+        int best = -INFINITY;
+        for (Move move : orderMoves(board, Rules.legalMoves(board))) {
+            best = Math.max(best, minimax(board.apply(move), depth - 1, alpha, beta, ply + 1, cancelled));
+            alpha = Math.max(alpha, best);
+            if (alpha >= beta) break;                       // 가지치기
+        }
+        return best;
+    } else {                                               // 흑: 최솟값 (대칭)
+        ...
+    }
+}
+```
+
+| 세부 규칙 | 이유 |
+| --- | --- |
+| 잡는 수(비싼 기물을 싼 기물로 잡는 수부터)와 승진을 먼저 계산 | 좋은 수를 먼저 보면 가지치기가 더 많이 일어남 |
+| 계산 전에 수 목록을 섞음 | 점수가 같은 수 중에서 매번 다른 수를 둬서 대국이 똑같이 반복되지 않음 |
+| 메이트 점수 = 100,000 − (몇 수째인지) | 같은 메이트라도 더 빨리 끝내는 수를 고름 |
+| 입문: 1수 앞만 보고, 최선과 150점 이내인 상위 3개 중 무작위 | 초보자가 이길 수 있도록 실수를 섞음 |
+| 힌트: 중급(3수 앞)으로 계산 | 빠르면서도 쓸 만한 추천 |
+| `BooleanSupplier cancelled` | 새 대국·화면 이동 때 계산을 바로 멈춤 |
+
+### N수 메이트 계산 (`MateSolver`)
+
+- `findMateIn(board, N)`: 1수 메이트부터 N수 메이트까지 차례로, **체크하는 수부터** 시도해 강제 메이트로 이어지는 첫 수를 찾습니다(퍼즐 힌트).
+- `isForcedMate(after, 남은 수)`: 상대가 어떻게 막아도 남은 수 안에 메이트되는지 판정합니다. "공격 측의 수 하나라도 메이트로 이어지는가" ↔ "방어 측의 모든 응수가 지는가"를 번갈아 묻는 재귀입니다.
+- `bestDefense(after, 남은 수)`: 퍼즐에서 컴퓨터가 둘 응수입니다. 메이트를 피하는 수가 있으면 그중 점수가 가장 좋은 수를, 없으면 가장 오래 버티는 수를 고릅니다.
+- 계산이 1.5초를 넘으면 멈추고 "찾지 못함"으로 봅니다.
+
+## 4. `training`: 레슨과 퍼즐
+
+```mermaid
+classDiagram
+    direction TB
+    class TrainingSession {
+        <<abstract>>
+        #Board currentBoard
+        #boolean solved
+        #int wrongCount
+        #String feedback
+        #Move hintArrow
+        #Move pendingReply
+        +submitMove(Move)* AttemptResult
+        +showHint()*
+        +reset()*
+        +orientation()* Side
+        +applyPendingReply() boolean
+        #applyWrongFeedback(Optional~Move~, List~Position~)
+        #revealHint(Optional~Move~, List~Position~)
+    }
+    class LessonSession {
+        -Lesson lesson
+        -int stepIndex
+        -boolean[] stepDone
+        +currentStep() LessonStep
+        +nextStep()
+        +prevStep()
+        +isAllCompleted() boolean
+    }
+    class PuzzleSession {
+        -Puzzle puzzle
+        -MateSolver mateSolver
+        -Deque~Snapshot~ undoStack
+        +remainingMoves() int
+        +canUndo() boolean
+        +undo() boolean
+    }
+    class AttemptResult {
+        <<record>>
+        +Outcome outcome
+        +String message
+        +Move autoReply
+    }
+    class Lesson {
+        <<record>>
+        +String id
+        +Category category
+        +String title
+        +List~LessonStep~ steps
+    }
+    class LessonStep {
+        <<record>>
+        +Board startBoard
+        +String goal
+        +Move opponentReply
+        +isGoalMet(Board, Move) boolean
+        +primarySolution(Board) Optional~Move~
+    }
+    class Puzzle {
+        <<record>>
+        +String id
+        +Board startBoard
+        +List~Move~ solution
+        +int mateIn
+        +isMatePuzzle() boolean
+    }
+    TrainingSession <|-- LessonSession
+    TrainingSession <|-- PuzzleSession
+    TrainingSession ..> AttemptResult : 채점 결과
+    LessonSession --> Lesson
+    Lesson *-- LessonStep
+    PuzzleSession --> Puzzle
+    PuzzleSession --> MateSolver
+```
+
+| 클래스 | 종류 | 하는 일 |
 | --- | --- | --- |
-| [`Profile.java`](../app/src/main/java/com/oopteama/chess/backend/service/Profile.java) | `final class` | 완료 레슨 Set, 퍼즐 시도/정답 Map, 난이도별 AI 전적 Map, `totalScore()` (`레슨×10 + 퍼즐×5 + AI승×3`) |
-| [`Settings.java`](../app/src/main/java/com/oopteama/chess/backend/service/Settings.java) | `final class` | `BoardTheme`(WALNUT/FOREST/SLATE RGB) 및 5개 옵션(`showCoords`, `showLegalMoves`, `highlightLastMove`, `showMovePreview`, `autoFlipLocal`) |
-| [`Storage.java`](../app/src/main/java/com/oopteama/chess/backend/service/Storage.java) | `interface` | `UserData` 레코드와 `loadLessons`, `loadPuzzles`, `loadUserData`, `saveUserData` 영속 계약 (DIP) |
-| [`JsonStorage.java`](../app/src/main/java/com/oopteama/chess/backend/service/JsonStorage.java) | `final class` | **Gson** 기반 `lessons.json`·`puzzles.json` 역직렬화 및 `~/.chessmate/userdata.json` 원자적(`.tmp` → `ATOMIC_MOVE`) 직렬화 |
-| [`ChessBackend.java`](../app/src/main/java/com/oopteama/chess/backend/service/ChessBackend.java) | `final class` | 프론트엔드 전용 단일 퍼사드 — 콘텐츠 조회, 세션 생성, AI/수 평가(`baselineCache`), 프로필·설정 변경 + 자동 저장 + 관찰자 알림 |
+| `Lesson` | record | 레슨 하나: 분류(`TUTORIAL`·`OPENING`), 제목, 설명, 내 진영, 단계 목록 |
+| `LessonStep` | record | 단계 하나: 시작 국면, 목표(`goal`), 힌트 칸, 안내·성공 문구, 상대 응수 |
+| `Puzzle` | record | 퍼즐 하나: 시작 국면, 정답 수순, 메이트 수(`mateIn`, 0이면 전술 퍼즐), 해설 |
+| `TrainingSession` | 추상 클래스 | 두 모드의 공통 상태와 기능: 현재 판, 피드백, 힌트, 틀린 횟수, 예약된 상대 응수 |
+| `LessonSession` | 클래스 | 단계 이동, 단계별 완료 표시, 목표 채점, 오프닝 상대 응수 예약 |
+| `PuzzleSession` | 클래스 | 메이트 퍼즐·전술 퍼즐 채점, 무르기(스냅숏 스택), 남은 수 계산 |
+
+**공통 기능 (부모 `TrainingSession`)**
+
+- 틀릴수록 자세해지는 피드백: 1번째는 격려 문구 → 2번째는 힌트 칸 강조 → 3번째부터 정답 화살표.
+- [힌트] 버튼: 처음에는 칸 강조, 다음에는 정답 화살표.
+- 상대 응수: 채점 결과(`AttemptResult.autoReply`)로 응수를 알려 주고, 컨트롤러가 0.4초쯤 뒤 `applyPendingReply()`를 불러 판에 반영합니다. 그동안 다른 화면에 갔다 와도 응수는 이어서 반영됩니다.
+
+**레슨 채점**: 단계의 `goal`이 `any`면 아무 수, `check`면 체크하는 수, `mate`면 메이트하는 수, `e2e3,e2e4`처럼 수 목록이면 그중 하나가 정답입니다.
+
+**메이트 퍼즐 채점**: 정해진 수순이 아니라 **N수 안에 메이트하면 정답**입니다.
+
+```mermaid
+flowchart TD
+    M["사용자가 수를 둠"] --> Mate{"체크메이트?"}
+    Mate -- 예 --> Solved["SOLVED: 정답 (수순 상관없음)"]
+    Mate -- 아니오 --> Draw{"스테일메이트 또는<br/>기물 부족?"}
+    Draw -- 예 --> Wrong1["WRONG: 무승부 경고, 판은 그대로"]
+    Draw -- 아니오 --> Last{"남은 수가 1수뿐?"}
+    Last -- 예 --> Wrong2["WRONG: 메이트가 아님, 판은 그대로"]
+    Last -- 아니오 --> Play["수를 두고 무르기 스택에 저장"]
+    Play --> Reply["MateSolver.bestDefense로 상대 응수 예약<br/>(컨트롤러가 0.4초 뒤 반영)"]
+```
+
+**전술 퍼즐 채점**: 정답 수순(`solution`)과 같은 수를 둬야 하고, 상대 응수도 수순에 적힌 대로 둡니다.
+
+## 5. `data`: 프로필·설정과 저장
+
+```mermaid
+classDiagram
+    direction LR
+    class Storage {
+        <<interface>>
+        +loadLessons() List~Lesson~
+        +loadPuzzles() List~Puzzle~
+        +loadUserData() UserData
+        +saveUserData(UserData)
+    }
+    class UserData {
+        <<record>>
+        +String activeProfileId
+        +Settings settings
+        +List~Profile~ profiles
+    }
+    class JsonStorage {
+        -Path dataDir
+        +defaultDataDir()$ Path
+    }
+    class Profile {
+        -String id
+        -String name
+        -Set~String~ completedLessons
+        -Map puzzleStats
+        -Map aiRecords
+        +markLessonCompleted(String)
+        +recordPuzzle(String, boolean)
+        +recordAiResult(Difficulty, int)
+        +totalScore() int
+    }
+    class Settings {
+        -BoardTheme boardTheme
+        -boolean showCoords
+        -boolean showLegalMoves
+        -boolean highlightLastMove
+        -boolean autoFlipLocal
+    }
+    Storage <|.. JsonStorage
+    Storage ..> UserData
+    UserData o-- Profile
+    UserData o-- Settings
+```
+
+| 클래스 | 종류 | 하는 일 |
+| --- | --- | --- |
+| `Settings` | 클래스 | 체스판 테마(`BoardTheme`: 월넛 우드·토너먼트 그린·모던 슬레이트)와 표시 옵션 4개 |
+| `Profile` | 클래스 | 완료한 레슨, 퍼즐별 `[시도, 정답]`, 난이도별 AI `[승, 무, 패]`. 점수 = 레슨 완료×10 + 퍼즐 해결×5 + AI 승리×3 |
+| `Storage` | 인터페이스 | 저장소가 할 일 4가지와 사용자 데이터 묶음(`UserData` record) |
+| `JsonStorage` | 클래스 | Gson으로 `lessons.json`·`puzzles.json`(프로그램 안의 리소스)을 읽고 `~/.chessmate/userdata.json`을 읽고 씀 |
+
+- `JsonStorage` 안의 `LessonJson`, `ProfileJson` 같은 작은 클래스는 **파일 모양 그대로**의 객체입니다. 읽은 뒤 `Lesson`, `Profile` 같은 프로그램 객체로 바꾸므로, 파일 형식이 바뀌어도 나머지 코드는 그대로입니다.
+- 저장할 때는 임시 파일에 다 쓴 뒤 한 번에 바꿔치기합니다. 저장 도중 프로그램이 꺼져도 기존 파일이 깨지지 않습니다.
+
+## 6. `service`: `ChessBackend`
+
+화면이 프로그램 기능을 쓸 때 거치는 **단일 창구(퍼사드)** 입니다. 화면 쪽은 `ComputerPlayer`, `JsonStorage` 같은 클래스를 직접 만들지 않습니다.
+
+| 분류 | 메서드 |
+| --- | --- |
+| 콘텐츠 | `lessons()`, `lessons(Category)`, `puzzles()` |
+| 시작 | `startLesson(Lesson)`, `startPuzzle(Puzzle)`, `newGame()` |
+| AI | `chooseAiMove(Board, Difficulty, BooleanSupplier)`, `computeHint(Board)` |
+| 프로필 | `profiles()`, `activeProfile()`, `setActiveProfile(id)`, `createProfile(name)`, `deleteProfile(id)`, `clearActiveProgress()` |
+| 기록 | `completeLesson(id)`, `recordPuzzle(id, solved)`, `recordAiResult(Difficulty, outcome)` |
+| 설정 | `settings()`, `updateSettings(Consumer<Settings>)` |
+| 저장·알림 | `addChangeListener(Runnable)`, `save()` |
+
+- 데이터를 바꾸는 메서드는 모두 마지막에 `saveAndNotify()`를 부릅니다: 바로 저장하고, 등록된 리스너(메인 창)에게 알립니다(옵저버 패턴).
+- 생성자 `ChessBackend(Storage)`는 저장소를 인터페이스로 받습니다(의존성 역전). 테스트용 생성자 `ChessBackend(Storage, ComputerPlayer, MateSolver)`로 AI도 바꿔 넣을 수 있습니다.
+
+## 7. 테스트
+
+| 테스트 | 확인하는 것 |
+| --- | --- |
+| `ChessRulesTest` | 퍼프트 수, 기물별 이동 칸 수(다형성), 캐슬링·앙파상·승진과 기보, 오페라 게임 체크메이트, 무승부 규칙, 킹 없는 연습판 |
+| `ComputerPlayerTest` | 양쪽 진영에서 메이트·공짜 기물 찾기, 계산 취소, 메이트 계산과 최선 방어 |
+| `ChessBackendTest` | 들어 있는 레슨·퍼즐을 모두 끝까지 풀 수 있는지, 메이트 퍼즐의 다른 수순과 무르기, 저장 후 다시 불러오기, 메모리 저장소로 바꿔 끼우기 |

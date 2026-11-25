@@ -1,59 +1,78 @@
 # ChessMate
 
-Java 25 + Swing(**FlatLaf 3.7.2**) + **Gson JSON** 기반 체스 학습·대전 데스크톱 애플리케이션입니다.  
-**`backend`와 `frontend`를 엄격히 분리**하고 SOLID 원칙을 준수하며, 총 **29개 Java 클래스**로 직관적인 구조를 유지합니다.
+체스 규칙을 배우고(레슨), 문제를 풀고(퍼즐), 컴퓨터나 친구와 두는(대전) Java 데스크톱 프로그램입니다.
+객체 지향 프로그래밍 수업 팀 프로젝트로, **기물 클래스 상속**과 **화면(View)·컨트롤러 분리**를 중심으로 설계했습니다.
+
+| 구분 | 사용 기술 |
+| --- | --- |
+| 언어 | Java 25 |
+| 화면 | Swing + FlatLaf 3.7.2, Pretendard 글꼴 |
+| 저장 | Gson 2.13.1 (JSON 파일) |
+| 테스트 | JUnit 6.0.1 |
 
 ## 주요 기능
 
-| 화면 | 설명 |
+| 화면 | 할 수 있는 것 |
 | --- | --- |
-| **홈** | 활성 프로필 요약(총점·레슨·퍼즐·AI 전적), 미완료 학습 자동 추천, 4개 모드 바로가기 |
-| **레슨** | `lessons.json` 기반 **기본 튜토리얼 8종** + **유명 오프닝 6종**(이탈리안·루이 로페즈·퀸즈 갬빗·런던·시실리안·프렌치) 실습 |
-| **퍼즐** | `puzzles.json` 기반 **자유 메이트 퍼즐**(N수 이내 자율 수순 체크메이트 + AI 동적 방어 + 무르기) + **전술 퍼즐** 총 16문제 |
-| **AI 대전** | 자체 구현 알파-베타·PST AI 4단계(입문/초급/중급/상급), 비동기 탐색, 추천 힌트, 2수 무르기, 전적 자동 기록 |
-| **로컬 대전** | 한 화면 2인 대전, 설정 연동 자동 보드 뒤집기, 무르기, 기권, 전체 공식 무승부 규칙 적용 |
-| **프로필** | 다중 프로필 생성·전환·삭제, 종합 점수(`레슨×10 + 퍼즐×5 + AI승×3`), 난이도별 AI 전적표 |
-| **설정** | 보드 테마 3종(월넛·그린·슬레이트), 좌표·합법 수·직전 수·**호버 수 평가 미리보기**·로컬 자동 뒤집기 토글 |
-| **호버 수 평가** | 기물 선택 후 이동 칸에 호버하면 고스트 기물, 내 공격·포크·체크, 아군 수비선, 방어 이탈 경고, **상대 예상 최선 응수 화살표**, 1줄 평가 바 표시 |
+| 홈 | 점수와 진도 요약, 다음에 할 학습 추천, 각 모드 바로가기 |
+| 레슨 | 기본 튜토리얼 8개(기물 이동부터 체크메이트까지)와 유명 오프닝 6개를 직접 두며 익히기 |
+| 퍼즐 | N수 메이트 10문제(어떤 수순이든 메이트하면 정답, 상대는 최선으로 방어)와 전술 6문제. 힌트·무르기 지원 |
+| AI 대전 | 입문·초급·중급·상급 4단계(1~4수 앞까지 계산), 힌트, 무르기, 기권, 전적 자동 기록 |
+| 로컬 대전 | 한 컴퓨터에서 둘이 번갈아 두기, 차례마다 보드 자동 뒤집기(설정) |
+| 프로필 | 여러 사용자, 점수(레슨 완료×10 + 퍼즐 해결×5 + AI 승리×3), 난이도별 전적 |
+| 설정 | 체스판 테마 3종, 좌표·이동 가능 칸·직전 수 표시, 로컬 대전 자동 뒤집기 |
 
-## 패키지 구조 (`backend` / `frontend` 엄격 분리)
+체스 규칙은 캐슬링, 앙파상, 승진, 체크메이트, 스테일메이트, 50수 규칙, 3회 반복, 기물 부족 무승부까지 구현했습니다.
+
+## 패키지 구조
 
 ```text
 app/src/main/java/com/oopteama/chess/
-├── Main.java                 조립 루트 (JsonStorage → ChessBackend → FlatLaf → MainWindow)
-├── backend/                  순수 Java 도메인 & JSON 영속 계층 (AWT/Swing import 0개)
-│   ├── engine/   (6)         Piece, Move, Board, ChessGame, ChessAI, MoveAnalyzer
-│   ├── training/ (5)         Lesson, Puzzle, TrainingSession, LessonSession, PuzzleSession
-│   └── service/  (5)         Profile, Settings, Storage(인터페이스), JsonStorage(Gson), ChessBackend(단일 퍼사드)
-└── frontend/    (12)         FlatLaf Swing UI (파일 I/O · AI 직접 생성 0개, ChessBackend만 호출)
-                              Theme, Screen(+Id), BoardView, MainWindow, 7개 화면, AbstractGamePanel
+├── Main.java        프로그램 시작: 저장소 → ChessBackend → 메인 창 순서로 조립
+├── model/           체스 규칙: Board, Position, Move, Rules, Game, Fen, Notation …
+│   └── piece/       기물 클래스 계층: Piece ← King, Queen, Rook, Bishop, Knight, Pawn
+├── ai/              컴퓨터 상대(미니맥스), N수 메이트 계산
+├── training/        레슨·퍼즐 채점: TrainingSession ← LessonSession, PuzzleSession
+├── data/            프로필·설정과 JSON 저장: Storage(인터페이스) ← JsonStorage
+├── service/         ChessBackend: 화면이 기능을 쓸 때 거치는 단일 창구
+└── ui/              Swing 화면: MainFrame(메인 창), Theme(색·글꼴)
+    ├── screen/      화면(View): 보여 주기만 함
+    ├── controller/  컨트롤러: 버튼·마우스 이벤트를 받아 처리
+    └── component/   여러 화면이 같이 쓰는 부품: BoardPanel(체스판) …
 ```
 
 ```mermaid
-flowchart LR
-    Main["Main.java<br/>(Composition Root)"] --> FE["frontend (12)<br/>FlatLaf Swing UI"]
-    Main --> BE["backend.service<br/>ChessBackend + JsonStorage"]
-    FE -- "단일 퍼사드 호출<br/>(ChessBackend)" --> BE
-    BE --> TR["backend.training (5)<br/>레슨 · 퍼즐 · 세션"]
-    BE --> EN["backend.engine (6)<br/>규칙 · AI · MoveAnalyzer"]
-    TR --> EN
+flowchart TB
+    UI["ui<br/>screen · controller · component"] --> Service["service<br/>ChessBackend"]
+    Service --> Training["training<br/>레슨·퍼즐"]
+    Service --> AI["ai<br/>컴퓨터 상대"]
+    Service --> Data["data<br/>프로필·설정·저장"]
+    Training --> Model["model<br/>체스 규칙 · 기물"]
+    AI --> Model
+    Data --> Model
 ```
 
-## 실행 및 테스트
+지킨 규칙은 세 가지입니다.
 
-요구 환경: **Java 25** (Gradle Wrapper 포함)
+1. **아래 계층은 위 계층을 모릅니다.** 예를 들어 `model`은 화면이나 저장 코드를 전혀 import하지 않습니다.
+2. **Swing은 `ui`에서만, Gson과 파일 읽기·쓰기는 `data`에서만** 씁니다. `model`·`ai`·`training`·`service`는 `java.util`만 씁니다.
+3. **화면(`ui.screen`)은 보여 주기만 합니다.** 버튼을 눌렀을 때의 처리와 `ChessBackend` 호출은 컨트롤러(`ui.controller`)가 맡습니다.
 
-```sh
-./gradlew :app:run      # 앱 실행
-./gradlew :app:test     # 전체 단위 · DIP · UI 스모크 테스트 실행
-./gradlew :app:jar      # 단일 실행 JAR 생성 (app/build/libs/chess-trainer.jar)
+## 실행과 테스트
+
+Java 25가 필요합니다 (Gradle Wrapper 포함).
+
+```bash
+./gradlew :app:run     # 프로그램 실행
+./gradlew :app:test    # 전체 테스트 (화면 테스트도 창을 띄우지 않음)
+./gradlew :app:jar     # 실행 파일 만들기: app/build/libs/chess-trainer.jar
 java -jar app/build/libs/chess-trainer.jar
 ```
 
-사용자 데이터는 `~/.chessmate/userdata.json`에 Gson Pretty JSON으로 자동 저장되며, `-Dchessmate.home=/원하는/경로`로 변경할 수 있습니다.
+사용자 데이터(프로필·설정)는 `~/.chessmate/userdata.json`에 저장됩니다. 실행 옵션 `-Dchessmate.home=경로`로 저장 위치를 바꿀 수 있습니다.
 
-## 구조 문서 (`docs/`)
+## 문서
 
-- [전체 아키텍처 & SOLID 설계](docs/architecture.md) — 백엔드/프론트엔드 경계, SOLID 적용표, 클래스/시퀀스 다이어그램, JSON 스키마
-- [Backend 패키지 상세](docs/backend.md) — `engine` · `training` · `service` 16개 클래스의 필드·메서드·알고리즘·JSON 직렬화
-- [Frontend 패키지 상세](docs/frontend.md) — `Main` · `Theme` · `MainWindow` · `BoardView` 렌더링 파이프라인 · 7개 화면
+- [전체 구조](docs/architecture.md): 계층, 객체 지향 개념이 쓰인 곳, 클래스·시퀀스 다이어그램, 저장 형식, 리팩터링 전후 비교
+- [백엔드](docs/backend.md): `model`·`ai`·`training`·`data`·`service` 패키지의 클래스와 알고리즘
+- [화면](docs/frontend.md): `ui` 패키지의 화면·컨트롤러·부품, 새 화면을 추가하는 방법
