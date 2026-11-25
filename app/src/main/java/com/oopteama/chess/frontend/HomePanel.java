@@ -194,7 +194,7 @@ public final class HomePanel extends JPanel implements Screen {
                 .findFirst();
         if (nextPuzzle.isPresent()) {
             Puzzle pz = nextPuzzle.get();
-            recTitle.setText("[퍼즐 · " + pz.theme() + "] " + pz.title());
+            recTitle.setText("[퍼즐] " + PuzzlePanel.neutralTitle(backend.puzzles(), pz));
             recDesc.setText("아직 해결하지 않은 퍼즐에 도전해 보세요.");
             recButton.setText("퍼즐 풀러 가기");
             recTarget = Screen.Id.PUZZLES;

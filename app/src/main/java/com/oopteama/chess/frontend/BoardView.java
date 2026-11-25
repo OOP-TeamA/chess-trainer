@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * 모든 화면(레슨·퍼즐·AI 대전·로컬 대전)이 공용으로 사용하는 체스판 컴포넌트입니다.
@@ -77,7 +78,7 @@ public final class BoardView extends JPanel {
 
     private Move lastMove;
     private Move arrowMove;
-    private Color arrowColor = new Color(0x2EB872);
+    private Color arrowColor = Theme.BOARD_ACCENT;
     private List<Integer> highlightSquares = List.of();
     private int wrongSquare = -1;
     private Timer wrongTimer;
@@ -90,7 +91,9 @@ public final class BoardView extends JPanel {
     private int dragSquare = -1;
     private Point dragPoint;
     private boolean dragging;
+    private boolean deselectOnRelease; // 이미 선택한 기물을 다시 누른 뒤 끌지 않고 놓으면 선택 해제
     private Consumer<Move> moveHandler;
+    private BiConsumer<Integer, Integer> illegalMoveHandler;
 
     // 맨 앞이 재생 중인 수, 그 뒤는 대기 중인 수 (예: 내 수가 끝나기 전에 도착한 AI 응수)
     private final Deque<MoveAnimation> animations = new ArrayDeque<>();
@@ -172,7 +175,7 @@ public final class BoardView extends JPanel {
 
     public void setArrow(Move move, Color color) {
         this.arrowMove = move;
-        this.arrowColor = color != null ? color : Theme.ACCENT;
+        this.arrowColor = color != null ? color : Theme.BOARD_ACCENT;
         repaint();
     }
 
@@ -207,6 +210,10 @@ public final class BoardView extends JPanel {
 
     public void setMoveHandler(Consumer<Move> moveHandler) {
         this.moveHandler = moveHandler;
+    }
+
+    void setIllegalMoveHandler(BiConsumer<Integer, Integer> handler) {
+        illegalMoveHandler = handler;
     }
 
     public void flashWrong(int square) {
@@ -270,12 +277,14 @@ public final class BoardView extends JPanel {
             return;
         }
         clearHover();
+        deselectOnRelease = false;
         int sq = squareAt(p);
         if (sq < 0) {
             selectedSquare = -1;
             repaint();
             return;
         }
+        boolean pressedSelected = sq == selectedSquare;
         if (selectedSquare >= 0 && tryExecuteMove(selectedSquare, sq, false)) {
             return;
         }
@@ -284,6 +293,7 @@ public final class BoardView extends JPanel {
             dragSquare = sq;
             dragPoint = p;
             dragging = false;
+            deselectOnRelease = pressedSelected;
         } else {
             selectedSquare = -1;
             dragSquare = -1;
@@ -293,10 +303,16 @@ public final class BoardView extends JPanel {
 
     private void handleRelease(Point p) {
         if (!dragging || dragSquare < 0) {
+            if (deselectOnRelease) {
+                selectedSquare = -1;
+                repaint();
+            }
+            deselectOnRelease = false;
             dragSquare = -1;
             dragging = false;
             return;
         }
+        deselectOnRelease = false;
         int from = dragSquare;
         dragSquare = -1;
         dragging = false;
@@ -310,6 +326,15 @@ public final class BoardView extends JPanel {
     private boolean tryExecuteMove(int from, int to, boolean dropped) {
         List<Move> candidates = findMatchingMoves(from, to);
         if (candidates.isEmpty()) {
+            // 클릭으로 아군 기물을 누른 것은 이동 시도가 아니라 선택 변경으로 봄 (드래그로 놓은 경우만 안내)
+            boolean ownPiece = board.pieceAt(to).is(board.turn());
+            if (illegalMoveHandler != null && from != to && (dropped || !ownPiece)) {
+                // 선택은 유지해 안내 카드를 닫은 뒤에도 이동 가능 칸이 계속 보이게 함
+                dragSquare = -1;
+                illegalMoveHandler.accept(from, to);
+                repaint();
+                return true;
+            }
             return false;
         }
         Move chosen;
@@ -737,13 +762,13 @@ public final class BoardView extends JPanel {
         // 3) 도착 칸이 상대 공격을 받는 경우: 아군 수비선(파랑 점선) 표시로 교환 가능 여부 시각화
         if (!eval.attackersOfDest().isEmpty()) {
             for (int defSq : eval.defendersOfDest()) {
-                drawDashedLine(g2, x0, y0, cell, defSq, move.to(), Theme.INFO, 195, 0.055f);
+                drawDashedLine(g2, x0, y0, cell, defSq, move.to(), Theme.BOARD_INFO, 195, 0.055f);
             }
         }
 
         // 4) 도착 칸에서 내가 공격하는 상대 기물(포크·체크·일반 공격)
         int enemyKingSq = eval.check() ? eval.after().findKing(eval.after().turn()) : -1;
-        Color attackColor = (eval.check() || eval.isFork()) ? new Color(0xF59E0B) : Theme.ACCENT;
+        Color attackColor = (eval.check() || eval.isFork()) ? new Color(0xF59E0B) : Theme.BOARD_ACCENT;
         for (int enemySq : eval.attackedEnemies()) {
             boolean isKing = enemySq == enemyKingSq;
             Color targetColor = isKing ? new Color(0xF97316) : attackColor;
@@ -783,8 +808,8 @@ public final class BoardView extends JPanel {
     private static Color verdictColor(MoveAnalyzer.Verdict verdict) {
         return switch (verdict) {
             case MATE -> Theme.SUCCESS;
-            case GOOD -> Theme.ACCENT;
-            case NEUTRAL -> Theme.INFO;
+            case GOOD -> Theme.BOARD_ACCENT;
+            case NEUTRAL -> Theme.BOARD_INFO;
             case RISKY -> Theme.WARNING;
             case BLUNDER -> Theme.DANGER;
         };

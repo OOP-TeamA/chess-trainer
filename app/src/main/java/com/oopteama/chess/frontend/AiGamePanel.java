@@ -176,7 +176,7 @@ public final class AiGamePanel extends AbstractGamePanel {
             @Override
             protected void done() {
                 try {
-                    get().ifPresent(m -> boardView.setArrow(m, Theme.INFO));
+                    get().ifPresent(m -> boardView.setArrow(m, Theme.BOARD_INFO));
                 } catch (Exception ignored) {
                 }
                 refreshBoardUi();
