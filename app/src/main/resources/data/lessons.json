@@ -1,0 +1,643 @@
+[
+  {
+    "id": "tut-pawn",
+    "category": "TUTORIAL",
+    "title": "1. 폰 (Pawn)",
+    "summary": "앞으로 전진하고 대각선으로 잡으며, 끝 행에서 승진합니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "8/8/8/8/8/8/4P3/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "e2e3,e2e4",
+        "hints": [
+          "e2",
+          "e3",
+          "e4"
+        ],
+        "prompt": "폰은 앞으로 전진하며, 시작 위치에서는 1칸 또는 2칸 갈 수 있습니다. e2 폰을 앞으로 움직여 보세요.",
+        "success": "좋습니다! 첫 이동 이후부터는 한 칸씩만 전진할 수 있습니다."
+      },
+      {
+        "fen": "8/8/8/3p4/4P3/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "e4d5",
+        "hints": [
+          "e4",
+          "d5"
+        ],
+        "prompt": "폰은 앞이 아니라 대각선 앞 한 칸의 상대 기물을 잡습니다. d5의 흑 폰을 잡아 보세요.",
+        "success": "정확합니다! 폰은 직진으로 전진하고 대각선으로 포획합니다."
+      },
+      {
+        "fen": "7k/1P6/8/8/8/8/8/6K1 w - - 0 1",
+        "sandbox": false,
+        "goal": "b7b8q,b7b8r,b7b8b,b7b8n",
+        "hints": [
+          "b7",
+          "b8"
+        ],
+        "prompt": "폰이 상대 끝 행(8랭크)에 도달하면 퀸·룩·비숍·나이트로 승진합니다. b7 폰을 b8로 올려 보세요.",
+        "success": "승진 성공! 보통 가장 강력한 퀸으로 승진합니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-rook",
+    "category": "TUTORIAL",
+    "title": "2. 룩 (Rook)",
+    "summary": "가로·세로 직선으로 여러 칸 이동하는 강력한 기물입니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "8/8/8/8/3R4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "any",
+        "hints": [
+          "d4",
+          "d7",
+          "g4"
+        ],
+        "prompt": "룩은 가로나 세로 직선으로 막힘없이 이동합니다. d4의 룩을 원하는 칸으로 옮겨 보세요.",
+        "success": "룩은 열린 줄(파일)과 행(랭크)을 지배하는 핵심 기물입니다."
+      },
+      {
+        "fen": "8/8/3P4/8/3R4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4d5",
+        "hints": [
+          "d4",
+          "d5"
+        ],
+        "prompt": "룩은 아군 기물을 뛰어넘을 수 없습니다. d6 아군 폰 바로 앞(d5)까지 이동해 보세요.",
+        "success": "정확합니다! 아군 기물이 있으면 그 직전 칸까지만 갈 수 있습니다."
+      },
+      {
+        "fen": "8/8/3p4/8/3R4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4d6",
+        "hints": [
+          "d4",
+          "d6"
+        ],
+        "prompt": "상대 기물이 있는 칸에 들어가면 그 기물을 잡습니다. d6의 흑 폰을 잡아 보세요.",
+        "success": "완벽합니다! 잡은 기물이 있던 칸에서 이동을 마칩니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-bishop",
+    "category": "TUTORIAL",
+    "title": "3. 비숍 (Bishop)",
+    "summary": "대각선으로 끝까지 이동하며 항상 같은 색 칸에 머뭅니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "8/8/8/8/3B4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "any",
+        "hints": [
+          "d4",
+          "f6",
+          "b6",
+          "f2",
+          "b2"
+        ],
+        "prompt": "비숍은 대각선 방향으로 원하는 만큼 이동합니다. d4의 비숍을 움직여 보세요.",
+        "success": "비숍은 한 번 놓인 칸 색(밝은 칸 또는 어두운 칸)을 절대 벗어나지 않습니다."
+      },
+      {
+        "fen": "8/6p1/8/8/3B4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4g7",
+        "hints": [
+          "d4",
+          "g7"
+        ],
+        "prompt": "대각선 끝 g7에 있는 흑 폰을 비숍으로 잡아 보세요.",
+        "success": "좋습니다! 긴 대각선에서 원거리 공격을 펼칠 수 있습니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-knight",
+    "category": "TUTORIAL",
+    "title": "4. 나이트 (Knight)",
+    "summary": "L자로 이동하며 체스 기물 중 유일하게 뛰어넘을 수 있습니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "8/8/8/3N4/8/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "any",
+        "hints": [
+          "b4",
+          "b6",
+          "c3",
+          "c7",
+          "e3",
+          "e7",
+          "f4",
+          "f6"
+        ],
+        "prompt": "나이트는 두 칸 직진 후 옆으로 한 칸(L자) 움직입니다. 중앙의 나이트를 옮겨 보세요.",
+        "success": "중앙에 선 나이트는 최대 8칸을 동시에 노릴 수 있습니다."
+      },
+      {
+        "fen": "8/8/8/2PPP3/2PNP3/2PPP3/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4f5",
+        "hints": [
+          "d4",
+          "f5"
+        ],
+        "prompt": "나이트는 다른 기물을 뛰어넘을 수 있습니다. 폰 벽을 넘어 f5로 이동해 보세요.",
+        "success": "멋집니다! 장애물이 많아도 점프해서 돌파할 수 있습니다."
+      },
+      {
+        "fen": "8/8/4p3/8/3N4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4e6",
+        "hints": [
+          "d4",
+          "e6"
+        ],
+        "prompt": "L자 점프로 e6에 있는 흑 폰을 잡아 보세요.",
+        "success": "정확합니다! 나이트는 착지한 칸의 상대 기물만 잡습니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-queen",
+    "category": "TUTORIAL",
+    "title": "5. 퀸 (Queen)",
+    "summary": "룩과 비숍의 능력을 모두 갖춘 가장 강력한 기물입니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "8/8/8/8/3Q4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "any",
+        "hints": [
+          "d4",
+          "d8",
+          "h4",
+          "g7"
+        ],
+        "prompt": "퀸은 가로·세로·대각선 8방향 어디로든 원하는 만큼 이동합니다. d4 퀸을 움직여 보세요.",
+        "success": "퀸은 압도적인 기동력을 지닌 에이스 기물입니다."
+      },
+      {
+        "fen": "7p/8/8/8/3Q4/8/8/8 w - - 0 1",
+        "sandbox": true,
+        "goal": "d4h8",
+        "hints": [
+          "d4",
+          "h8"
+        ],
+        "prompt": "대각선으로 단숨에 이동해 h8의 흑 폰을 잡아 보세요.",
+        "success": "정확합니다! 퀸은 먼 거리의 무방비 기물을 순식간에 제압합니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-king",
+    "category": "TUTORIAL",
+    "title": "6. 킹과 체크",
+    "summary": "킹은 한 칸씩 이동하며, 체크를 받으면 반드시 해소해야 합니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "4k3/8/8/8/8/8/R7/6K1 w - - 0 1",
+        "sandbox": false,
+        "goal": "check",
+        "hints": [
+          "a2",
+          "e2",
+          "a8"
+        ],
+        "prompt": "킹이 공격받는 상태를 '체크'라고 합니다. 룩(a2)을 움직여 흑 킹에게 체크를 걸어 보세요.",
+        "success": "체크 성공! 이제 흑은 반드시 체크를 피해야 합니다."
+      },
+      {
+        "fen": "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
+        "sandbox": false,
+        "goal": "any",
+        "hints": [
+          "e1",
+          "d1",
+          "f1",
+          "d2",
+          "f2"
+        ],
+        "prompt": "백 킹이 흑 룩에게 체크를 받고 있습니다! 공격받지 않는 안전한 칸으로 피해 보세요.",
+        "success": "잘 피했습니다! 체크 상태에서는 체크를 해소하는 수만 둘 수 있습니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-special",
+    "category": "TUTORIAL",
+    "title": "7. 특수 규칙: 캐슬링·앙파상",
+    "summary": "킹을 보호하는 캐슬링과 폰의 특수 포획 앙파상을 익힙니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "4k3/8/8/8/8/8/8/4K2R w K - 0 1",
+        "sandbox": false,
+        "goal": "e1g1",
+        "hints": [
+          "e1",
+          "g1",
+          "h1"
+        ],
+        "prompt": "캐슬링은 킹을 룩 쪽으로 두 칸 옮기면 룩이 자동으로 옆으로 넘어오는 수입니다. e1 킹을 g1로 옮겨 보세요.",
+        "success": "킹사이드 캐슬링 성공! 킹이 안전해지고 룩도 중앙에 합류합니다."
+      },
+      {
+        "fen": "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",
+        "sandbox": false,
+        "goal": "e1c1",
+        "hints": [
+          "e1",
+          "c1",
+          "a1"
+        ],
+        "prompt": "퀸사이드 캐슬링도 킹을 두 칸(e1→c1) 옮깁니다. a1 룩이 d1로 넘어옵니다.",
+        "success": "퀸사이드 캐슬링 성공! 단, 킹·룩이 미이동 상태이고 지나는 칸이 공격받지 않아야 합니다."
+      },
+      {
+        "fen": "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        "sandbox": false,
+        "goal": "e5d6",
+        "hints": [
+          "e5",
+          "d6"
+        ],
+        "prompt": "흑 폰이 d7→d5로 방금 두 칸 전진했습니다! e5 백 폰을 빈 칸 d6로 옮겨 앙파상으로 잡아 보세요.",
+        "success": "앙파상 성공! 상대 폰이 두 칸 전진한 바로 다음 차례에만 가능합니다."
+      }
+    ]
+  },
+  {
+    "id": "tut-mate",
+    "category": "TUTORIAL",
+    "title": "8. 체크메이트 기초",
+    "summary": "상대 킹의 탈출로를 모두 막아 승리를 확정짓는 법을 배웁니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
+        "sandbox": false,
+        "goal": "mate",
+        "hints": [
+          "d1",
+          "d8"
+        ],
+        "prompt": "흑 킹 앞의 폰들이 오히려 탈출로를 막고 있습니다. d1 룩으로 한 수 체크메이트를 만들어 보세요!",
+        "success": "백랭크 메이트 완성! 상대 킹이 피할 곳이 전혀 없습니다."
+      },
+      {
+        "fen": "7k/8/5K2/8/8/8/6Q1/8 w - - 0 1",
+        "sandbox": false,
+        "goal": "mate",
+        "hints": [
+          "g2",
+          "g7"
+        ],
+        "prompt": "백 킹(f6)이 g7 칸을 지켜주고 있습니다. 퀸으로 체크메이트를 마무리해 보세요!",
+        "success": "체크메이트! 아군 킹의 엄호를 받아 퀸이 킹을 완전히 가두었습니다."
+      }
+    ]
+  },
+  {
+    "id": "open-italian",
+    "category": "OPENING",
+    "title": "이탈리안 게임 (Italian Game)",
+    "summary": "가장 고전적인 백 오프닝. 빠른 전개와 f7 약점 공략이 핵심입니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "e2e4",
+        "hints": [
+          "e2",
+          "e4"
+        ],
+        "prompt": "1. e4 — 중앙(e4)을 점령하고 퀸과 비숍의 길을 엽니다.",
+        "success": "중앙을 선점했습니다! 흑은 1...e5로 맞섭니다.",
+        "reply": "e7e5"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "g1f3",
+        "hints": [
+          "g1",
+          "f3"
+        ],
+        "prompt": "2. Nf3 — 나이트를 전개하며 흑의 e5 폰을 공격합니다.",
+        "success": "좋은 전개입니다! 흑은 2...Nc6로 e5 폰을 지킵니다.",
+        "reply": "b8c6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "f1c4",
+        "hints": [
+          "f1",
+          "c4"
+        ],
+        "prompt": "3. Bc4 — 비숍을 c4에 배치해 흑의 가장 약한 칸 f7을 겨냥합니다.",
+        "success": "이탈리안 게임의 핵심 배치! 흑은 3...Bc5로 맞대응합니다.",
+        "reply": "f8c5"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "e1g1",
+        "hints": [
+          "e1",
+          "g1"
+        ],
+        "prompt": "4. O-O — 킹사이드 캐슬링으로 킹을 안전하게 보호합니다.",
+        "success": "이탈리안 게임 기초 완성! 이후 c3→d4로 중앙 돌파를 노립니다."
+      }
+    ]
+  },
+  {
+    "id": "open-ruy",
+    "category": "OPENING",
+    "title": "루이 로페즈 (Ruy Lopez)",
+    "summary": "마스터들이 가장 애용하는 백 오프닝. c6 나이트를 압박해 중앙 주도권을 쥡니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "e2e4",
+        "hints": [
+          "e2",
+          "e4"
+        ],
+        "prompt": "1. e4 — 킹 폰으로 중앙 싸움을 시작합니다.",
+        "success": "흑이 1...e5로 응수합니다.",
+        "reply": "e7e5"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "g1f3",
+        "hints": [
+          "g1",
+          "f3"
+        ],
+        "prompt": "2. Nf3 — 나이트 전개와 동시에 e5 폰을 노립니다.",
+        "success": "흑이 2...Nc6로 방어합니다.",
+        "reply": "b8c6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "f1b5",
+        "hints": [
+          "f1",
+          "b5"
+        ],
+        "prompt": "3. Bb5 — e5 폰을 지키고 있는 c6 나이트를 직접 압박합니다.",
+        "success": "루이 로페즈 성립! 흑이 3...a6로 비숍을 쫓아냅니다.",
+        "reply": "a7a6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "b5a4",
+        "hints": [
+          "b5",
+          "a4"
+        ],
+        "prompt": "4. Ba4 — 대각선 압박을 유지하며 한 칸 물러섭니다.",
+        "success": "훌륭합니다! 이후 캐슬링과 c3-d4로 강력한 중앙을 구축합니다."
+      }
+    ]
+  },
+  {
+    "id": "open-qg",
+    "category": "OPENING",
+    "title": "퀸즈 갬빗 (Queen's Gambit)",
+    "summary": "c4 폰을 제시해 흑의 중앙 d5 폰을 흔드는 대표적인 d4 오프닝입니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "d2d4",
+        "hints": [
+          "d2",
+          "d4"
+        ],
+        "prompt": "1. d4 — 퀸 폰으로 단단하게 중앙을 장악합니다.",
+        "success": "흑이 1...d5로 중앙을 맞받습니다.",
+        "reply": "d7d5"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "c2c4",
+        "hints": [
+          "c2",
+          "c4"
+        ],
+        "prompt": "2. c4 — 퀸즈 갬빗! 측면 폰으로 흑의 중앙 d5 폰을 공격합니다.",
+        "success": "흑이 잡지 않고 2...e6(거절형)로 d5를 지킵니다.",
+        "reply": "e7e6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "b1c3",
+        "hints": [
+          "b1",
+          "c3"
+        ],
+        "prompt": "3. Nc3 — 나이트를 전개해 d5와 e4 칸의 통제력을 높입니다.",
+        "success": "흑이 3...Nf6로 전개합니다.",
+        "reply": "g8f6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "c1g5",
+        "hints": [
+          "c1",
+          "g5"
+        ],
+        "prompt": "4. Bg5 — 흑의 f6 나이트를 퀸 앞에 핀(Pin)하며 압박합니다.",
+        "success": "퀸즈 갬빗 정석 완성! 안정적이고 전략적인 주도권을 쥡니다."
+      }
+    ]
+  },
+  {
+    "id": "open-london",
+    "category": "OPENING",
+    "title": "런던 시스템 (London System)",
+    "summary": "상대 수와 무관하게 탄탄한 삼각형 폰 구조를 세우는 입문자 추천 오프닝입니다.",
+    "side": "WHITE",
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "d2d4",
+        "hints": [
+          "d2",
+          "d4"
+        ],
+        "prompt": "1. d4 — 퀸 폰으로 중앙을 잡습니다.",
+        "success": "흑이 1...d5로 응수합니다.",
+        "reply": "d7d5"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "c1f4",
+        "hints": [
+          "c1",
+          "f4"
+        ],
+        "prompt": "2. Bf4 — e3를 두기 전에 먼저 어두운 칸 비숍을 밖으로 꺼냅니다.",
+        "success": "런던 시스템의 상징적인 수! 흑은 2...Nf6로 전개합니다.",
+        "reply": "g8f6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "e2e3",
+        "hints": [
+          "e2",
+          "e3"
+        ],
+        "prompt": "3. e3 — d4 폰을 보호하고 밝은 칸 비숍의 길을 엽니다.",
+        "success": "흑이 3...e6로 단단하게 받습니다.",
+        "reply": "e7e6"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "g1f3",
+        "hints": [
+          "g1",
+          "f3"
+        ],
+        "prompt": "4. Nf3 — e5 칸을 통제하며 킹사이드 캐슬링을 준비합니다.",
+        "success": "런던 시스템 기본형 완성! 이후 Bd3, c3, Nbd2로 견고한 진형을 갖춥니다."
+      }
+    ]
+  },
+  {
+    "id": "open-sicilian",
+    "category": "OPENING",
+    "title": "시실리안 디펜스 (Sicilian Defense)",
+    "summary": "1. e4에 맞서는 흑의 가장 날카로운 반격 오프닝. 비대칭 중앙 싸움을 유도합니다.",
+    "side": "BLACK",
+    "setup": [
+      "e2e4"
+    ],
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "c7c5",
+        "hints": [
+          "c7",
+          "c5"
+        ],
+        "prompt": "1...c5 — 백의 1. e4에 맞서 측면 폰으로 d4 칸을 견제합니다.",
+        "success": "시실리안 디펜스 성립! 백이 2. Nf3로 전개합니다.",
+        "reply": "g1f3"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "d7d6",
+        "hints": [
+          "d7",
+          "d6"
+        ],
+        "prompt": "2...d6 — e5 칸을 통제하고 c8 비숍의 길을 확보합니다.",
+        "success": "백이 3. d4로 중앙을 열어젖힙니다.",
+        "reply": "d2d4"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "c5d4",
+        "hints": [
+          "c5",
+          "d4"
+        ],
+        "prompt": "3...cxd4 — 중앙 폰과 측면 폰을 교환해 c열을 엽니다.",
+        "success": "백이 4. Nxd4로 되잡습니다.",
+        "reply": "f3d4"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "g8f6",
+        "hints": [
+          "g8",
+          "f6"
+        ],
+        "prompt": "4...Nf6 — 나이트를 전개하며 백의 e4 폰을 반격합니다.",
+        "success": "시실리안 오픈 메인라인 완성! 흑에게 활발한 반격 기회가 열립니다."
+      }
+    ]
+  },
+  {
+    "id": "open-french",
+    "category": "OPENING",
+    "title": "프렌치 디펜스 (French Defense)",
+    "summary": "1...e6 이후 2...d5로 백의 중앙을 단단하게 반격하는 견고한 흑 오프닝입니다.",
+    "side": "BLACK",
+    "setup": [
+      "e2e4"
+    ],
+    "steps": [
+      {
+        "fen": "start",
+        "sandbox": false,
+        "goal": "e7e6",
+        "hints": [
+          "e7",
+          "e6"
+        ],
+        "prompt": "1...e6 — 다음 수 d5 전진을 미리 준비하는 견고한 첫 수입니다.",
+        "success": "프렌치 디펜스 성립! 백이 2. d4로 넓은 중앙을 차지합니다.",
+        "reply": "d2d4"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "d7d5",
+        "hints": [
+          "d7",
+          "d5"
+        ],
+        "prompt": "2...d5 — 백의 e4 폰을 정면으로 도전합니다.",
+        "success": "백이 3. Nc3로 e4 폰을 방어합니다.",
+        "reply": "b1c3"
+      },
+      {
+        "fen": "continue",
+        "sandbox": false,
+        "goal": "g8f6",
+        "hints": [
+          "g8",
+          "f6"
+        ],
+        "prompt": "3...Nf6 — e4 폰을 한 번 더 압박하며 전개합니다.",
+        "success": "프렌치 디펜스 클래식 라인 완성! 이후 c5 반격으로 백 중앙을 흔듭니다."
+      }
+    ]
+  }
+]
