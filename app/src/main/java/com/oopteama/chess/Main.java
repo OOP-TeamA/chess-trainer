@@ -1,15 +1,16 @@
 package com.oopteama.chess;
 
-import com.oopteama.chess.backend.service.ChessBackend;
-import com.oopteama.chess.backend.service.JsonStorage;
-import com.oopteama.chess.backend.service.Storage;
-import com.oopteama.chess.frontend.MainWindow;
-import com.oopteama.chess.frontend.Theme;
+import com.oopteama.chess.data.JsonStorage;
+import com.oopteama.chess.data.Storage;
+import com.oopteama.chess.service.ChessBackend;
+import com.oopteama.chess.ui.MainFrame;
+import com.oopteama.chess.ui.Theme;
 
 import javax.swing.SwingUtilities;
 
 /**
- * 조립 루트(Composition Root): 저장소(JsonStorage) → 백엔드(ChessBackend) → 프론트엔드(MainWindow)를 연결합니다.
+ * 프로그램 시작점입니다.
+ * 저장소(JsonStorage) → 서비스(ChessBackend) → 메인 창(MainFrame) 순서로 만들어 연결합니다.
  */
 public final class Main {
 
@@ -24,9 +25,9 @@ public final class Main {
         Storage storage = new JsonStorage(JsonStorage.defaultDataDir());
         ChessBackend backend = new ChessBackend(storage);
 
-        SwingUtilities.invokeLater(() -> {
+        SwingUtilities.invokeLater(() -> { // Swing 화면은 화면 전용 스레드에서 만들어야 합니다.
             Theme.install();
-            new MainWindow(backend).setVisible(true);
+            new MainFrame(backend).setVisible(true);
         });
     }
 }
