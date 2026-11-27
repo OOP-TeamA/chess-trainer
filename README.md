@@ -77,4 +77,4 @@ java -jar app/build/libs/chess-trainer.jar
 - [전체 구조](docs/architecture.md): 계층, 객체 지향 개념이 쓰인 곳, 클래스·시퀀스 다이어그램, 저장 형식, 리팩터링 전후 비교
 - [백엔드](docs/backend.md): `model`·`ai`·`training`·`data`·`service` 패키지의 클래스와 알고리즘
 - [화면](docs/frontend.md): `ui` 패키지의 화면·컨트롤러·부품, 새 화면을 추가하는 방법
-- [학습 가이드 PDF](docs/learning-guide.pdf) · [HTML](docs/learning-guide.html): 발표 준비용 자료. 개념 설명, UML·시퀀스 다이어그램, 핵심 로직, 클래스 사전, 점검 질문 12개를 담았습니다. HTML은 내려받아 브라우저로 열면 기물 이동 예시를 직접 눌러 볼 수 있습니다.
+- [학습 가이드 PDF](docs/learning-guide.pdf) · [HTML](docs/learning-guide.html): 발표 준비용 자료. 개념 설명, UML·시퀀스 다이어그램, 핵심 로직, 클래스 사전, 점검 질문 14개를 담았습니다. HTML은 내려받아 브라우저로 열면 기물 이동 예시를 직접 눌러 볼 수 있습니다.
