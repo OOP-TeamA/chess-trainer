@@ -1,24 +1,31 @@
 package com.oopteama.chess.ui.screen;
 
-import com.oopteama.chess.ui.ScreenId;
-import com.oopteama.chess.ui.Theme;
-import com.oopteama.chess.ui.component.RoundedPanel;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
+import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.GridLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
+
+import com.oopteama.chess.ui.ScreenId;
+import com.oopteama.chess.ui.Theme;
+import com.oopteama.chess.ui.component.RoundedPanel;
 
 /**
  * 홈 화면(View): 인사말과 총점, 학습 현황 3칸, 다음 추천 학습, 4가지 모드 바로가기.
@@ -39,6 +46,7 @@ public final class HomeScreen extends JPanel {
         setLayout(new BorderLayout(0, 20));
         setBackground(Theme.BG);
         setBorder(new EmptyBorder(28, 32, 28, 32));
+        greetingLabel.setFont(Theme.bold(36));
 
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -53,22 +61,45 @@ public final class HomeScreen extends JPanel {
         add(body, BorderLayout.NORTH);
     }
 
-    private JPanel buildGreeting() {
-        JPanel greeting = new JPanel(new BorderLayout(12, 6));
-        greeting.setOpaque(false);
-        JPanel text = new JPanel();
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.setOpaque(false);
-        text.add(greetingLabel);
-        text.add(Box.createVerticalStrut(4));
-        text.add(Theme.muted("체스 튜토리얼, 유명 오프닝, 전술 퍼즐과 AI 대전을 한 곳에서 연습하세요."));
-        JPanel badge = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
-        badge.setOpaque(false);
-        badge.add(scoreBadge);
-        greeting.add(text, BorderLayout.CENTER);
-        greeting.add(badge, BorderLayout.EAST);
-        return greeting;
+   private JPanel buildGreeting() {
+    BufferedImage img;
+    try {
+        img = ImageIO.read(getClass().getResource("/images/chess-hero.png"));
+    } catch (Exception e) {
+        throw new IllegalStateException("이미지 로드 실패", e);
     }
+    JPanel hero = new JPanel(new BorderLayout(12, 6)) {
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            int shift = 60;
+            int iw = img.getWidth() * getHeight() / img.getHeight();
+            g2.drawImage(img, getWidth() - iw - shift, 0, iw, getHeight(), null);
+            g2.dispose();
+        }
+    };
+
+    hero.setOpaque(false);
+    hero.setPreferredSize(new Dimension(1180, 200));
+    hero.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+
+    JPanel text = new JPanel();
+    text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+    text.setOpaque(false);
+    text.add(greetingLabel);
+    text.add(Box.createVerticalStrut(4));
+    text.add(Theme.muted("체스 튜토리얼, 유명 오프닝, 전술 퍼즐과 AI 대전을 한 곳에서 연습하세요."));
+    JPanel badge = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 4));
+    badge.setOpaque(false);
+    badge.add(scoreBadge);
+
+    hero.add(text, BorderLayout.WEST);
+    hero.add(badge, BorderLayout.NORTH);
+    return hero;
+}
+
 
     private JPanel buildStats() {
         JPanel row = new JPanel(new GridLayout(1, 3, 14, 0));

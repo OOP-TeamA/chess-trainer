@@ -1,5 +1,27 @@
 package com.oopteama.chess.ui;
 
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.EnumMap;
+import java.util.Map;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import com.oopteama.chess.data.Profile;
 import com.oopteama.chess.service.ChessBackend;
@@ -12,27 +34,6 @@ import com.oopteama.chess.ui.controller.ProfileController;
 import com.oopteama.chess.ui.controller.PuzzleController;
 import com.oopteama.chess.ui.controller.ScreenController;
 import com.oopteama.chess.ui.controller.SettingsController;
-
-import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.EnumMap;
-import java.util.Map;
 
 /**
  * 프로그램의 메인 창입니다. 왼쪽 메뉴와 오른쪽 화면 영역으로 이루어집니다.
@@ -158,6 +159,7 @@ public final class MainFrame extends JFrame {
 
     private JButton menuButton(ScreenId id) {
         JButton button = Theme.styledButton(id.label(), Theme.SIDEBAR, Theme.SURFACE, Theme.MUTED);
+        button.setFont(Theme.bold(16));
         button.setHorizontalAlignment(JButton.LEFT);
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         button.addActionListener(e -> navigate(id));
