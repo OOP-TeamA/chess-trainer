@@ -97,7 +97,9 @@ public final class LessonScreen extends JPanel {
         center.setOpaque(false);
         center.setBorder(new EmptyBorder(14, 0, 14, 0));
         center.add(Theme.scrollPane(promptArea), BorderLayout.CENTER);
-        feedbackArea.setFont(Theme.bold(13));
+        feedbackArea.setFont(Theme.font(15));
+        feedbackArea.setLineWrap(true);
+        feedbackArea.setWrapStyleWord(true);
         feedbackArea.setBorder(new EmptyBorder(10, 12, 10, 12));
         feedbackArea.setOpaque(false);
         JPanel feedbackBox = new RoundedPanel(Theme.SURFACE_ALT, Theme.BORDER, 10);
@@ -211,7 +213,7 @@ public final class LessonScreen extends JPanel {
             feedbackArea.setText("보드에서 직접 기물을 움직여 보세요.");
             feedbackArea.setForeground(Theme.MUTED);
         } else {
-            feedbackArea.setText(breakLines(text, feedbackArea.getFontMetrics(Theme.bold(16))));
+            feedbackArea.setText(text);
             feedbackArea.setForeground(positive ? Theme.SUCCESS : Theme.WARNING);
         }
     }
@@ -239,7 +241,6 @@ public final class LessonScreen extends JPanel {
             guide.setPreferredSize(new Dimension(width, 0));
             float scale = (width - 60) / 260f;
             promptArea.setFont(Theme.font(18 * scale));
-            feedbackArea.setFont(Theme.bold(16 * scale));
             stepCounter.setFont(Theme.font(15 * scale));
             resizeTitle();
         }
