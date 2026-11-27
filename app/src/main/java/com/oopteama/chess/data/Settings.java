@@ -47,6 +47,7 @@ public final class Settings {
     private BoardTheme boardTheme = BoardTheme.WALNUT;
     private boolean showCoords = true;        // 체스판 좌표(a~h, 1~8) 표시
     private boolean showLegalMoves = true;    // 선택한 기물이 갈 수 있는 칸 표시
+    private boolean showMoveInsight = true;   // 갈 수 있는 칸에 마우스를 올리면 수 설명 (퍼즐·AI·로컬 대전)
     private boolean highlightLastMove = true; // 직전에 둔 수 강조
     private boolean autoFlipLocal = false;    // 로컬 대전에서 차례마다 보드 뒤집기
 
@@ -74,6 +75,14 @@ public final class Settings {
 
     public void setShowLegalMoves(boolean showLegalMoves) {
         this.showLegalMoves = showLegalMoves;
+    }
+
+    public boolean showMoveInsight() {
+        return showMoveInsight;
+    }
+
+    public void setShowMoveInsight(boolean showMoveInsight) {
+        this.showMoveInsight = showMoveInsight;
     }
 
     public boolean highlightLastMove() {

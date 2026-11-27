@@ -253,6 +253,7 @@ public final class JsonStorage implements Storage {
         String boardTheme = "WALNUT";
         boolean showCoords = true;
         boolean showLegalMoves = true;
+        boolean showMoveInsight = true; // 예전 저장 파일에는 없으므로 기본값(켜짐)을 씁니다.
         boolean highlightLastMove = true;
         boolean autoFlipLocal = false;
     }
@@ -273,6 +274,7 @@ public final class JsonStorage implements Storage {
             settings.setBoardTheme(Settings.BoardTheme.parse(json.boardTheme));
             settings.setShowCoords(json.showCoords);
             settings.setShowLegalMoves(json.showLegalMoves);
+            settings.setShowMoveInsight(json.showMoveInsight);
             settings.setHighlightLastMove(json.highlightLastMove);
             settings.setAutoFlipLocal(json.autoFlipLocal);
         }
@@ -284,6 +286,7 @@ public final class JsonStorage implements Storage {
         json.boardTheme = settings.boardTheme().name();
         json.showCoords = settings.showCoords();
         json.showLegalMoves = settings.showLegalMoves();
+        json.showMoveInsight = settings.showMoveInsight();
         json.highlightLastMove = settings.highlightLastMove();
         json.autoFlipLocal = settings.autoFlipLocal();
         return json;

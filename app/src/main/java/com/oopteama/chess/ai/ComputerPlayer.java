@@ -27,15 +27,27 @@ public final class ComputerPlayer {
     /** 체크메이트 점수. 빨리 메이트할수록 조금 더 큰 점수를 줍니다. */
     static final int MATE_SCORE = 100_000;
     private static final int INFINITY = 1_000_000;
+    private static final int SETTLE_PLIES = 6; // 잡기 정리에서 더 따져 볼 잡는 수의 최대 개수
 
     private final Random random;
+    private final boolean settleCaptures;
 
     public ComputerPlayer() {
         this(new Random());
     }
 
     public ComputerPlayer(Random random) {
+        this(random, false);
+    }
+
+    /**
+     * @param settleCaptures true면 탐색 끝 국면에서 잡고 잡히는 수를 더 따져 본 뒤 점수를 매깁니다(잡기 정리).
+     *                       조금 느리지만 "마지막에 잡은 쪽이 이긴 것처럼 보이는" 착시가 없어져서
+     *                       수 설명(MoveAdvisor)처럼 점수가 정확해야 할 때 씁니다.
+     */
+    public ComputerPlayer(Random random, boolean settleCaptures) {
         this.random = random;
+        this.settleCaptures = settleCaptures;
     }
 
     /** 난이도에 맞는 수를 고릅니다. */
@@ -58,15 +70,37 @@ public final class ComputerPlayer {
         if (difficulty == Difficulty.BEGINNER) {
             return Optional.of(pickBeginnerMove(board, moves));
         }
+        ScoredMove best = searchRoot(board, moves, difficulty.depth(), cancelled);
+        return cancelled.getAsBoolean() ? Optional.empty() : Optional.of(best.move());
+    }
 
+    /** 사람에게 보여 줄 추천 수 (중급 수준으로 계산). */
+    public Optional<Move> hint(Board board) {
+        return chooseMove(board, Difficulty.MEDIUM);
+    }
+
+    /**
+     * depth 수 앞까지 따져 가장 좋은 수와 그 점수(백 기준)를 구합니다. 둘 수가 없으면 빈 값입니다.
+     * 수 설명(MoveAdvisor)이 "내 수 다음에 상대가 둘 최선의 응수"를 찾을 때 씁니다.
+     */
+    public Optional<ScoredMove> bestMove(Board board, int depth, BooleanSupplier cancelled) {
+        List<Move> moves = Rules.legalMoves(board);
+        if (moves.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(searchRoot(board, orderMoves(board, moves), depth, cancelled));
+    }
+
+    /** 첫 수마다 미니맥스로 점수를 매겨 백이면 가장 큰 수를, 흑이면 가장 작은 수를 고릅니다. */
+    private ScoredMove searchRoot(Board board, List<Move> moves, int depth, BooleanSupplier cancelled) {
         boolean whiteToMove = board.turn() == Side.WHITE;
         Move bestMove = moves.getFirst();
         int alpha = -INFINITY; // 백이 지금까지 확보한 최고 점수
         int beta = INFINITY;   // 흑이 지금까지 확보한 최저 점수
         for (Move move : moves) {
-            int score = minimax(board.apply(move), difficulty.depth() - 1, alpha, beta, 1, cancelled);
+            int score = minimax(board.apply(move), depth - 1, alpha, beta, 1, cancelled);
             if (cancelled.getAsBoolean()) {
-                return Optional.empty();
+                break;
             }
             if (whiteToMove && score > alpha) {
                 alpha = score;
@@ -76,12 +110,7 @@ public final class ComputerPlayer {
                 bestMove = move;
             }
         }
-        return Optional.of(bestMove);
-    }
-
-    /** 사람에게 보여 줄 추천 수 (중급 수준으로 계산). */
-    public Optional<Move> hint(Board board) {
-        return chooseMove(board, Difficulty.MEDIUM);
+        return new ScoredMove(bestMove, whiteToMove ? alpha : beta);
     }
 
     /**
@@ -96,7 +125,10 @@ public final class ComputerPlayer {
             return 0; // 취소되면 결과를 쓰지 않으므로 아무 값이나 돌려줍니다.
         }
         if (depth == 0) {
-            return Rules.hasAnyLegalMove(board) ? Evaluator.evaluate(board) : endScore(board, ply);
+            if (!Rules.hasAnyLegalMove(board)) {
+                return endScore(board, ply);
+            }
+            return settleCaptures ? settle(board, alpha, beta, SETTLE_PLIES) : Evaluator.evaluate(board);
         }
         List<Move> moves = Rules.legalMoves(board);
         if (moves.isEmpty()) {
@@ -127,6 +159,38 @@ public final class ComputerPlayer {
             }
             return best;
         }
+    }
+
+    /**
+     * 잡기 정리: 탐색이 끝난 국면에 잡을 수 있는 기물이 남아 있으면 잡는 수만 이어서 따져 본 뒤 점수를 매깁니다.
+     * 둘 차례인 쪽은 잡지 않고 멈출 수도 있으므로, 지금 점수(standPat)보다 손해인 잡기는 고르지 않습니다.
+     */
+    private int settle(Board board, int alpha, int beta, int pliesLeft) {
+        int standPat = Evaluator.evaluate(board);
+        if (pliesLeft == 0) {
+            return standPat;
+        }
+        boolean whiteToMove = board.turn() == Side.WHITE;
+        int best = standPat;
+        if (whiteToMove) {
+            alpha = Math.max(alpha, best);
+        } else {
+            beta = Math.min(beta, best);
+        }
+        for (Move move : orderMoves(board, Rules.legalCaptures(board))) {
+            if (alpha >= beta) {
+                break; // 상대가 이 국면을 피할 것이므로 더 볼 필요가 없습니다.
+            }
+            int score = settle(board.apply(move), alpha, beta, pliesLeft - 1);
+            if (whiteToMove) {
+                best = Math.max(best, score);
+                alpha = Math.max(alpha, best);
+            } else {
+                best = Math.min(best, score);
+                beta = Math.min(beta, best);
+            }
+        }
+        return best;
     }
 
     /** 둘 수가 없는 국면의 점수: 체크메이트면 진 쪽에 아주 나쁜 점수, 스테일메이트면 0(무승부). */
@@ -176,6 +240,7 @@ public final class ComputerPlayer {
         return priority;
     }
 
-    private record ScoredMove(Move move, int score) {
+    /** 수와 그 수의 점수. */
+    public record ScoredMove(Move move, int score) {
     }
 }

@@ -1,5 +1,6 @@
 package com.oopteama.chess.ui.component;
 
+import com.oopteama.chess.ai.MoveInsight;
 import com.oopteama.chess.data.Settings;
 import com.oopteama.chess.model.Board;
 import com.oopteama.chess.model.Move;
@@ -22,13 +23,12 @@ import java.awt.Point;
 import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.Path2D;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * 체스판을 그리는 화면 부품입니다. 레슨·퍼즐·AI 대전·로컬 대전 화면이 함께 씁니다.
- * 무엇을 그릴지(국면, 선택한 칸, 힌트 화살표, 드래그 중인 기물 등)만 기억하고 그립니다.
+ * 무엇을 그릴지(국면, 선택한 칸, 힌트 화살표, 드래그 중인 기물, 수 설명 등)만 기억하고 그립니다.
  * 마우스 입력 처리는 BoardController가 맡습니다.
  */
 public final class BoardPanel extends JPanel {
@@ -59,6 +59,10 @@ public final class BoardPanel extends JPanel {
     private boolean dragging;
     private Move droppedMove;                     // 드래그로 놓은 수 (다시 미끄러지지 않게)
 
+    private MoveInsight insight;                  // 마우스를 올린 칸의 수 설명 (없으면 null)
+    private long insightStartNanos;               // 수 설명 애니메이션을 시작한 시각
+    private final Timer insightTimer = new Timer(20, e -> repaint()); // 수 설명이 보이는 동안 계속 다시 그림
+
     public BoardPanel(Settings settings) {
         this.settings = Objects.requireNonNull(settings, "settings");
         setBackground(Theme.BG);
@@ -78,6 +82,7 @@ public final class BoardPanel extends JPanel {
         targets = List.of();
         dragFrom = null;
         dragging = false;
+        showInsight(null);
         animator.boardChanged(previous, board, droppedMove);
         repaint();
     }
@@ -128,18 +133,43 @@ public final class BoardPanel extends JPanel {
         wrongTimer.start();
     }
 
+    /**
+     * 마우스를 올린 칸의 수 설명을 애니메이션으로 보여 줍니다 (null이면 지움).
+     * 설명이 바뀔 때마다 애니메이션을 처음부터 다시 재생합니다.
+     */
+    public void showInsight(MoveInsight insight) {
+        if (this.insight == insight) {
+            return;
+        }
+        this.insight = insight;
+        insightStartNanos = System.nanoTime();
+        if (insight != null) {
+            insightTimer.start();
+        } else {
+            insightTimer.stop();
+        }
+        repaint();
+    }
+
+    /** 지금 보여 주는 수 설명 (없으면 null). */
+    public MoveInsight shownInsight() {
+        return insight;
+    }
+
     // ---- 선택과 드래그 상태 (BoardController가 바꿈) ----
 
     /** square를 선택하고, 갈 수 있는 칸(targets)에 점을 찍습니다. */
     public void select(Position square, List<Position> targets) {
         this.selected = square;
         this.targets = List.copyOf(targets);
+        showInsight(null);
         repaint();
     }
 
     public void clearSelection() {
         selected = null;
         targets = List.of();
+        showInsight(null);
         repaint();
     }
 
@@ -166,6 +196,7 @@ public final class BoardPanel extends JPanel {
     public void endDrag() {
         dragFrom = null;
         dragging = false;
+        showInsight(null);
         repaint();
     }
 
@@ -191,45 +222,13 @@ public final class BoardPanel extends JPanel {
 
     /** 마우스 위치에 있는 칸 (체스판 밖이면 null). */
     public Position positionAt(Point point) {
-        int cell = cellSize();
-        int left = boardLeft(cell);
-        int top = boardTop(cell);
-        if (point.x < left || point.y < top) {
-            return null;
-        }
-        int screenCol = (point.x - left) / cell;
-        int screenRow = (point.y - top) / cell;
-        if (screenCol >= 8 || screenRow >= 8) {
-            return null;
-        }
-        int col = flipped ? 7 - screenCol : screenCol;
-        int row = flipped ? screenRow : 7 - screenRow;
-        return new Position(col, row);
+        return geometry().positionAt(point);
     }
 
-    private int cellSize() {
-        int size = Math.max(64, Math.min(getWidth(), getHeight()) - 20); // 바깥 여백 10px
-        return size / 8;
-    }
-
-    private int boardLeft(int cell) {
-        return (getWidth() - cell * 8) / 2;
-    }
-
-    private int boardTop(int cell) {
-        return (getHeight() - cell * 8) / 2;
-    }
-
-    /** 칸의 화면상 x 좌표 (왼쪽 위 모서리). */
-    private int xOf(Position square, int cell) {
-        int screenCol = flipped ? 7 - square.col() : square.col();
-        return boardLeft(cell) + screenCol * cell;
-    }
-
-    /** 칸의 화면상 y 좌표 (왼쪽 위 모서리). 흰 진영 기준으로 8랭크가 위쪽입니다. */
-    private int yOf(Position square, int cell) {
-        int screenRow = flipped ? square.row() : 7 - square.row();
-        return boardTop(cell) + screenRow * cell;
+    /** 지금 크기에서 체스판이 그려지는 위치와 칸 크기 (바깥 여백 10px). */
+    private BoardGeometry geometry() {
+        int cell = Math.max(64, Math.min(getWidth(), getHeight()) - 20) / 8;
+        return new BoardGeometry((getWidth() - cell * 8) / 2, (getHeight() - cell * 8) / 2, cell, flipped);
     }
 
     // ---- 그리기 ----
@@ -240,55 +239,60 @@ public final class BoardPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        int cell = cellSize();
+        BoardGeometry geo = geometry();
 
         // 애니메이션 중에는 재생 중인 수 기준으로 그립니다 (뒤에 대기 중인 수가 먼저 보이지 않도록).
         MoveAnimator.Animation animation = animator.current();
         Board shown = animation != null ? animation.after() : board;
         Move shownLastMove = animation != null ? animation.move() : lastMove;
 
-        drawFrame(g2, cell);
-        drawSquares(g2, cell, shown, shownLastMove);
+        drawFrame(g2, geo);
+        drawSquares(g2, geo, shown, shownLastMove);
         if (settings.showCoords()) {
-            drawCoordinates(g2, cell);
+            drawCoordinates(g2, geo);
         }
         if (settings.showLegalMoves()) {
-            drawMoveMarks(g2, cell);
+            drawMoveMarks(g2, geo);
         }
-        drawPieces(g2, cell, shown, animation);
+        drawPieces(g2, geo, shown, animation);
         if (animation != null) {
-            drawAnimation(g2, cell, animation);
+            drawAnimation(g2, geo, animation);
         }
         if (arrowMove != null) {
-            drawArrow(g2, cell, arrowMove.from(), arrowMove.to(), arrowColor);
+            ArrowPainter.draw(g2, geo, arrowMove.from(), arrowMove.to(), withAlpha(arrowColor, 215),
+                    geo.cell() * 0.14f, 1.0, false);
+        }
+        if (insight != null) {
+            double seconds = (System.nanoTime() - insightStartNanos) / 1_000_000_000.0;
+            InsightPainter.paint(g2, geo, board, insight, seconds, dragging);
         }
         if (dragging && dragFrom != null && board.pieceAt(dragFrom) != null) {
+            int cell = geo.cell();
             PiecePainter.draw(g2, board.pieceAt(dragFrom), dragPoint.x - cell / 2, dragPoint.y - cell / 2, cell, 1f);
         }
         g2.dispose();
     }
 
-    private void drawFrame(Graphics2D g2, int cell) {
-        int left = boardLeft(cell);
-        int top = boardTop(cell);
-        int size = cell * 8;
+    private void drawFrame(Graphics2D g2, BoardGeometry geo) {
+        int size = geo.size();
         g2.setColor(Theme.SURFACE);
-        g2.fillRoundRect(left - 6, top - 6, size + 12, size + 12, 12, 12);
+        g2.fillRoundRect(geo.left() - 6, geo.top() - 6, size + 12, size + 12, 12, 12);
         g2.setColor(Theme.BORDER);
-        g2.drawRoundRect(left - 6, top - 6, size + 11, size + 11, 12, 12);
+        g2.drawRoundRect(geo.left() - 6, geo.top() - 6, size + 11, size + 11, 12, 12);
     }
 
     /** 64칸 바탕색과 강조 표시(직전 수, 힌트, 선택, 체크, 오답). */
-    private void drawSquares(Graphics2D g2, int cell, Board shown, Move shownLastMove) {
+    private void drawSquares(Graphics2D g2, BoardGeometry geo, Board shown, Move shownLastMove) {
         Color light = new Color(settings.boardTheme().lightRgb());
         Color dark = new Color(settings.boardTheme().darkRgb());
         Position checkedKing = Rules.isInCheck(shown) ? shown.findKing(shown.turn()) : null;
+        int cell = geo.cell();
 
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Position square = new Position(col, row);
-                int x = xOf(square, cell);
-                int y = yOf(square, cell);
+                int x = geo.x(square);
+                int y = geo.y(square);
                 g2.setColor(square.isLight() ? light : dark);
                 g2.fillRect(x, y, cell, cell);
 
@@ -323,13 +327,14 @@ public final class BoardPanel extends JPanel {
     }
 
     /** 왼쪽 세로줄에 랭크 숫자, 맨 아래 줄에 파일 알파벳을 적습니다. */
-    private void drawCoordinates(Graphics2D g2, int cell) {
+    private void drawCoordinates(Graphics2D g2, BoardGeometry geo) {
         Color light = new Color(settings.boardTheme().lightRgb());
         Color dark = new Color(settings.boardTheme().darkRgb());
+        int cell = geo.cell();
         g2.setFont(Theme.bold(Math.max(10f, cell * 0.17f)));
         FontMetrics fm = g2.getFontMetrics();
-        int left = boardLeft(cell);
-        int top = boardTop(cell);
+        int left = geo.left();
+        int top = geo.top();
         for (int i = 0; i < 8; i++) {
             int row = flipped ? i : 7 - i;   // 화면 i번째 줄의 랭크
             int col = flipped ? 7 - i : i;   // 화면 i번째 칸의 파일
@@ -345,14 +350,15 @@ public final class BoardPanel extends JPanel {
     }
 
     /** 선택한 기물이 갈 수 있는 칸: 빈 칸은 점, 잡을 수 있는 칸은 고리. */
-    private void drawMoveMarks(Graphics2D g2, int cell) {
+    private void drawMoveMarks(Graphics2D g2, BoardGeometry geo) {
         if (selected == null) {
             return;
         }
+        int cell = geo.cell();
         g2.setColor(MOVE_MARK_COLOR);
         for (Position target : targets) {
-            int x = xOf(target, cell);
-            int y = yOf(target, cell);
+            int x = geo.x(target);
+            int y = geo.y(target);
             boolean capture = !board.isEmpty(target)
                     || (board.pieceAt(selected) instanceof Pawn && target.equals(board.enPassant()));
             if (capture) {
@@ -365,7 +371,7 @@ public final class BoardPanel extends JPanel {
         }
     }
 
-    private void drawPieces(Graphics2D g2, int cell, Board shown, MoveAnimator.Animation animation) {
+    private void drawPieces(Graphics2D g2, BoardGeometry geo, Board shown, MoveAnimator.Animation animation) {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Position square = new Position(col, row);
@@ -373,52 +379,27 @@ public final class BoardPanel extends JPanel {
                 boolean waitingForSlide = animation != null && animation.hides(square);
                 Piece piece = shown.pieceAt(square);
                 if (piece != null && !draggedAway && !waitingForSlide) {
-                    PiecePainter.draw(g2, piece, xOf(square, cell), yOf(square, cell), cell, 1f);
+                    PiecePainter.draw(g2, piece, geo.x(square), geo.y(square), geo.cell(), 1f);
                 }
             }
         }
     }
 
     /** 잡힌 기물은 제자리에서 서서히 사라지고, 움직인 기물은 도착 칸으로 미끄러집니다. */
-    private void drawAnimation(Graphics2D g2, int cell, MoveAnimator.Animation animation) {
+    private void drawAnimation(Graphics2D g2, BoardGeometry geo, MoveAnimator.Animation animation) {
         double t = animator.progress();
         if (animation.captured() != null && t < 1.0) {
             Position at = animation.capturedAt();
-            PiecePainter.draw(g2, animation.captured(), xOf(at, cell), yOf(at, cell), cell, (float) (1.0 - t));
+            PiecePainter.draw(g2, animation.captured(), geo.x(at), geo.y(at), geo.cell(), (float) (1.0 - t));
         }
         for (MoveAnimator.Slide slide : animation.slides()) {
-            int x = (int) Math.round(xOf(slide.from(), cell) + (xOf(slide.to(), cell) - xOf(slide.from(), cell)) * t);
-            int y = (int) Math.round(yOf(slide.from(), cell) + (yOf(slide.to(), cell) - yOf(slide.from(), cell)) * t);
-            PiecePainter.draw(g2, slide.piece(), x, y, cell, 1f);
+            int x = (int) Math.round(geo.x(slide.from()) + (geo.x(slide.to()) - geo.x(slide.from())) * t);
+            int y = (int) Math.round(geo.y(slide.from()) + (geo.y(slide.to()) - geo.y(slide.from())) * t);
+            PiecePainter.draw(g2, slide.piece(), x, y, geo.cell(), 1f);
         }
     }
 
-    private void drawArrow(Graphics2D g2, int cell, Position from, Position to, Color color) {
-        double x1 = xOf(from, cell) + cell / 2.0;
-        double y1 = yOf(from, cell) + cell / 2.0;
-        double x2 = xOf(to, cell) + cell / 2.0;
-        double y2 = yOf(to, cell) + cell / 2.0;
-        double length = Math.hypot(x2 - x1, y2 - y1);
-        if (length < 1) {
-            return;
-        }
-        double ux = (x2 - x1) / length;
-        double uy = (y2 - y1) / length;
-        double head = cell * 0.34;
-        double shaftEndX = x2 - ux * head;
-        double shaftEndY = y2 - uy * head;
-
-        g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 215));
-        g2.setStroke(new BasicStroke(cell * 0.14f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.drawLine((int) x1, (int) y1, (int) shaftEndX, (int) shaftEndY);
-
-        double px = -uy * head * 0.65;
-        double py = ux * head * 0.65;
-        Path2D arrowHead = new Path2D.Double();
-        arrowHead.moveTo(x2, y2);
-        arrowHead.lineTo(shaftEndX + px, shaftEndY + py);
-        arrowHead.lineTo(shaftEndX - px, shaftEndY - py);
-        arrowHead.closePath();
-        g2.fill(arrowHead);
+    private static Color withAlpha(Color color, int alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 }

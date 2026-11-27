@@ -34,6 +34,11 @@ public final class LocalGameController extends GameController {
     }
 
     @Override
+    protected boolean humanToMove() {
+        return !game.isOver(); // 두 사람이 번갈아 두므로 대국이 끝나기 전에는 늘 사람 차례입니다.
+    }
+
+    @Override
     protected void onBoardMove(Move move) {
         if (game.isOver()) {
             return;

@@ -29,6 +29,10 @@ public final class SettingsScreen extends JPanel {
     private final JPanel themeGrid = new JPanel(new GridLayout(1, 3, 14, 0));
     private final JCheckBox coordsCheck = createCheck("체스판 좌표 표시 (a-h, 1-8)");
     private final JCheckBox legalMovesCheck = createCheck("선택한 기물의 이동 가능 칸 표시");
+    private final JCheckBox moveInsightCheck =
+            createCheck("수 설명: 갈 수 있는 칸에 마우스를 올리면 좋은 수·나쁜 수인 이유를 애니메이션으로 보여 주기");
+    private final JLabel moveInsightNote =
+            Theme.muted("퍼즐 · AI 대전 · 로컬 대전에서 적용 (레슨은 단계별 안내를 그대로 씁니다)");
     private final JCheckBox lastMoveCheck = createCheck("직전에 둔 수 강조 표시");
     private final JCheckBox autoFlipCheck = createCheck("로컬 2인 대전 시 차례마다 보드 자동 뒤집기");
 
@@ -52,14 +56,18 @@ public final class SettingsScreen extends JPanel {
 
         JPanel optionCard = Theme.card(20);
         optionCard.setAlignmentX(LEFT_ALIGNMENT);
-        optionCard.setMaximumSize(new Dimension(760, 230));
+        optionCard.setMaximumSize(new Dimension(760, 300));
         optionCard.add(Theme.sectionTitle("표시 및 대국 옵션"), BorderLayout.NORTH);
         JPanel checks = new JPanel();
         checks.setLayout(new BoxLayout(checks, BoxLayout.Y_AXIS));
         checks.setOpaque(false);
         checks.setBorder(new EmptyBorder(12, 0, 0, 0));
-        for (JCheckBox check : new JCheckBox[]{coordsCheck, legalMovesCheck, lastMoveCheck, autoFlipCheck}) {
+        for (JCheckBox check : new JCheckBox[]{coordsCheck, legalMovesCheck, moveInsightCheck, lastMoveCheck, autoFlipCheck}) {
             checks.add(check);
+            if (check == moveInsightCheck) {
+                moveInsightNote.setBorder(new EmptyBorder(2, 28, 0, 0)); // 체크박스 글자와 줄을 맞춤
+                checks.add(moveInsightNote);
+            }
             checks.add(Box.createVerticalStrut(10));
         }
         optionCard.add(checks, BorderLayout.CENTER);
@@ -97,6 +105,10 @@ public final class SettingsScreen extends JPanel {
         return legalMovesCheck;
     }
 
+    public JCheckBox moveInsightCheck() {
+        return moveInsightCheck;
+    }
+
     public JCheckBox lastMoveCheck() {
         return lastMoveCheck;
     }
@@ -113,6 +125,7 @@ public final class SettingsScreen extends JPanel {
     public void showSettings(Settings settings, Consumer<BoardTheme> onPickTheme) {
         coordsCheck.setSelected(settings.showCoords());
         legalMovesCheck.setSelected(settings.showLegalMoves());
+        moveInsightCheck.setSelected(settings.showMoveInsight());
         lastMoveCheck.setSelected(settings.highlightLastMove());
         autoFlipCheck.setSelected(settings.autoFlipLocal());
 

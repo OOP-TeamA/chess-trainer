@@ -32,6 +32,7 @@ public final class PuzzleController implements ScreenController {
     private final ChessBackend backend;
     private final PuzzleScreen screen;
     private final BoardController board;
+    private final InsightLoader insights;
 
     private List<Puzzle> visiblePuzzles = List.of();
     private PuzzleSession session;
@@ -42,6 +43,7 @@ public final class PuzzleController implements ScreenController {
         this.backend = backend;
         this.screen = new PuzzleScreen(backend.settings(), List.of(ALL, MATE, TACTICS));
         this.board = new BoardController(screen.boardPanel());
+        this.insights = new InsightLoader(backend, board);
         board.setMoveListener(this::onUserMove);
         board.setIllegalMoveListener(this::onIllegalMove);
 
@@ -224,7 +226,13 @@ public final class PuzzleController implements ScreenController {
         panel.setLastMove(session.lastMove());
         panel.setHighlights(session.highlightSquares());
         panel.setArrow(session.hintArrow(), Theme.BOARD_INFO);
-        board.setInteractive(!session.isSolved() && !session.hasPendingReply());
+        board.setInteractive(canUserMove());
+        insights.update(session.board(), canUserMove());
+    }
+
+    /** 사용자가 지금 수를 둘 수 있는지: 아직 못 풀었고 상대 응수를 기다리는 중이 아닐 때. */
+    private boolean canUserMove() {
+        return session != null && !session.isSolved() && !session.hasPendingReply();
     }
 
     // ---- ScreenController ----
@@ -246,10 +254,14 @@ public final class PuzzleController implements ScreenController {
     @Override
     public void onHide() {
         stopReplyTimer();
+        insights.clear(); // 화면을 떠나면 수 설명 계산을 멈춥니다. 돌아오면 refresh가 다시 계산합니다.
     }
 
     @Override
     public void onDataChanged() {
+        if (session != null) {
+            insights.update(session.board(), canUserMove()); // 설정에서 수 설명을 켜거나 끈 경우
+        }
         screen.boardPanel().repaint();
     }
 }

@@ -57,6 +57,29 @@ public final class Rules {
         return false;
     }
 
+    /**
+     * 상대 기물을 잡는 합법 수와 폰 승진(퀸으로)만 구합니다.
+     * 잡는 수만 필요할 때(AI의 잡기 정리) 모든 수를 검사하는 legalMoves()보다 훨씬 빠릅니다.
+     */
+    public static List<Move> legalCaptures(Board board) {
+        Side me = board.turn();
+        int lastRow = me.opposite().homeRow();
+        List<Move> captures = new ArrayList<>();
+        for (Position from : board.positionsOf(me)) {
+            Piece piece = board.pieceAt(from);
+            for (Position to : piece.movableSquares(board, from)) {
+                boolean promotion = piece instanceof Pawn && to.row() == lastRow;
+                Move move = new Move(from, to, promotion ? 'Q' : Move.NO_PROMOTION);
+                Piece captured = capturedPiece(board, move);
+                boolean worthChecking = promotion || (captured != null && !(captured instanceof King));
+                if (worthChecking && keepsKingSafe(board, move)) {
+                    captures.add(move);
+                }
+            }
+        }
+        return captures;
+    }
+
     /** 기물 규칙만 따진 후보 수 (자기 킹이 위험해지는지는 아직 검사하지 않음). */
     private static List<Move> candidateMoves(Board board) {
         Side me = board.turn();

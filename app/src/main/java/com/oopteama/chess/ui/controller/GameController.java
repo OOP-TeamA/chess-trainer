@@ -24,17 +24,22 @@ public abstract class GameController implements ScreenController {
     protected final Game game;
     protected final BoardController board;
     private final GameScreen screen;
+    private final InsightLoader insights;
 
     protected GameController(ChessBackend backend, GameScreen screen) {
         this.backend = backend;
         this.screen = screen;
         this.game = backend.newGame();
         this.board = new BoardController(screen.boardPanel());
+        this.insights = new InsightLoader(backend, board);
         board.setMoveListener(this::onBoardMove);
     }
 
     /** 사람이 체스판에서 수를 두었을 때 할 일. */
     protected abstract void onBoardMove(Move move);
+
+    /** 사람이 지금 체스판에서 수를 둘 수 있는지 (수 설명은 이때만 계산합니다). */
+    protected abstract boolean humanToMove();
 
     /** 선수 띠에 보여 줄 이름. */
     protected abstract String playerName(Side side);
@@ -52,6 +57,7 @@ public abstract class GameController implements ScreenController {
                 sideMark(bottom) + " " + playerName(bottom), capturedText(bottom));
         screen.showStatus(game.statusText(), statusColor());
         screen.showMoveList(moveListText());
+        insights.update(game.board(), humanToMove());
     }
 
     /** 상태 문구만 잠깐 바꿉니다 (예: "AI 생각 중..."). */
@@ -110,7 +116,13 @@ public abstract class GameController implements ScreenController {
     }
 
     @Override
+    public void onHide() {
+        insights.clear(); // 화면을 떠나면 수 설명 계산을 멈춥니다. 돌아오면 refreshScreen이 다시 계산합니다.
+    }
+
+    @Override
     public void onDataChanged() {
+        insights.update(game.board(), humanToMove()); // 설정에서 수 설명을 켜거나 끈 경우
         boardPanel().repaint();
     }
 

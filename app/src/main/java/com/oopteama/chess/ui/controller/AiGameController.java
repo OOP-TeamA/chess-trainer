@@ -48,6 +48,11 @@ public final class AiGameController extends GameController {
         return side == humanSide ? backend.activeProfile().name() : "AI (" + difficulty.label() + ")";
     }
 
+    @Override
+    protected boolean humanToMove() {
+        return !game.isOver() && !aiThinking && game.turn() == humanSide;
+    }
+
     private void startNewGame() {
         cancelAiThinking();
         difficulty = (Difficulty) screen.difficultyBox().getSelectedItem();
@@ -209,6 +214,7 @@ public final class AiGameController extends GameController {
     /** 화면을 떠나면 AI 계산을 멈춥니다. 돌아오면 onShow가 다시 시작합니다. */
     @Override
     public void onHide() {
+        super.onHide();
         cancelAiThinking();
     }
 }

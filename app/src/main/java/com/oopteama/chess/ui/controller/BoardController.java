@@ -1,5 +1,6 @@
 package com.oopteama.chess.ui.controller;
 
+import com.oopteama.chess.ai.MoveInsight;
 import com.oopteama.chess.model.Board;
 import com.oopteama.chess.model.Move;
 import com.oopteama.chess.model.Position;
@@ -16,12 +17,14 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 체스판(BoardPanel)의 마우스 입력을 처리하는 이벤트 핸들러입니다.
  * <ul>
  *   <li>클릭: 기물을 눌러 선택한 뒤 갈 칸을 누르면 수가 됩니다. 선택한 기물을 다시 누르면 선택이 풀립니다.</li>
  *   <li>드래그: 기물을 끌어서 갈 칸에 놓으면 수가 됩니다.</li>
+ *   <li>호버: 선택한(또는 끌고 있는) 기물이 갈 수 있는 칸에 마우스를 올리면 그 수의 설명을 보여 줍니다.</li>
  * </ul>
  * 수가 정해지면 MoveListener에게, 규칙상 갈 수 없는 칸이면 IllegalMoveListener에게 알립니다.
  */
@@ -46,6 +49,10 @@ public final class BoardController {
     private Side allowedSide;          // 이 진영만 둘 수 있음 (null이면 지금 차례인 쪽)
     private boolean deselectOnRelease; // 이미 선택한 기물을 다시 눌렀다가 끌지 않고 놓으면 선택 해제
 
+    private Board insightBoard;                         // 수 설명을 계산한 국면
+    private Map<Move, MoveInsight> insights = Map.of(); // 그 국면의 수 설명 (설정이 꺼져 있으면 비어 있음)
+    private Point hoverPoint;                           // 마지막 마우스 위치 (설명이 늦게 도착하면 다시 확인)
+
     public BoardController(BoardPanel panel) {
         this.panel = panel;
         MouseAdapter mouse = new MouseAdapter() {
@@ -57,11 +64,23 @@ public final class BoardController {
             @Override
             public void mouseDragged(MouseEvent e) {
                 panel.dragTo(e.getPoint());
+                onHover(e.getPoint());
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 onRelease(e.getPoint());
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                onHover(e.getPoint());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoverPoint = null;
+                panel.showInsight(null);
             }
         };
         panel.addMouseListener(mouse);
@@ -98,6 +117,37 @@ public final class BoardController {
     private boolean canInteract() {
         return interactive && moveListener != null
                 && (allowedSide == null || panel.board().turn() == allowedSide);
+    }
+
+    /**
+     * position 국면의 수 설명을 받아 둡니다 (빈 Map이면 설명을 끔).
+     * 마우스가 이미 갈 수 있는 칸 위에 있으면 바로 보여 줍니다.
+     */
+    public void setInsights(Board position, Map<Move, MoveInsight> insights) {
+        this.insightBoard = position;
+        this.insights = insights == null ? Map.of() : insights;
+        if (hoverPoint != null) {
+            onHover(hoverPoint);
+        } else {
+            panel.showInsight(null);
+        }
+    }
+
+    /** 선택한(또는 끌고 있는) 기물이 갈 수 있는 칸에 마우스가 있으면 그 수의 설명을 보여 줍니다. */
+    private void onHover(Point point) {
+        hoverPoint = point;
+        Position from = panel.isDragging() ? panel.dragFrom() : panel.selected();
+        Position to = panel.positionAt(point);
+        MoveInsight insight = null;
+        // 지금 체스판의 국면을 계산한 설명일 때만 씁니다 (국면이 바뀐 뒤 늦게 도착한 설명은 무시).
+        boolean overTarget = from != null && to != null && !to.equals(from);
+        if (overTarget && canInteract() && panel.board() == insightBoard) {
+            insight = insights.get(new Move(from, to));
+            if (insight == null) {
+                insight = insights.get(new Move(from, to, 'Q')); // 폰 승진은 퀸으로 둘 때를 설명합니다.
+            }
+        }
+        panel.showInsight(insight);
     }
 
     // ---- 마우스 이벤트 처리 ----

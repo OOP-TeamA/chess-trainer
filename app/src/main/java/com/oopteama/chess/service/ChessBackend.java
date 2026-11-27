@@ -3,6 +3,8 @@ package com.oopteama.chess.service;
 import com.oopteama.chess.ai.ComputerPlayer;
 import com.oopteama.chess.ai.Difficulty;
 import com.oopteama.chess.ai.MateSolver;
+import com.oopteama.chess.ai.MoveAdvisor;
+import com.oopteama.chess.ai.MoveInsight;
 import com.oopteama.chess.data.Profile;
 import com.oopteama.chess.data.Settings;
 import com.oopteama.chess.data.Storage;
@@ -16,6 +18,7 @@ import com.oopteama.chess.training.PuzzleSession;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +35,7 @@ public final class ChessBackend {
     private final Storage storage;
     private final ComputerPlayer computer;
     private final MateSolver mateSolver;
+    private final MoveAdvisor advisor;
 
     private final List<Lesson> lessons;
     private final List<Puzzle> puzzles;
@@ -48,6 +52,7 @@ public final class ChessBackend {
         this.storage = Objects.requireNonNull(storage, "storage");
         this.computer = Objects.requireNonNull(computer, "computer");
         this.mateSolver = Objects.requireNonNull(mateSolver, "mateSolver");
+        this.advisor = new MoveAdvisor();
         this.lessons = List.copyOf(storage.loadLessons());
         this.puzzles = List.copyOf(storage.loadPuzzles());
 
@@ -103,6 +108,14 @@ public final class ChessBackend {
     /** 사람에게 보여 줄 추천 수. */
     public Optional<Move> computeHint(Board board) {
         return computer.hint(board);
+    }
+
+    /**
+     * 수 설명: board에서 둘 수 있는 모든 수가 왜 좋은지·나쁜지 (오래 걸릴 수 있어 화면에서는 백그라운드 스레드로 부릅니다).
+     * cancelled가 true가 되면 계산을 멈추고 빈 Map을 돌려줍니다.
+     */
+    public Map<Move, MoveInsight> analyzeMoves(Board board, BooleanSupplier cancelled) {
+        return advisor.analyzeAll(board, cancelled);
     }
 
     // ---- 프로필 (바뀌면 바로 저장하고 화면에 알림) ----

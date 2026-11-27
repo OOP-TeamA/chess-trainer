@@ -126,6 +126,7 @@ class ChessBackendTest {
         backend.updateSettings(s -> {
             s.setBoardTheme(Settings.BoardTheme.FOREST);
             s.setShowCoords(false);
+            s.setShowMoveInsight(false);
             s.setAutoFlipLocal(true);
         });
         assertTrue(Files.exists(tempDir.resolve("userdata.json")));
@@ -137,6 +138,7 @@ class ChessBackendTest {
         assertEquals(10, reloaded.activeProfile().totalScore());
         assertEquals(Settings.BoardTheme.FOREST, reloaded.settings().boardTheme());
         assertFalse(reloaded.settings().showCoords());
+        assertFalse(reloaded.settings().showMoveInsight());
         assertTrue(reloaded.settings().autoFlipLocal());
 
         reloaded.setActiveProfile(firstId);

@@ -16,7 +16,7 @@ flowchart TB
     end
     Service["service<br/>ChessBackend · 기능 단일 창구"]
     Training["training<br/>레슨·퍼즐 채점"]
-    AI["ai<br/>컴퓨터 상대 · 메이트 계산"]
+    AI["ai<br/>컴퓨터 상대 · 메이트 계산 · 수 설명"]
     Data["data<br/>프로필·설정 · JSON 저장"]
     Model["model · model.piece<br/>체스 규칙 · 기물"]
 
@@ -39,14 +39,14 @@ flowchart TB
 | --- | --- | --- | --- |
 | `model` | 9 | 체스판, 칸, 수, 규칙 판정, 대국 기록, FEN·기보 표기 | 없음 (`java.util`만) |
 | `model.piece` | 9 | 기물 클래스 계층 (`Piece`와 6종류 기물) | 없음 |
-| `ai` | 4 | 컴퓨터 상대(미니맥스), 국면 점수, N수 메이트 계산 | 없음 |
+| `ai` | 6 | 컴퓨터 상대(미니맥스), 국면 점수, N수 메이트 계산, 수 설명(좋은 수·나쁜 수와 이유) | 없음 |
 | `training` | 6 | 레슨·퍼즐 데이터와 채점 | 없음 |
 | `data` | 4 | 프로필·설정, JSON 파일 읽기·쓰기 | Gson, `java.nio.file` |
 | `service` | 1 | `ChessBackend`: 화면이 기능을 쓸 때 거치는 단일 창구 | 없음 |
 | `ui` | 3 | `MainFrame`(메인 창), `ScreenId`(화면 목록), `Theme`(색·글꼴·버튼 모양) | Swing, FlatLaf |
 | `ui.screen` | 8 | 화면(View): 컴포넌트 배치와 보여 주기 | Swing |
-| `ui.controller` | 10 | 컨트롤러: 버튼·마우스 이벤트를 받아 처리 | Swing |
-| `ui.component` | 6 | 여러 화면이 같이 쓰는 부품 (체스판, 기물 그림, 애니메이션 …) | Swing |
+| `ui.controller` | 11 | 컨트롤러: 버튼·마우스 이벤트를 받아 처리, 수 설명을 백그라운드에서 준비 | Swing |
+| `ui.component` | 9 | 여러 화면이 같이 쓰는 부품 (체스판, 기물 그림, 화살표, 애니메이션 …) | Swing |
 | (최상위) | 1 | `Main`: 객체를 만들어 연결하고 창을 띄움 | Swing |
 
 지킨 규칙:
@@ -105,23 +105,30 @@ classDiagram
         <<abstract>>
         #onBoardMove(Move)*
         #playerName(Side)* String
+        #humanToMove()* boolean
         #refreshScreen()
     }
     class AiGameController
     class LocalGameController
+    class InsightLoader {
+        +update(Board, boolean)
+    }
     class BoardController {
         +setMoveListener(MoveListener)
         +setInteractive(boolean)
+        +setInsights(Board, Map)
     }
     class BoardPanel {
         +setBoard(Board)
         +setLastMove(Move)
+        +showInsight(MoveInsight)
     }
     class ChessBackend {
         +startLesson(Lesson) LessonSession
         +startPuzzle(Puzzle) PuzzleSession
         +newGame() Game
         +chooseAiMove(Board, Difficulty, BooleanSupplier) Optional~Move~
+        +analyzeMoves(Board, BooleanSupplier) Map
         +completeLesson(String)
         +addChangeListener(Runnable)
     }
@@ -143,8 +150,17 @@ classDiagram
     class PuzzleSession
     class ComputerPlayer {
         +chooseMove(Board, Difficulty, BooleanSupplier) Optional~Move~
+        +bestMove(Board, int, BooleanSupplier) Optional~ScoredMove~
     }
     class MateSolver
+    class MoveAdvisor {
+        +analyzeAll(Board, BooleanSupplier) Map
+    }
+    class MoveInsight {
+        <<record>>
+        +verdict() Verdict
+        +reasons() List~Reason~
+    }
     class Game {
         +play(Move) PlayedMove
         +undo(int) int
@@ -168,6 +184,10 @@ classDiagram
     PuzzleController *-- BoardController
     GameController *-- BoardController
     BoardController --> BoardPanel : 마우스 입력
+    PuzzleController *-- InsightLoader
+    GameController *-- InsightLoader
+    InsightLoader --> ChessBackend : 수 설명 계산
+    InsightLoader --> BoardController : 수 설명 전달
     LessonController --> ChessBackend
     PuzzleController --> ChessBackend
     GameController --> ChessBackend
@@ -178,6 +198,9 @@ classDiagram
     ChessBackend *-- Settings
     ChessBackend *-- ComputerPlayer
     ChessBackend *-- MateSolver
+    ChessBackend *-- MoveAdvisor
+    MoveAdvisor *-- ComputerPlayer : 잡기 정리를 켠 탐색
+    MoveAdvisor ..> MoveInsight : 생성
     ChessBackend ..> LessonSession : 생성
     ChessBackend ..> PuzzleSession : 생성
     TrainingSession <|-- LessonSession
@@ -282,12 +305,12 @@ flowchart LR
 | --- | --- | --- |
 | `lessons.json` | `app/src/main/resources/data/` | `[{ id, category, title, summary, side, setup[], steps: [{ fen, sandbox, goal, hints[], prompt, success, reply }] }]` |
 | `puzzles.json` | `app/src/main/resources/data/` | `[{ id, theme, mate, title, fen, solution[], explain }]` |
-| `userdata.json` | `~/.chessmate/` (`-Dchessmate.home`로 변경) | `{ activeProfileId, settings: { boardTheme, showCoords, showLegalMoves, highlightLastMove, autoFlipLocal }, profiles: [{ id, name, completedLessons[], puzzleStats{}, aiRecords{} }] }` |
+| `userdata.json` | `~/.chessmate/` (`-Dchessmate.home`로 변경) | `{ activeProfileId, settings: { boardTheme, showCoords, showLegalMoves, showMoveInsight, highlightLastMove, autoFlipLocal }, profiles: [{ id, name, completedLessons[], puzzleStats{}, aiRecords{} }] }` |
 
 - 레슨 단계의 `goal`: `any`(아무 수), `check`(체크하는 수), `mate`(메이트하는 수), 또는 `e2e3,e2e4`처럼 정답 수 목록입니다.
 - 오프닝 레슨은 `setup`의 수를 처음 국면에서 차례로 둔 뒤 시작하고, `fen`이 `continue`인 단계는 앞 단계의 정답과 상대 응수(`reply`)를 둔 국면에서 이어집니다.
 - `puzzleStats`는 퍼즐마다 `[시도 횟수, 정답 횟수]`, `aiRecords`는 난이도마다 `[승, 무, 패]`입니다.
-- 리팩터링 전 버전이 저장한 `userdata.json`도 그대로 읽습니다. 없어진 설정 항목(`showMovePreview`)은 무시합니다.
+- 리팩터링 전 버전이 저장한 `userdata.json`도 그대로 읽습니다. 없어진 설정 항목(`showMovePreview`)은 무시하고, 나중에 생긴 `showMoveInsight`가 없는 파일은 켜짐으로 읽습니다.
 
 ## 6. 코드 읽는 순서 (추천)
 
@@ -298,6 +321,7 @@ flowchart LR
 5. [`service/ChessBackend.java`](../app/src/main/java/com/oopteama/chess/service/ChessBackend.java) → [`data/Storage.java`](../app/src/main/java/com/oopteama/chess/data/Storage.java): 퍼사드, 옵저버, 인터페이스
 6. [`ui/MainFrame.java`](../app/src/main/java/com/oopteama/chess/ui/MainFrame.java) → [`SettingsController`](../app/src/main/java/com/oopteama/chess/ui/controller/SettingsController.java)와 [`SettingsScreen`](../app/src/main/java/com/oopteama/chess/ui/screen/SettingsScreen.java): 가장 짧은 MVC 예시
 7. [`ui/controller/BoardController.java`](../app/src/main/java/com/oopteama/chess/ui/controller/BoardController.java) → [`ui/component/BoardPanel.java`](../app/src/main/java/com/oopteama/chess/ui/component/BoardPanel.java): 체스판 입력과 그리기
+8. [`ai/MoveAdvisor.java`](../app/src/main/java/com/oopteama/chess/ai/MoveAdvisor.java) → [`ui/controller/InsightLoader.java`](../app/src/main/java/com/oopteama/chess/ui/controller/InsightLoader.java) → [`ui/component/InsightPainter.java`](../app/src/main/java/com/oopteama/chess/ui/component/InsightPainter.java): 수 설명 (계산 → 백그라운드 준비 → 시간에 따른 애니메이션)
 
 ## 7. 리팩터링 전후 비교 (2026-11-25)
 
@@ -317,7 +341,7 @@ flowchart LR
 | `backend/engine/Board` (802줄, 규칙까지 포함) | `model/Board`, `Position`, `Move`, `CastlingRights`, `Fen`, `Rules`, `Notation` |
 | `backend/engine/ChessGame` | `model/Game` |
 | `backend/engine/ChessAI` (탐색과 메이트 계산을 한 클래스에) | `ai/ComputerPlayer`, `MateSolver`, `Evaluator`, `Difficulty` |
-| `backend/engine/MoveAnalyzer` (마우스를 올린 수 평가) | 삭제 (기능 제거) |
+| `backend/engine/MoveAnalyzer` (마우스를 올린 수 평가) | 삭제 (기능 제거). 2026-11-27에 `ai/MoveAdvisor`(계산)와 `ui/component/InsightPainter`(그리기)로 다시 추가 |
 | `backend/training/*` | `training/*` (`LessonStep`을 별도 클래스로) |
 | `backend/service/Profile`, `Settings`, `Storage`, `JsonStorage` | `data/*` |
 | `backend/service/ChessBackend` | `service/ChessBackend` |
@@ -328,6 +352,6 @@ flowchart LR
 
 바뀐 동작:
 
-- **마우스를 올린 칸의 수 평가 미리보기**(설정의 "이동 칸 호버 시 수 평가 및 이후 전개 미리보기" 항목 포함)를 없앴습니다. 코드가 가장 복잡했던 부분입니다.
+- **마우스를 올린 칸의 수 평가 미리보기**(설정의 "이동 칸 호버 시 수 평가 및 이후 전개 미리보기" 항목 포함)를 없앴습니다. 코드가 가장 복잡했던 부분입니다. 이후 2026-11-27에 계산(`MoveAdvisor`)·준비(`InsightLoader`)·그리기(`InsightPainter`)를 나눈 "수 설명" 설정으로 다시 넣었습니다([백엔드](backend.md) 3절, [화면](frontend.md) 5절).
 - **AI**는 반복 심화·네가맥스 대신 기본 미니맥스 + 알파-베타 가지치기로 바꾸고, 난이도를 탐색 깊이(1~4수)로 정했습니다.
 - **고친 문제**: AI 대전에서 AI가 생각하는 동안 다른 화면에 갔다 오면 AI가 다시 두지 않아 대국이 멈추던 문제를 고쳤습니다.

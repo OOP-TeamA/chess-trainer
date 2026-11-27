@@ -162,6 +162,7 @@ classDiagram
         <<utility>>
         +legalMoves(Board)$ List~Move~
         +legalMovesFrom(Board, Position)$ List~Move~
+        +legalCaptures(Board)$ List~Move~
         +isInCheck(Board)$ boolean
         +isCheckmate(Board)$ boolean
         +isStalemate(Board)$ boolean
@@ -245,8 +246,10 @@ public static List<Move> legalMoves(Board board) {
 | --- | --- | --- |
 | `Difficulty` | enum | 입문(1)·초급(2)·중급(3)·상급(4): 이름과 탐색 깊이(몇 수 앞까지 볼지) |
 | `Evaluator` | 유틸리티 | 국면 점수 = (백 기물 가치 + 위치 보너스) − (흑 기물 가치 + 위치 보너스) |
-| `ComputerPlayer` | 클래스 | 미니맥스 + 알파-베타 가지치기로 수를 고름, 힌트 |
+| `ComputerPlayer` | 클래스 | 미니맥스 + 알파-베타 가지치기로 수를 고름, 힌트, 수 설명용 탐색(`bestMove`) |
 | `MateSolver` | 클래스 | N수 메이트 퍼즐: 메이트로 가는 수 찾기, 강제 메이트 판정, 상대의 최선 방어 |
+| `MoveAdvisor` | 클래스 | 수 설명: 둘 수 있는 수마다 판정(최선·좋은·아쉬운·나쁜 수)과 이유를 만듦 |
+| `MoveInsight` | record | 수 설명 하나: 판정, 최선보다 손해인 점수, 상대의 예상 응수, 이유 목록(`Reason`) |
 
 ### 국면 점수 (`Evaluator`)
 
@@ -294,6 +297,8 @@ private int minimax(Board board, int depth, int alpha, int beta, int ply, Boolea
 | 입문: 1수 앞만 보고, 최선과 150점 이내인 상위 3개 중 무작위 | 초보자가 이길 수 있도록 실수를 섞음 |
 | 힌트: 중급(3수 앞)으로 계산 | 빠르면서도 쓸 만한 추천 |
 | `BooleanSupplier cancelled` | 새 대국·화면 이동 때 계산을 바로 멈춤 |
+| `bestMove(board, depth)`: 가장 좋은 수와 그 점수를 함께 돌려줌 | 수 설명이 "이 수 다음 상대의 최선 응수"와 점수를 알아야 함 |
+| 잡기 정리(`settleCaptures`): 탐색 끝 국면에서 잡는 수(`Rules.legalCaptures`)만 더 따져 봄 | 그냥 멈추면 "마지막에 잡은 쪽이 이긴 것처럼 보이는" 착시가 생김. 수 설명용 `ComputerPlayer`에서만 켜서 AI 대전의 난이도와 속도는 그대로 |
 
 ### N수 메이트 계산 (`MateSolver`)
 
@@ -301,6 +306,35 @@ private int minimax(Board board, int depth, int alpha, int beta, int ply, Boolea
 - `isForcedMate(after, 남은 수)`: 상대가 어떻게 막아도 남은 수 안에 메이트되는지 판정합니다. "공격 측의 수 하나라도 메이트로 이어지는가" ↔ "방어 측의 모든 응수가 지는가"를 번갈아 묻는 재귀입니다.
 - `bestDefense(after, 남은 수)`: 퍼즐에서 컴퓨터가 둘 응수입니다. 메이트를 피하는 수가 있으면 그중 점수가 가장 좋은 수를, 없으면 가장 오래 버티는 수를 고릅니다.
 - 계산이 1.5초를 넘으면 멈추고 "찾지 못함"으로 봅니다.
+
+### 수 설명 (`MoveAdvisor`)
+
+퍼즐·AI 대전·로컬 대전에서 갈 수 있는 칸에 마우스를 올리면 보여 주는 "왜 좋은 수인지, 왜 나쁜 수인지"를 만듭니다. 국면 하나의 모든 수를 한 번에 계산하고(`analyzeAll`), 화면은 백그라운드 스레드에서 부릅니다.
+
+```mermaid
+flowchart TD
+    Start["analyzeAll(국면)"] --> Each["둘 수 있는 수마다"]
+    Each --> Search["ComputerPlayer.bestMove(수를 둔 국면, 2)<br/>상대의 최선 응수 + 내 다음 수 + 잡기 정리"]
+    Search --> Score["내 기준 점수, 상대의 예상 응수"]
+    Score --> Loss["손해 = 가장 좋은 수의 점수 − 이 수의 점수"]
+    Loss --> Verdict["판정: 폰 0.1개 이하 최선 · 0.5개 이하 좋음<br/>1.5개 이하 아쉬움 · 그보다 크면 나쁨"]
+    Score --> Rules["이유 규칙으로 사실 찾기"]
+    Verdict --> Insight["MoveInsight"]
+    Rules --> Insight
+```
+
+이유는 중요한 순서대로 최대 4개를 고릅니다. 이유마다 체스판에 그릴 표시(화살표의 출발 칸과 도착 칸, 또는 강조할 칸)를 함께 담습니다.
+
+| 순서 | 규칙 | 예 |
+| --- | --- | --- |
+| 1 | 대국 결과: 체크메이트, 스테일메이트, 다음 수에 강제 메이트, 메이트 기회를 놓침 | "체크메이트! 상대 킹이 피할 곳이 없습니다" |
+| 2 | 잡기·승진 | "상대 룩을 잡습니다 (+5)" |
+| 3 | 잡힐 위험: (이 수로 잡은 것) − (잡힐 내 기물) + (되잡을 상대 기물)이 손해면 | "상대 비숍이 이 퀸을 공짜로 잡을 수 있습니다 (−9)" |
+| 3 | 이 수 때문에 지켜 주는 기물이 없어진 아군 | "d2의 나이트가 지켜 주는 기물 없이 공격받게 됩니다" |
+| 4 | 예상 응수 (좋지 않은 수일 때만) | "예상 응수 dxe4: 내 폰을 잃습니다 (−1)" |
+| 5 | 공격받던 기물 피신, 무방비였던 아군 지키기 | "e4의 폰을 지킵니다" |
+| 6 | 체크, 새로 노리게 된 상대 기물(둘 이상이면 포크) | "포크: 상대 룩과 퀸을 동시에 노립니다" |
+| 7 | 캐슬링, 기물 전개, 중앙 차지 | "나이트를 전개해 싸움에 참여시킵니다" |
 
 ## 4. `training`: 레슨과 퍼즐
 
@@ -448,6 +482,7 @@ classDiagram
         -BoardTheme boardTheme
         -boolean showCoords
         -boolean showLegalMoves
+        -boolean showMoveInsight
         -boolean highlightLastMove
         -boolean autoFlipLocal
     }
@@ -459,7 +494,7 @@ classDiagram
 
 | 클래스 | 종류 | 하는 일 |
 | --- | --- | --- |
-| `Settings` | 클래스 | 체스판 테마(`BoardTheme`: 월넛 우드·토너먼트 그린·모던 슬레이트)와 표시 옵션 4개 |
+| `Settings` | 클래스 | 체스판 테마(`BoardTheme`: 월넛 우드·토너먼트 그린·모던 슬레이트)와 표시 옵션 5개 (좌표, 이동 가능 칸, 수 설명, 직전 수, 로컬 대전 자동 뒤집기) |
 | `Profile` | 클래스 | 완료한 레슨, 퍼즐별 `[시도, 정답]`, 난이도별 AI `[승, 무, 패]`. 점수 = 레슨 완료×10 + 퍼즐 해결×5 + AI 승리×3 |
 | `Storage` | 인터페이스 | 저장소가 할 일 4가지와 사용자 데이터 묶음(`UserData` record) |
 | `JsonStorage` | 클래스 | Gson으로 `lessons.json`·`puzzles.json`(프로그램 안의 리소스)을 읽고 `~/.chessmate/userdata.json`을 읽고 씀 |
@@ -475,7 +510,7 @@ classDiagram
 | --- | --- |
 | 콘텐츠 | `lessons()`, `lessons(Category)`, `puzzles()` |
 | 시작 | `startLesson(Lesson)`, `startPuzzle(Puzzle)`, `newGame()` |
-| AI | `chooseAiMove(Board, Difficulty, BooleanSupplier)`, `computeHint(Board)` |
+| AI | `chooseAiMove(Board, Difficulty, BooleanSupplier)`, `computeHint(Board)`, `analyzeMoves(Board, BooleanSupplier)` (수 설명) |
 | 프로필 | `profiles()`, `activeProfile()`, `setActiveProfile(id)`, `createProfile(name)`, `deleteProfile(id)`, `clearActiveProgress()` |
 | 기록 | `completeLesson(id)`, `recordPuzzle(id, solved)`, `recordAiResult(Difficulty, outcome)` |
 | 설정 | `settings()`, `updateSettings(Consumer<Settings>)` |
@@ -490,4 +525,5 @@ classDiagram
 | --- | --- |
 | `ChessRulesTest` | 퍼프트 수, 기물별 이동 칸 수(다형성), 캐슬링·앙파상·승진과 기보, 오페라 게임 체크메이트, 무승부 규칙, 킹 없는 연습판 |
 | `ComputerPlayerTest` | 양쪽 진영에서 메이트·공짜 기물 찾기, 계산 취소, 메이트 계산과 최선 방어 |
+| `MoveAdvisorTest` | 수 설명: 퀸을 공짜로 내주는 수는 나쁜 수, 공짜 룩 잡기·백랭크 메이트·나이트 포크는 최선의 수, 지켜 주던 기물을 옮기면 경고, 폰끼리 바꾸기는 위험이 아님, 계산 취소 |
 | `ChessBackendTest` | 들어 있는 레슨·퍼즐을 모두 끝까지 풀 수 있는지, 메이트 퍼즐의 다른 수순과 무르기, 저장 후 다시 불러오기, 메모리 저장소로 바꿔 끼우기 |

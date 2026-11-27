@@ -1,5 +1,6 @@
 package com.oopteama.chess.ui;
 
+import com.oopteama.chess.ai.MoveInsight;
 import com.oopteama.chess.data.JsonStorage;
 import com.oopteama.chess.data.Settings;
 import com.oopteama.chess.model.Board;
@@ -47,6 +48,9 @@ class UiSmokeTest {
             board.setHighlights(List.of(Position.of("e2"), Position.of("e8")));
             board.setArrow(Move.of("e8d8"), Theme.BOARD_ACCENT);
             board.select(Position.of("e8"), List.of(Position.of("d8"), Position.of("f8")));
+            board.showInsight(new MoveInsight(Move.of("e8d8"), "Kd8", MoveInsight.Verdict.INACCURATE, 80,
+                    Move.of("e2e8"), List.of(new MoveInsight.Reason(false, "예상 응수 Re8+: 체크를 당합니다",
+                    null, List.of()))));
             for (Settings.BoardTheme theme : Settings.BoardTheme.values()) {
                 backend.updateSettings(s -> s.setBoardTheme(theme));
                 board.setFlipped(false);
@@ -54,6 +58,7 @@ class UiSmokeTest {
                 board.setFlipped(true);
                 paint(board, 480, 480);
             }
+            board.showInsight(null);
 
             List<ScreenController> controllers = List.of(
                     new HomeController(backend, id -> { }),

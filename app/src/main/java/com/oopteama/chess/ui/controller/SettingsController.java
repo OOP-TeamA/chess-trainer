@@ -20,6 +20,8 @@ public final class SettingsController implements ScreenController {
                 backend.updateSettings(s -> s.setShowCoords(screen.coordsCheck().isSelected())));
         screen.legalMovesCheck().addActionListener(e ->
                 backend.updateSettings(s -> s.setShowLegalMoves(screen.legalMovesCheck().isSelected())));
+        screen.moveInsightCheck().addActionListener(e ->
+                backend.updateSettings(s -> s.setShowMoveInsight(screen.moveInsightCheck().isSelected())));
         screen.lastMoveCheck().addActionListener(e ->
                 backend.updateSettings(s -> s.setHighlightLastMove(screen.lastMoveCheck().isSelected())));
         screen.autoFlipCheck().addActionListener(e ->

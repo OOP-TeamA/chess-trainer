@@ -13,7 +13,7 @@ Swing과 FlatLaf로 만든 화면입니다. **MVC** 구조로 역할을 나눴�
 
 ## 1. 가장 짧은 예: 설정 화면
 
-- [`SettingsScreen`](../app/src/main/java/com/oopteama/chess/ui/screen/SettingsScreen.java) (View): 테마 칸 3개와 체크박스 4개를 배치하고, `showSettings(settings, onPickTheme)`로 현재 값을 보여 줍니다.
+- [`SettingsScreen`](../app/src/main/java/com/oopteama/chess/ui/screen/SettingsScreen.java) (View): 테마 칸 3개와 체크박스 5개를 배치하고, `showSettings(settings, onPickTheme)`로 현재 값을 보여 줍니다.
 - [`SettingsController`](../app/src/main/java/com/oopteama/chess/ui/controller/SettingsController.java) (Controller): 화면을 만들고 체크박스에 리스너를 겁니다.
 
 ```java
@@ -26,7 +26,7 @@ public final class SettingsController implements ScreenController {
         this.backend = backend;
         screen.coordsCheck().addActionListener(e ->
                 backend.updateSettings(s -> s.setShowCoords(screen.coordsCheck().isSelected())));
-        // ... 나머지 체크박스 3개도 같은 방식
+        // ... 나머지 체크박스 4개도 같은 방식
         refresh();
     }
 
@@ -65,6 +65,7 @@ classDiagram
         #BoardController board
         #onBoardMove(Move)*
         #playerName(Side)* String
+        #humanToMove()* boolean
         #refreshScreen()
     }
     class GameScreen {
@@ -107,6 +108,11 @@ classDiagram
         +setIllegalMoveListener(IllegalMoveListener)
         +setInteractive(boolean)
         +setAllowedSide(Side)
+        +setInsights(Board, Map)
+    }
+    class InsightLoader {
+        +update(Board, boolean)
+        +clear()
     }
     class MoveListener {
         <<interface>>
@@ -127,6 +133,7 @@ classDiagram
         +setArrow(Move, Color)
         +setHighlights(List~Position~)
         +select(Position, List~Position~)
+        +showInsight(MoveInsight)
         +positionAt(Point) Position
     }
     class MoveAnimator {
@@ -136,6 +143,20 @@ classDiagram
     class PiecePainter {
         <<utility>>
         +draw(Graphics2D, Piece, int, int, int, float)$
+    }
+    class InsightPainter {
+        <<utility>>
+        +paint(Graphics2D, BoardGeometry, Board, MoveInsight, double, boolean)$
+    }
+    class ArrowPainter {
+        <<utility>>
+        +draw(Graphics2D, BoardGeometry, Position, Position, Color, float, double, boolean)$
+    }
+    class BoardGeometry {
+        <<record>>
+        +x(Position) int
+        +y(Position) int
+        +positionAt(Point) Position
     }
     class RetryDialog {
         <<utility>>
@@ -147,6 +168,11 @@ classDiagram
     BoardController --> IllegalMoveListener : 못 가는 칸 알림
     BoardPanel *-- MoveAnimator
     BoardPanel ..> PiecePainter
+    BoardPanel ..> InsightPainter : 수 설명 그리기
+    BoardPanel ..> ArrowPainter : 힌트 화살표
+    InsightPainter ..> ArrowPainter
+    BoardPanel ..> BoardGeometry : 칸 ↔ 화면 좌표
+    InsightLoader --> BoardController : 수 설명 전달
     LessonScreen *-- BoardPanel
     PuzzleScreen *-- BoardPanel
     GameScreen *-- BoardPanel
@@ -173,14 +199,15 @@ classDiagram
 | `AiGameScreen` | `GameScreen` + 난이도·진영 선택, 새 대국·힌트·무르기·보드 뒤집기·기권 버튼 |
 | `LocalGameScreen` | `GameScreen` + 자동 뒤집기 표시, 무르기·보드 뒤집기·기권·새 대국 버튼 |
 | `ProfileScreen` | 프로필 목록과 추가 입력칸, 현재 프로필 점수, 레슨·퍼즐 진도, 난이도별 AI 전적표, 기록 초기화 버튼 |
-| `SettingsScreen` | 체스판 테마 3칸, 표시 옵션 체크박스 4개 |
+| `SettingsScreen` | 체스판 테마 3칸, 표시 옵션 체크박스 5개 |
 
-### `ui.controller` (10개, Controller)
+### `ui.controller` (11개, Controller)
 
 | 클래스 | 하는 일 |
 | --- | --- |
 | `ScreenController` | 모든 화면 컨트롤러의 인터페이스: `view()`, `onShow()`, `onHide()`, `onDataChanged()`, `leaveWarning()` |
-| `BoardController` | 체스판 마우스 입력 처리 (아래 4절) |
+| `BoardController` | 체스판 마우스 입력 처리, 갈 수 있는 칸에 마우스를 올리면 수 설명 보여 주기 (아래 4·5절) |
+| `InsightLoader` | 수 설명을 `SwingWorker`로 백그라운드에서 계산해 `BoardController`에 넘김. 퍼즐·AI·로컬 대전 컨트롤러가 화면을 새로 그릴 때마다 부름 (아래 5절) |
 | `HomeController` | 점수·진도 요약, 추천(안 끝낸 레슨 → 안 푼 퍼즐 → AI 대전 순서), 바로가기 버튼으로 화면 이동 |
 | `LessonController` | 탭·레슨 선택, 단계 이동, 힌트, 오답 안내, 상대 응수(0.42초 뒤), 레슨 완료 기록 |
 | `PuzzleController` | 필터, 퍼즐 선택, 힌트·무르기·다시 풀기·다음 퍼즐, 상대 응수(0.4초 뒤), 풀이 기록. 목록 제목은 답을 드러내지 않게 "05. 2수 안에 체크메이트"처럼 표시 |
@@ -190,12 +217,15 @@ classDiagram
 | `ProfileController` | 프로필 추가·선택·삭제(마지막 하나는 삭제 불가), 기록 초기화 |
 | `SettingsController` | 테마·체크박스 변경을 `backend.updateSettings(...)`로 저장 |
 
-### `ui.component` (6개, 부품)
+### `ui.component` (9개, 부품)
 
 | 클래스 | 하는 일 |
 | --- | --- |
 | `BoardPanel` | 체스판 그리기 (아래 4절). 입력 처리는 하지 않음 |
+| `BoardGeometry` | 체스판이 그려지는 위치·칸 크기·뒤집힘을 담고 칸 ↔ 화면 좌표를 바꿈 |
 | `PiecePainter` | 기물을 이미지 파일 없이 도형(`Path2D`)으로 그림 |
+| `ArrowPainter` | 화살표 그리기 (힌트 화살표, 수 설명 화살표). 뻗어 나가는 애니메이션과 점선 지원 |
+| `InsightPainter` | 수 설명 애니메이션: 도착 칸 빛남, 기물 미리보기, 이유 화살표, 상대 응수 재생, 설명 카드 (아래 5절) |
 | `MoveAnimator` | 기물이 미끄러지는 이동 애니메이션 (아래 4절) |
 | `RetryDialog` | 못 가는 칸으로 옮기려 할 때 이유를 알려 주는 안내 카드 |
 | `CollapsibleList` | 접고 펼 수 있는 목록 (레슨·퍼즐 목록) |
@@ -213,8 +243,9 @@ classDiagram
 4. 이동 가능 칸: 빈칸은 점, 잡을 수 있는 칸은 고리 (설정에서 켰을 때)
 5. 기물 (`PiecePainter`)
 6. 움직이는 중인 기물 (`MoveAnimator`)
-7. 힌트 화살표
-8. 드래그 중인 기물 (마우스 위치)
+7. 힌트 화살표 (`ArrowPainter`)
+8. 수 설명 애니메이션 (`InsightPainter`, 갈 수 있는 칸에 마우스를 올렸을 때)
+9. 드래그 중인 기물 (마우스 위치)
 
 ### 마우스 입력 규칙 (`BoardController`)
 
@@ -228,6 +259,7 @@ classDiagram
 | 기물을 끌어서 놓기 | 수를 둠 (놓은 칸이 갈 수 없는 칸이면 위와 같이 안내) |
 | 킹을 고른 뒤 같은 편 룩 클릭 | 캐슬링 |
 | 폰이 끝 줄에 도착 | 퀸·룩·비숍·나이트 중 고르는 창 |
+| 기물을 고르거나 끄는 중에 갈 수 있는 칸 위로 마우스 이동 | 그 수의 설명을 애니메이션으로 보여 줌 (설정에서 켰을 때, 아래 5절) |
 
 컨트롤러는 `setInteractive(false)`로 상대 응수를 기다리는 동안 입력을 막고, AI 대전에서는 `setAllowedSide(사람 진영)`으로 내 기물만 움직이게 합니다.
 
@@ -242,14 +274,55 @@ classDiagram
 - 무르기·새 대국처럼 한 수로 설명되지 않는 변화는 바로 표시합니다.
 - 컨트롤러는 애니메이션을 신경 쓰지 않고 `setBoard()`만 부르면 됩니다.
 
-## 5. 화면 전환 (`MainFrame`)
+## 5. 수 설명: 갈 수 있는 칸에 마우스를 올렸을 때
+
+퍼즐·AI 대전·로컬 대전에서 기물을 고른 뒤(또는 끄는 중에) 갈 수 있는 칸에 마우스를 올리면, 그 수가 왜 좋은지·나쁜지를 체스판 위에 애니메이션으로 보여 줍니다. 설정의 "수 설명" 체크박스로 끄고 켭니다(기본 켜짐). 레슨은 단계별 안내가 따로 있어 쓰지 않습니다.
+
+```mermaid
+sequenceDiagram
+    actor U as 사용자
+    participant C as 컨트롤러 (퍼즐·AI·로컬)
+    participant IL as InsightLoader
+    participant BE as ChessBackend
+    participant BC as BoardController
+    participant BP as BoardPanel
+
+    C->>IL: update(국면, 사람 차례인지) [화면을 새로 그릴 때마다]
+    IL->>BE: analyzeMoves(국면, 취소 신호) [SwingWorker 백그라운드 스레드]
+    BE-->>IL: 수마다 MoveInsight (판정·이유·예상 응수)
+    IL->>BC: setInsights(국면, 설명들)
+    U->>BC: 기물 선택 → 갈 수 있는 칸 위로 마우스 이동
+    BC->>BP: showInsight(그 수의 설명)
+    loop 설명이 보이는 동안 20ms마다
+        BP->>BP: InsightPainter.paint(지난 시간)
+    end
+    U->>BC: 다른 칸으로 이동하거나 수를 둠
+    BC->>BP: showInsight(null)
+```
+
+- **미리 계산**: 국면이 바뀌면 그 국면의 모든 수 설명을 백그라운드에서 한 번에 계산해 둡니다(보통 0.1~0.6초). 마우스를 올릴 때는 계산하지 않고 찾아서 보여 주기만 하므로 바로 나타납니다. 같은 국면이면 다시 계산하지 않고, 국면이 바뀌면 진행 중인 계산을 취소합니다.
+- **사람 차례일 때만**: AI가 생각 중이거나 퍼즐의 상대 응수를 기다리는 중, 대국이 끝난 뒤에는 설명을 지웁니다. 컨트롤러마다 `humanToMove()`(퍼즐은 `canUserMove()`)로 알려 줍니다.
+- **늦게 도착한 설명 무시**: `BoardController`는 설명이 어느 국면(`Board`) 것인지 함께 받아, 지금 체스판의 국면과 같을 때만 씁니다.
+
+시간에 따라 그리는 것 (`InsightPainter`):
+
+| 시각 | 그리는 것 |
+| --- | --- |
+| 0초~ | 도착 칸이 판정 색(최선 초록·좋음 파랑·아쉬움 주황·나쁨 빨강)으로 숨 쉬듯 빛나고 물결 고리가 퍼짐. 움직일 기물의 반투명 미리보기가 도착 칸으로 미끄러짐 |
+| 0.3초 | 잡는 수면 도착 칸에서 고리가 터지며 "+점수"가 떠오름. 승진이면 미리보기가 승진한 기물로 바뀜 |
+| 0.3초~ (0.22초 간격) | 이유마다 화살표가 뻗어 나가거나(초록: 좋은 점, 빨강: 나쁜 점) 칸에 고리가 생기고, 설명 카드에 그 이유 글이 함께 나타남 |
+| 0.9초~ (2.2초마다 반복) | 좋지 않은 수면 상대의 예상 응수: 점선 화살표 → 상대 기물 미리보기가 이동 → 그 칸이 빨갛게 번쩍이고, 내 기물을 잡으면 "−점수"가 떠오름 |
+
+설명 카드는 체스판 위쪽과 아래쪽 중 중요한 칸(도착 칸, 이유·응수 칸, 출발 칸 순으로 무겁게 셈)을 덜 가리는 쪽에 나타납니다.
+
+## 6. 화면 전환 (`MainFrame`)
 
 - 생성자에서 컨트롤러 7개를 만들어 `Map<ScreenId, ScreenController>`에 넣고, 각 컨트롤러의 `view()`를 `CardLayout`에 붙입니다.
 - `navigate(ScreenId)`: 지금 화면의 `leaveWarning()`이 문구를 돌려주면(진행 중인 대국) 확인 창을 띄우고, 확인하면 지금 화면 `onHide()` → 새 화면 표시 → 새 화면 `onShow()` 순서로 부릅니다. ([흐름도](architecture.md#d-화면-전환))
 - `ChessBackend`에 변경 리스너를 등록해, 데이터가 바뀌면 왼쪽 프로필 카드와 모든 화면의 `onDataChanged()`를 부릅니다.
 - 창을 닫으면 진행 중인 대국을 확인한 뒤 `backend.save()`를 부르고 닫습니다.
 
-## 6. 새 화면을 추가하는 방법
+## 7. 새 화면을 추가하는 방법
 
 예: "통계" 화면을 추가한다면
 
@@ -260,14 +333,15 @@ classDiagram
 
 `MainFrame`은 `ScreenController` 인터페이스로만 화면을 다루므로, 새 화면을 위해 화면 전환 코드를 고칠 필요가 없습니다.
 
-## 7. 화면 테스트
+## 8. 화면 테스트
 
 화면 테스트도 창을 띄우지 않고 실행됩니다.
 
 | 테스트 | 확인하는 것 |
 | --- | --- |
 | `UiSmokeTest` | 7개 화면과 체스판 테마 3종이 오류 없이 그려지는지 |
-| `BoardControllerTest` | 클릭 선택·해제, 아군 기물 클릭, 갈 수 없는 칸 클릭 후 선택 유지, 드래그 |
+| `BoardControllerTest` | 클릭 선택·해제, 아군 기물 클릭, 갈 수 없는 칸 클릭 후 선택 유지, 드래그, 수 설명 호버(고른 뒤·끄는 중, 다른 국면의 설명은 무시) |
+| `InsightPainterTest` | 수 설명 애니메이션이 시간대마다 오류 없이 그려지고, 나쁜 수의 도착 칸이 빨갛게 빛나는지 |
 | `BoardPanelAnimationTest` | 클릭한 수는 미끄러지고 드래그한 수는 바로 놓임, 응수 대기열, 캐슬링·앙파상·승진 애니메이션 |
 | `RetryDialogTest` | 못 가는 이유 문구 (아군 기물, 방향, 막힌 길, '로'·'으로') |
 | `TrainingControllerTest` | 레슨·퍼즐에서 응수를 기다리는 중 화면을 떠났다 와도 응수가 반영되는지, 금색 위 글자 대비(4.5:1 이상), 목록 접기 버튼 모양 |
