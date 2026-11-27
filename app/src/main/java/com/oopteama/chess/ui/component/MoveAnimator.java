@@ -135,9 +135,7 @@ public final class MoveAnimator {
             }
         }
         Piece captured = Rules.capturedPiece(before, move);
-        Position capturedAt = Rules.isEnPassant(before, move)
-                ? new Position(move.to().col(), move.from().row())
-                : move.to();
-        return new Animation(move, after, List.copyOf(slides), captured, captured == null ? null : capturedAt);
+        Position capturedAt = captured == null ? null : Rules.capturedSquare(before, move);
+        return new Animation(move, after, List.copyOf(slides), captured, capturedAt);
     }
 }

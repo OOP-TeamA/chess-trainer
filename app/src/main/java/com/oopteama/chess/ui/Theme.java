@@ -76,6 +76,11 @@ public final class Theme {
         return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
     }
 
+    /** 같은 색에 투명도만 바꾼 색 (alpha: 0 = 투명, 255 = 불투명). */
+    public static Color withAlpha(Color color, int alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, alpha)));
+    }
+
     public static void install() {
         if (installed) {
             return;
@@ -190,7 +195,7 @@ public final class Theme {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
+                g2.setColor(withAlpha(accent, 40));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), getHeight(), getHeight());
                 g2.dispose();
                 super.paintComponent(g);

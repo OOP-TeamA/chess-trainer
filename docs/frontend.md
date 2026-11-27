@@ -186,7 +186,7 @@ classDiagram
 | --- | --- |
 | `MainFrame` | 메인 창. 왼쪽 메뉴와 프로필 카드, 오른쪽은 `CardLayout`으로 화면 7개 중 하나를 보여 줌. 창을 닫을 때 저장 |
 | `ScreenId` | 화면 목록 enum (홈, 레슨, 퍼즐, AI 대전, 로컬 대전, 프로필, 설정)과 메뉴 이름 |
-| `Theme` | FlatLaf 어두운 테마 설치, Pretendard 글꼴, 색 상수, 카드·배지·버튼을 만드는 메서드(`card()`, `badge()`, `primaryButton()` …) |
+| `Theme` | FlatLaf 어두운 테마 설치, Pretendard 글꼴, 색 상수와 투명도 조절(`withAlpha()`), 카드·배지·버튼을 만드는 메서드(`card()`, `badge()`, `primaryButton()` …) |
 
 ### `ui.screen` (8개, View)
 

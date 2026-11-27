@@ -90,15 +90,15 @@ final class InsightPainter {
     private static void drawTargetGlow(Graphics2D g2, BoardGeometry geo, Position to, Color tone, double seconds) {
         int cell = geo.cell();
         double breath = 0.5 + 0.5 * Math.sin(seconds * 2 * Math.PI / 1.4);
-        g2.setColor(withAlpha(tone, (int) (70 + 60 * breath)));
+        g2.setColor(Theme.withAlpha(tone, (int) (70 + 60 * breath)));
         g2.fillRect(geo.x(to), geo.y(to), cell, cell);
-        g2.setColor(withAlpha(tone, 235));
+        g2.setColor(Theme.withAlpha(tone, 235));
         g2.setStroke(new BasicStroke(Math.max(2f, cell * 0.06f)));
         g2.drawRect(geo.x(to) + 1, geo.y(to) + 1, cell - 3, cell - 3);
 
         double ripple = (seconds % 1.4) / 1.4; // 0 → 1을 되풀이
         double radius = cell * (0.35 + 0.4 * ripple);
-        g2.setColor(withAlpha(tone, (int) (190 * (1 - ripple))));
+        g2.setColor(Theme.withAlpha(tone, (int) (190 * (1 - ripple))));
         g2.setStroke(new BasicStroke(Math.max(2f, cell * 0.045f)));
         g2.draw(circle(geo.centerX(to), geo.centerY(to), radius));
     }
@@ -114,7 +114,7 @@ final class InsightPainter {
             Color color = reason.good() ? GOOD : BAD;
             for (Position target : reason.targets()) {
                 if (reason.from() != null) {
-                    ArrowPainter.draw(g2, geo, reason.from(), target, withAlpha(color, 205), geo.cell() * 0.1f, t, false);
+                    ArrowPainter.draw(g2, geo, reason.from(), target, Theme.withAlpha(color, 205), geo.cell() * 0.1f, t, false);
                 } else {
                     drawRing(g2, geo, target, color, t, seconds);
                 }
@@ -127,7 +127,7 @@ final class InsightPainter {
                                  double t, double seconds) {
         double pulse = 1 + 0.05 * Math.sin(seconds * 2 * Math.PI / 1.1);
         double radius = geo.cell() * 0.42 * (0.6 + 0.4 * t) * pulse;
-        g2.setColor(withAlpha(color, (int) (225 * t)));
+        g2.setColor(Theme.withAlpha(color, (int) (225 * t)));
         g2.setStroke(new BasicStroke(Math.max(2.5f, geo.cell() * 0.07f)));
         g2.draw(circle(geo.centerX(square), geo.centerY(square), radius));
     }
@@ -148,7 +148,7 @@ final class InsightPainter {
 
         Piece captured = Rules.capturedPiece(board, move);
         if (captured != null && seconds >= SLIDE_TIME) {
-            drawPop(g2, geo, capturedSquare(board, move), "+" + points(captured), GOOD, seconds - SLIDE_TIME, 1);
+            drawPop(g2, geo, Rules.capturedSquare(board, move), "+" + points(captured), GOOD, seconds - SLIDE_TIME, 1);
         }
     }
 
@@ -162,12 +162,12 @@ final class InsightPainter {
         }
         double phase = (seconds - REPLY_START) % REPLY_CYCLE;
         double fade = 1 - clamp((phase - (REPLY_CYCLE - 0.4)) / 0.4); // 주기 끝에서 서서히 사라졌다가 다시 시작
-        ArrowPainter.draw(g2, geo, reply.from(), reply.to(), withAlpha(BAD, (int) (215 * fade)),
+        ArrowPainter.draw(g2, geo, reply.from(), reply.to(), Theme.withAlpha(BAD, (int) (215 * fade)),
                 geo.cell() * 0.09f, easeInOut(clamp(phase / 0.4)), true);
 
         double landed = phase - REPLY_LAND; // 상대 기물이 도착한 뒤 지난 시간
         if (landed >= 0) {
-            g2.setColor(withAlpha(BAD, (int) (120 * (1 - clamp(landed / 0.6)) * fade)));
+            g2.setColor(Theme.withAlpha(BAD, (int) (120 * (1 - clamp(landed / 0.6)) * fade)));
             g2.fillRect(geo.x(reply.to()), geo.y(reply.to()), geo.cell(), geo.cell());
         }
         Piece piece = after.pieceAt(reply.from());
@@ -178,7 +178,7 @@ final class InsightPainter {
         }
         Piece lost = Rules.capturedPiece(after, reply);
         if (lost != null && landed >= 0) {
-            drawPop(g2, geo, capturedSquare(after, reply), "−" + points(lost), BAD, landed, fade);
+            drawPop(g2, geo, Rules.capturedSquare(after, reply), "−" + points(lost), BAD, landed, fade);
         }
     }
 
@@ -203,7 +203,7 @@ final class InsightPainter {
         int cell = geo.cell();
         double burst = clamp(elapsed / 0.45);
         if (burst < 1) {
-            g2.setColor(withAlpha(color, (int) (220 * (1 - burst) * fade)));
+            g2.setColor(Theme.withAlpha(color, (int) (220 * (1 - burst) * fade)));
             g2.setStroke(new BasicStroke(Math.max(1f, cell * 0.08f * (float) (1 - burst))));
             g2.draw(circle(geo.centerX(square), geo.centerY(square), cell * (0.3 + 0.5 * easeOut(burst))));
         }
@@ -214,9 +214,9 @@ final class InsightPainter {
             int x = (int) Math.round(geo.centerX(square) - fm.stringWidth(text) / 2.0);
             int y = (int) Math.round(geo.y(square) + cell * 0.35 - cell * 0.55 * easeOut(rise));
             int alpha = (int) (255 * fade * (rise < 0.6 ? 1 : 1 - (rise - 0.6) / 0.4));
-            g2.setColor(withAlpha(Color.BLACK, alpha * 2 / 3)); // 글자 그림자
+            g2.setColor(Theme.withAlpha(Color.BLACK, alpha * 2 / 3)); // 글자 그림자
             g2.drawString(text, x + 1, y + 2);
-            g2.setColor(withAlpha(color.brighter(), alpha));
+            g2.setColor(Theme.withAlpha(color.brighter(), alpha));
             g2.drawString(text, x, y);
         }
     }
@@ -248,9 +248,9 @@ final class InsightPainter {
         Composite saved = g2.getComposite();
         g2.setComposite(AlphaComposite.SrcOver.derive((float) appear));
         RoundRectangle2D shape = new RoundRectangle2D.Double(x, y, width, height, 16, 16);
-        g2.setColor(withAlpha(CARD_BG, 240));
+        g2.setColor(Theme.withAlpha(CARD_BG, 240));
         g2.fill(shape);
-        g2.setColor(withAlpha(tone, 230));
+        g2.setColor(Theme.withAlpha(tone, 230));
         g2.setStroke(new BasicStroke(2f));
         g2.draw(shape);
 
@@ -362,11 +362,6 @@ final class InsightPainter {
         return REASON_START + index * REASON_GAP;
     }
 
-    /** 잡힌 기물이 있던 칸 (앙파상이면 도착 칸 옆). */
-    private static Position capturedSquare(Board board, Move move) {
-        return Rules.isEnPassant(board, move) ? new Position(move.to().col(), move.from().row()) : move.to();
-    }
-
     private static long points(Piece piece) {
         return Math.round(piece.value() / 100.0);
     }
@@ -377,10 +372,6 @@ final class InsightPainter {
 
     private static Ellipse2D circle(double centerX, double centerY, double radius) {
         return new Ellipse2D.Double(centerX - radius, centerY - radius, radius * 2, radius * 2);
-    }
-
-    private static Color withAlpha(Color color, int alpha) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, alpha)));
     }
 
     /** 0~1 사이로 자릅니다. */

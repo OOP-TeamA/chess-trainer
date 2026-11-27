@@ -259,7 +259,7 @@ public final class BoardPanel extends JPanel {
             drawAnimation(g2, geo, animation);
         }
         if (arrowMove != null) {
-            ArrowPainter.draw(g2, geo, arrowMove.from(), arrowMove.to(), withAlpha(arrowColor, 215),
+            ArrowPainter.draw(g2, geo, arrowMove.from(), arrowMove.to(), Theme.withAlpha(arrowColor, 215),
                     geo.cell() * 0.14f, 1.0, false);
         }
         if (insight != null) {
@@ -397,9 +397,5 @@ public final class BoardPanel extends JPanel {
             int y = (int) Math.round(geo.y(slide.from()) + (geo.y(slide.to()) - geo.y(slide.from())) * t);
             PiecePainter.draw(g2, slide.piece(), x, y, geo.cell(), 1f);
         }
-    }
-
-    private static Color withAlpha(Color color, int alpha) {
-        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 }

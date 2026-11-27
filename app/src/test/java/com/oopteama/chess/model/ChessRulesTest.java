@@ -80,7 +80,12 @@ class ChessRulesTest {
         assertInstanceOf(King.class, castled.pieceAt("c1"));
         assertInstanceOf(Rook.class, castled.pieceAt("d1"));
 
-        Game enPassant = new Game(Board.fromFen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1"));
+        Board beforeEnPassant = Board.fromFen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
+        assertEquals(Position.of("d5"), Rules.capturedSquare(beforeEnPassant, Move.of("e5d6")),
+                "앙파상으로 잡히는 폰은 도착 칸(d6)이 아니라 옆 칸(d5)에 있습니다.");
+        assertEquals(Position.of("e3"), Rules.capturedSquare(Board.initial(), Move.of("e2e3")),
+                "보통 수는 도착 칸이 잡히는 칸입니다.");
+        Game enPassant = new Game(beforeEnPassant);
         Game.PlayedMove capture = enPassant.play(Move.of("e5d6"));
         assertInstanceOf(Pawn.class, capture.captured());
         assertEquals(Side.BLACK, capture.captured().side());

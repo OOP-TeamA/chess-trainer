@@ -230,9 +230,11 @@ public final class Rules {
 
     /** 이 수로 잡히는 기물 (없으면 null). 앙파상이면 옆 칸의 폰입니다. */
     public static Piece capturedPiece(Board board, Move move) {
-        if (isEnPassant(board, move)) {
-            return board.pieceAt(new Position(move.to().col(), move.from().row()));
-        }
-        return board.pieceAt(move.to());
+        return board.pieceAt(capturedSquare(board, move));
+    }
+
+    /** 이 수로 잡히는 기물이 있는 칸: 보통은 도착 칸이고, 앙파상이면 도착 칸 옆(출발 칸과 같은 줄)입니다. */
+    public static Position capturedSquare(Board board, Move move) {
+        return isEnPassant(board, move) ? new Position(move.to().col(), move.from().row()) : move.to();
     }
 }

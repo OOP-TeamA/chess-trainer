@@ -129,9 +129,8 @@ public final class MoveAdvisor {
     private static void addCapture(List<Reason> reasons, Board board, Move move) {
         Piece captured = Rules.capturedPiece(board, move);
         if (captured != null) {
-            Position at = Rules.isEnPassant(board, move) ? new Position(move.to().col(), move.from().row()) : move.to();
             reasons.add(new Reason(true, "상대 " + withJosa(captured.name(), "을", "를") + " 잡습니다 (+"
-                    + points(captured.value()) + ")", null, List.of(at)));
+                    + points(captured.value()) + ")", null, List.of(Rules.capturedSquare(board, move))));
         }
         if (move.isPromotion()) {
             Piece promoted = Piece.create(move.promotion(), board.turn());
